@@ -3,34 +3,15 @@
 #include <list>
 #include <string>
 #include <vector>
+#include <algorithm>
+#include <conio.h> 
+
 
 using namespace std;
 
 //returns true if the string s contains the char c
 bool stringContains(string& s, char c){
     return(s.find(c) != string::npos);
-}
-
-bool wordUsesCharacters(string& word, string& characters){
-    for(char c: word){
-        if(!stringContains(characters, c)){
-            return(false);
-        }
-    }
-    return(true);
-}
-
-string combineLists(vector<string>& list){
-    string output;
-    for(string& w: list){
-        for(char c: w){
-            if(!stringContains(output, c)){
-                output.append(w);
-            }
-        }
-    }
-    
-    return(output);
 }
 
 string combineIntoString(vector<string>& v){
@@ -160,21 +141,68 @@ bool matches(string& a, string& b){
     return(a[a.size()-1] == b[0]);
 }
 
-void printList(vector<string>& v){
-    for(string& s: v){
-        cout << s << " ";
-    }
-    cout << "\n";
-}
-
-bool containsAllLetters(vector<string>& v, vector<string>& letters){
-    for(char c: combineIntoString(letters)){
+bool containsAllLetters(vector<string>& v, vector<string>& sides){
+    for(char c: combineIntoString(sides)){
         string line = combineIntoString(v);
         if(!stringContains(line, c)){
             return(false);
         }
     }
     return(true);
+}
+
+string stringListToString(vector<string> list){
+    string out = "";
+    int i = 0;
+    for(string& s: list){
+        if(i == 0){
+            out.append(s);
+        }else{
+            out.append(s.substr(1,s.size()));
+        }
+        i++;
+    }
+    return(out);
+}
+
+bool stringVectorIsEmpty(vector<string> v){
+    for(string s: v){
+        if(s != ""){
+            return(false);
+        }
+    }
+    return(true);
+}
+
+bool stringContainsAllLetters(string& totalString, vector<string>& letters, vector<string>& lettersLeft, int lastSide = -1){
+    if(stringVectorIsEmpty(lettersLeft)){
+        return(true);
+    }
+    
+    bool valid = false;
+    for(int i=0; i<letters.size(); i++){
+        if(lastSide == i){
+            continue;
+        }
+
+        for(int c=0; c<letters[i].size(); c++){
+            char letter = letters[i][c];
+            char firstLetter = totalString[0];
+            if(letter==firstLetter){
+                vector<string> newLeft = lettersLeft;
+                int index =  newLeft[i].find(letter);
+                if(index != string::npos){
+                    newLeft[i] = newLeft[i].substr(0,index)+newLeft[i].substr(index+1,newLeft[i].size());
+                }
+
+                string newString = totalString.substr(1,totalString.size());
+                if(stringContainsAllLetters(newString, letters, newLeft, i)){
+                    valid = true;
+                }
+            }   
+        }
+    }
+    return(valid);
 }
 
 vector<vector<string>> getValidString(vector<string>& words, string& last, vector<string>& sides, int depth = 0, int maxDepth = 5){    
@@ -205,16 +233,24 @@ vector<vector<string>> getValidString(vector<string>& words, string& last, vecto
 vector<vector<string>> filterLists(vector<vector<string>>& l, vector<string>& sides){
     vector<vector<string>> out = {};
     for(vector<string>& v: l){
-        if(containsAllLetters(v, sides)){
+        string s = stringListToString(v);
+        if(stringContainsAllLetters(s, sides, sides)){
             out.push_back(v);
         }
     }
     return(out);
 }
 
+string stringToLower(string d){
+    string data = d;
+    std::transform(data.begin(), data.end(), data.begin(),
+    [](unsigned char c){ return std::tolower(c); });
+    return(data);
+}
+
 int main(){
 
-    cout << "Reading word file\n";
+    cout << "Reading word file\n\n";
 
     ifstream file("words.txt");
 
@@ -226,41 +262,45 @@ int main(){
     }
     file.close();
 
-    vector<string> testSides = {"abc","def","nop","lpr"}; 
-    string testWord = "apple";
+    string top;
+    string bottom;
+    string left;
+    string right;
 
-
-    string top = "dth";
-    string bottom = "ofs";
-    string left = "ban";
-    string right = "wri";
-
-    /*
-    cout << "Top\n";
+    cout << "Side 1: ";
     cin >> top;
-    cout << "\nBottom\n";
+    cout << "Side 2: ";
     cin >> bottom;
-    cout << "\nLeft\n";
+    cout << "Side 3: ";
     cin >> left;
-    cout << "\nRight\n";
+    cout << "Side 4: ";
     cin >> right;
-    */
 
-    vector<string> allSides = {top, bottom, left, right};
+    vector<string> allSides = {stringToLower(top), stringToLower(bottom), stringToLower(left), stringToLower(right)};
 
-    cout << "\nFiltering word list for valid words\n";
+    cout << "\nFiltering word list for valid words\n\n";
     words = filterWords(words, allSides);
-    cout << "\nSorting word list\n";
+    cout << "Sorting word list\n\n";
     words = sortWords(words, stringLength, false);
 
-    int maxDepth = 3;
+    cout << "\n";
+    for(string& w: words){
+        cout << w << "\n";
+    }cout << "\n";
 
-    cout << "\nSearching for all possible word strings (Max length = " << maxDepth << ")\n";
+    cout << words.size() << " valid word(s) found\n\n";
+
+    int maxDepth;
+
+    cout << "Max depth: ";
+    cin >> maxDepth;
+
+    cout << "\nSearching for all possible word strings (Max depth = " << maxDepth << ")\n\n";
     string last = "";
     vector<vector<string>> allLists = getValidString(words, last, allSides, 0, maxDepth);
-    cout << "\nFiltering string list\n";
+    cout << "Filtering string list\n\n";
     allLists = filterLists(allLists, allSides);
-    cout << "\nSorting string list\n";
+    cout << "Sorting string list\n\n";
     allLists = sortList(allLists, listLength, false);
     
     
@@ -269,10 +309,11 @@ int main(){
             cout << s << " ";
         }
         cout << "\n";
-    }
+    }cout << "\n";
 
-    cout << "\n\nDone";
-    getchar();
+    cout << allLists.size() << " solution(s) found";
+    
+    getch();
 
     return(0);
 }
