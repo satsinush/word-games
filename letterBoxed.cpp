@@ -1,6 +1,5 @@
 #include <iostream>
 #include <fstream>
-#include <list>
 #include <string>
 #include <vector>
 #include <algorithm>
@@ -9,22 +8,18 @@
 
 using namespace std;
 
-//returns true if the string s contains the char c
-bool stringContains(string& s, char c){
+//returns true if the string contains the given char
+//@param s string to search in
+//@param c char to search for
+bool stringContainsChar(string& s, char c){
     return(s.find(c) != string::npos);
 }
 
-string combineIntoString(vector<string>& v){
-    string out = "";
-    for(string& s: v){
-        out += s;
-    }
-    return(out);
-}
-
-bool isValidWord(string& word, vector<string>& sides, int lastSide = -1){
-    string combined = combineIntoString(sides);
-    
+//returns true if the word can be made with the sides given
+//@param word string to check
+//@param sides list of letters used to create the word
+//@param lastSide used for recursion to skip the last used side
+bool isValidWord(string& word, vector<string>& sides, int lastSide = -1){    
     if(word.length() < 3 && lastSide == -1){
         return(false);
     }
@@ -36,7 +31,7 @@ bool isValidWord(string& word, vector<string>& sides, int lastSide = -1){
         if(i == lastSide){
             continue;
         }
-        if(stringContains(sides[i], word[0])){
+        if(stringContainsChar(sides[i], word[0])){
             string newWord = word.substr(1,word.size());
             valid = isValidWord(newWord, sides, i);
         }
@@ -44,6 +39,9 @@ bool isValidWord(string& word, vector<string>& sides, int lastSide = -1){
     return(valid);
 }
 
+//returns a new vector with only the words that can be made from the given sides
+//@param words list of words to filter
+//@param sides list of letters to create each word
 vector<string> filterWords(vector<string>& words, vector<string>& sides){
     vector<string> newWords = {};
     for(string& word: words){
@@ -54,107 +52,61 @@ vector<string> filterWords(vector<string>& words, vector<string>& sides){
     return(newWords);
 }
 
-int stringLength(string& word){
-    return(word.length());
+
+//sorts vector of words by length of each word
+//@param words list of words to sort
+//@param ascending whether to sort in ascending (true) or descending (false)
+vector<string> sortWords(vector<string>& words, bool ascending=true){
+    vector<string> newWords = words;
+
+    auto comp = [ascending](string a, string b){
+        if(ascending){
+            return(a.size() < b.size());
+        }else{
+            return(a.size() > b.size());
+        }
+    };
+
+    sort(newWords.begin(),newWords.end(),comp);
+
+    return(newWords);
 }
 
-vector<string> sortWords(vector<string>& words, int (*sorter)(string&), bool ascending=true){
-    if(words.size() <= 1){
-        return(words);
-    }
+//sorts vector of words by length of each word
+//@param chains list of chains to sort
+//@param ascending whether to sort in ascending (true) or descending (false)
+vector<vector<string>> sortChains(vector<vector<string>>& chains, bool ascending=true){
+    vector<vector<string>> newChains = chains;
 
-    int pivot = sorter(words[0]);
-    vector<string> less = {};
-    vector<string> equal = {words[0]};
-    vector<string> greater = {};
-    for(int i = 1; i < words.size(); i++){
-        string w = words[i];
-        if(sorter(w) == pivot){
-            equal.push_back(w);
+    auto comp = [ascending](vector<string> a, vector<string> b){
+        if(ascending){
+            return(a.size() < b.size());
+        }else{
+            return(a.size() > b.size());
         }
-        if(sorter(w) > pivot){
-            greater.push_back(w);
-        }
-        if(sorter(w) < pivot){
-            less.push_back(w);
-        }
-    }
-    less = sortWords(less, sorter, ascending);
-    greater = sortWords(greater, sorter, ascending);
-    vector<string> sorted = {};
-    if(ascending){
-        sorted.insert(sorted.end(), less.begin(), less.end());
-        sorted.insert(sorted.end(), equal.begin(), equal.end());
-        sorted.insert(sorted.end(), greater.begin(), greater.end());
-    }else{
-        sorted.insert(sorted.end(), greater.begin(), greater.end());
-        sorted.insert(sorted.end(), equal.begin(), equal.end());
-        sorted.insert(sorted.end(), less.begin(), less.end());
-    }
-    return(sorted);
+    };
+
+    sort(newChains.begin(),newChains.end(),comp);
+
+    return(newChains);
 }
 
-int listLength(vector<string>& list){
-    return(list.size());
-}
-
-vector<vector<string>> sortList(vector<vector<string>>& list, int (*sorter)(vector<string>&), bool ascending=true){
-    if(list.size() <= 1){
-        return(list);
-    }
-
-    int pivot = sorter(list[0]);
-    vector<vector<string>> less = {};
-    vector<vector<string>> equal = {list[0]};
-    vector<vector<string>> greater = {};
-    for(int i = 1; i < list.size(); i++){
-        vector<string> w = list[i];
-        if(sorter(w) == pivot){
-            equal.push_back(w);
-        }
-        if(sorter(w) > pivot){
-            greater.push_back(w);
-        }
-        if(sorter(w) < pivot){
-            less.push_back(w);
-        }
-    }
-    less = sortList(less, sorter, ascending);
-    greater = sortList(greater, sorter, ascending);
-    vector<vector<string>> sorted = {};
-    if(ascending){
-        sorted.insert(sorted.end(), less.begin(), less.end());
-        sorted.insert(sorted.end(), equal.begin(), equal.end());
-        sorted.insert(sorted.end(), greater.begin(), greater.end());
-    }else{
-        sorted.insert(sorted.end(), greater.begin(), greater.end());
-        sorted.insert(sorted.end(), equal.begin(), equal.end());
-        sorted.insert(sorted.end(), less.begin(), less.end());
-    }
-    return(sorted);
-}
-
-bool matches(string& a, string& b){
-    if(a == ""){
+//returns true if the last letter of the first word is the same as the first letter as the last word or if word1 is blank
+bool lastMatchesFirst(string& word1, string& word2){
+    if(word1 == ""){
         return(true);
     }
-    return(a[a.size()-1] == b[0]);
+    char last = word1[word1.size()-1];
+    char first = word2[0];
+    return(last == first);
 }
 
-bool containsAllLetters(vector<string>& v, vector<string>& sides){
-    for(char c: combineIntoString(sides)){
-        string line = combineIntoString(v);
-        if(!stringContains(line, c)){
-            return(false);
-        }
-    }
-    return(true);
-}
-
-string stringListToString(vector<string> list){
+//appends each word in the chain to a string but omits the first letter of each word after the first
+//@param chain list of words to turn into a string
+string chainToString(vector<string>& chain){
     string out = "";
     int i = 0;
-    for(string& s: list){
+    for(string& s: chain){
         if(i == 0){
             out.append(s);
         }else{
@@ -165,8 +117,10 @@ string stringListToString(vector<string> list){
     return(out);
 }
 
-bool stringVectorIsEmpty(vector<string> v){
-    for(string s: v){
+//returns true if the vector only contains empty strings
+//@param chain chain to check if empty
+bool isEmpty(vector<string> chain){
+    for(string& s: chain){
         if(s != ""){
             return(false);
         }
@@ -174,29 +128,38 @@ bool stringVectorIsEmpty(vector<string> v){
     return(true);
 }
 
-bool stringContainsAllLetters(string& totalString, vector<string>& letters, vector<string>& lettersLeft, int lastSide = -1){
-    if(stringVectorIsEmpty(lettersLeft)){
+//returns true if the string provided can use all letters on each side
+//Uses a recursive algorithm to check all possibilities if there are duplicate letters
+//@param chainString string to check use of all letters
+//@param sides list of letters to the chain
+//@param sidesLeft list of letters remaining to be used, updated during recursion
+//@param lastSide used for recursion to skip the last used side
+bool stringUsesAllLetters(string& chainString, vector<string>& sides, vector<string> sidesLeft = {}, int lastSide = -1){
+    if(lastSide == -1){
+        sidesLeft = sides;
+    }
+    if(isEmpty(sidesLeft)){
         return(true);
     }
     
     bool valid = false;
-    for(int i=0; i<letters.size(); i++){
+    for(int i=0; i<sides.size(); i++){
         if(lastSide == i){
             continue;
         }
 
-        for(int c=0; c<letters[i].size(); c++){
-            char letter = letters[i][c];
-            char firstLetter = totalString[0];
+        for(int c=0; c<sides[i].size(); c++){
+            char letter = sides[i][c];
+            char firstLetter = chainString[0];
             if(letter==firstLetter){
-                vector<string> newLeft = lettersLeft;
+                vector<string> newLeft = sidesLeft;
                 int index =  newLeft[i].find(letter);
                 if(index != string::npos){
                     newLeft[i] = newLeft[i].substr(0,index)+newLeft[i].substr(index+1,newLeft[i].size());
                 }
 
-                string newString = totalString.substr(1,totalString.size());
-                if(stringContainsAllLetters(newString, letters, newLeft, i)){
+                string newString = chainString.substr(1,chainString.size());
+                if(stringUsesAllLetters(newString, sides, newLeft, i)){
                     valid = true;
                 }
             }   
@@ -205,7 +168,12 @@ bool stringContainsAllLetters(string& totalString, vector<string>& letters, vect
     return(valid);
 }
 
-vector<vector<string>> getValidString(vector<string>& words, string& last, vector<string>& sides, int depth = 0, int maxDepth = 5){    
+//returns a list of all valid chains that can be made from the given words
+//@param words list of words to turn into chains
+//@param maxDepth specifies the max number of words in each chain
+//@param lastWord used for recurion to determine the last word in the chain
+//@param depth used to determine the depth of recursion in the function
+vector<vector<string>> getValidChains(vector<string>& words,  int maxDepth = 5, string lastWord = "", int depth = 0){    
     if(words.size() == 0 || depth+1 > maxDepth){
         return(vector<vector<string>>{});
     }
@@ -213,13 +181,13 @@ vector<vector<string>> getValidString(vector<string>& words, string& last, vecto
     vector<vector<string>> validStrings = {};
     for(int i = 0; i < words.size(); i++){
         string w = words[i];
-        if(matches(last, w)){
+        if(lastMatchesFirst(lastWord, w)){
             vector<string> newWords(words.begin(),words.begin()+i);
             newWords.insert(newWords.end(),words.begin()+i+1,words.end());
             
             validStrings.push_back({w}); 
             vector<string> v;
-            for(vector<string> s: getValidString(newWords, w, sides, depth+1, maxDepth)){
+            for(vector<string> s: getValidChains(newWords,maxDepth, w, depth+1)){
                 v = {w};
                 v.insert(v.end(),s.begin(),s.end());
                 validStrings.push_back(v);
@@ -230,17 +198,22 @@ vector<vector<string>> getValidString(vector<string>& words, string& last, vecto
     return(validStrings);
 }
 
-vector<vector<string>> filterLists(vector<vector<string>>& l, vector<string>& sides){
+//returns a new list of chains that all contain every letter from the given the sides
+//@param chains list of chains to filter
+//@param sides list of letters to create each chain
+vector<vector<string>> filterChains(vector<vector<string>>& chains, vector<string>& sides){
     vector<vector<string>> out = {};
-    for(vector<string>& v: l){
-        string s = stringListToString(v);
-        if(stringContainsAllLetters(s, sides, sides)){
+    for(vector<string>& v: chains){
+        string s = chainToString(v);
+        if(stringUsesAllLetters(s, sides)){
             out.push_back(v);
         }
     }
     return(out);
 }
 
+//converts each uppercase char in the string to lower case
+//@param d string to update
 string stringToLower(string d){
     string data = d;
     std::transform(data.begin(), data.end(), data.begin(),
@@ -262,26 +235,23 @@ int main(){
     }
     file.close();
 
-    string top;
-    string bottom;
-    string left;
-    string right;
+    string side1, side2, side3, side4;
 
     cout << "Side 1: ";
-    cin >> top;
+    cin >> side1;
     cout << "Side 2: ";
-    cin >> bottom;
+    cin >> side2;
     cout << "Side 3: ";
-    cin >> left;
+    cin >> side3;
     cout << "Side 4: ";
-    cin >> right;
+    cin >> side4;
 
-    vector<string> allSides = {stringToLower(top), stringToLower(bottom), stringToLower(left), stringToLower(right)};
+    vector<string> sides = {stringToLower(side1), stringToLower(side2), stringToLower(side3), stringToLower(side4)};
 
-    cout << "\nFiltering word list for valid words\n\n";
-    words = filterWords(words, allSides);
-    cout << "Sorting word list\n\n";
-    words = sortWords(words, stringLength, false);
+    cout << "\nFiltering word chain for valid words\n\n";
+    words = filterWords(words, sides);
+    cout << "Sorting word chain\n\n";
+    words = sortWords(words, true);
 
     cout << "\n";
     for(string& w: words){
@@ -296,22 +266,21 @@ int main(){
     cin >> maxDepth;
 
     cout << "\nSearching for all possible word strings (Max depth = " << maxDepth << ")\n\n";
-    string last = "";
-    vector<vector<string>> allLists = getValidString(words, last, allSides, 0, maxDepth);
-    cout << "Filtering string list\n\n";
-    allLists = filterLists(allLists, allSides);
-    cout << "Sorting string list\n\n";
-    allLists = sortList(allLists, listLength, false);
+    vector<vector<string>> chains = getValidChains(words, maxDepth);
+    cout << "Filtering string chain\n\n";
+    chains = filterChains(chains, sides);
+    cout << "Sorting string chain\n\n";
+    chains = sortChains(chains, false);
     
     
-    for(vector<string>& v: allLists){
+    for(vector<string>& v: chains){
         for(string& s: v){
             cout << s << " ";
         }
         cout << "\n";
     }cout << "\n";
 
-    cout << allLists.size() << " solution(s) found";
+    cout << chains.size() << " solution(s) found";
     
     getch();
 
