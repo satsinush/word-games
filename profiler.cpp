@@ -24,7 +24,6 @@ namespace Profiler{
         std::map<std::string, functionProfile> childProfileMap;
         std::vector<std::string> functionList;
         functionProfile* parent;
-        int currentIndex;
         double startTime = 0;
         int count = 0;
         double totalTime = 0;
@@ -38,25 +37,21 @@ namespace Profiler{
             this->functionList = std::vector<std::string>();
         }
 
-        int update(double time, functionProfile*& p){
+        void update(double time, functionProfile*& p){
             if(this->startTime == 0){
                 this->startTime = getTime();
                 p = this;
-                return(1); //started
             }else{
                 this->totalTime += time-this->startTime;
                 this->count = this->count + 1;
                 this->startTime = 0;
                 p = this->parent;
-                return(-1); //ended
             }
         }
     };
 
     class Profiler{
         public:
-        //std::map<std::string, functionProfile> profileMap;
-        //std::vector<std::string> functionList;
         functionProfile* profilerUpdater;
         functionProfile main;
         functionProfile* currentProfile;
@@ -89,7 +84,6 @@ namespace Profiler{
                 try{
                     functionProfile* p = &this->currentProfile->childProfileMap.at(functionName);
                     p->update(t, currentProfile);
-                    //this->currentIndex = find(this->currentProfile->functionList.begin(),this->currentProfile->functionList.end(),functionName)-this->currentProfile->functionList.begin();
                 }catch(...){
                     this->currentProfile->functionList.push_back(functionName);                    
                     this->currentProfile->childProfileMap[functionName] = *new functionProfile(functionName, currentProfile);
