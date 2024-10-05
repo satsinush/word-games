@@ -10,3 +10,135 @@ Profiler Data: Average time, Count, Total time, Percent
           chainToString: 0.000178ms, 62911, 0.011214s, 2%
           stringUsesAllLetters: 0.009039ms, 62911, 0.568659s, 92%
      sortChains: 0.003815ms, 1, 0.000004s, 0%
+
+Total Run time: 2.575732s
+Profiler Data: Average time, Count, Total time, Percent
+     Profiler: 0.000091ms, 2069374, 0.188621s, 7%
+     filterWords: 166.614771ms, 1, 0.166615s, 6%
+          isValidWord: 0.000231ms, 370104, 0.085524s, 51%
+     sortWords: 0.202179ms, 1, 0.000202s, 0%
+     getValidChains: 1678.481579ms, 1, 1.678482s, 65%
+          lastMatchesFirst: 0.000154ms, 538756, 0.082946s, 5%
+     filterChains: 625.548601ms, 1, 0.625549s, 24%
+          chainToString: 0.000179ms, 62911, 0.011274s, 2%
+          stringUsesAllLetters: 0.009185ms, 62911, 0.577849s, 92%
+     sortChains: 0.001192ms, 1, 0.000001s, 0%
+
+Total Run time: 2.461113s
+Profiler Data: Average time, Count, Total time, Percent
+     Profiler: 0.000092ms, 2069374, 0.189746s, 8%
+     filterWords: 168.791294ms, 1, 0.168791s, 7%
+          isValidWord: 0.000236ms, 370104, 0.087398s, 52%
+     sortWords: 0.234127ms, 1, 0.000234s, 0%
+     getValidChains: 1685.897112ms, 1, 1.685897s, 69%
+          lastMatchesFirst: 0.000156ms, 538756, 0.083985s, 5%
+     filterChains: 494.164228ms, 1, 0.494164s, 20%
+          chainToString: 0.000186ms, 62911, 0.011686s, 2%
+          stringUsesAllLetters: 0.007105ms, 62911, 0.446974s, 90%
+     sortChains: 0.001669ms, 1, 0.000002s, 0%
+
+Total Run time: 2.326887s
+Profiler Data: Average time, Count, Total time, Percent
+     Profiler: 0.000090ms, 2069374, 0.186903s, 8%
+     filterWords: 165.499210ms, 1, 0.165499s, 7%
+          isValidWord: 0.000230ms, 370104, 0.085108s, 51%
+     sortWords: 0.218868ms, 1, 0.000219s, 0%
+     getValidChains: 1691.497326ms, 1, 1.691497s, 73%
+          lastMatchesFirst: 0.000152ms, 538756, 0.081794s, 5%
+     filterChains: 366.647243ms, 1, 0.366647s, 16%
+          chainToString: 0.000176ms, 62911, 0.011083s, 3%
+          stringUsesAllLetters: 0.005151ms, 62911, 0.324050s, 88%
+     sortChains: 0.001669ms, 1, 0.000002s, 0%
+
+Total Run time: 2.288128s
+Profiler Data: Average time, Count, Total time, Percent
+     Profiler: 0.000091ms, 2069374, 0.189082s, 8%
+     filterWords: 169.963121ms, 1, 0.169963s, 7%
+          isValidWord: 0.000237ms, 370104, 0.087608s, 52%
+     sortWords: 0.260115ms, 1, 0.000260s, 0%
+     getValidChains: 1677.965879ms, 1, 1.677966s, 73%
+          lastMatchesFirst: 0.000154ms, 538756, 0.082700s, 5%
+     filterChains: 335.544348ms, 1, 0.335544s, 15%
+          chainToString: 0.000177ms, 62911, 0.011135s, 3%
+          stringUsesAllLetters: 0.004651ms, 62911, 0.292608s, 87%
+     sortChains: 0.001669ms, 1, 0.000002s, 0%
+
+
+Total Run time: 2.276600s
+Profiler Data: Average time, Count, Total time, Percent
+     Profiler: 0.000093ms, 2069374, 0.193176s, 8%
+     filterWords: 165.853977ms, 1, 0.165854s, 7%
+          isValidWord: 0.000230ms, 370104, 0.085123s, 51%
+     sortWords: 0.210524ms, 1, 0.000211s, 0%
+     getValidChains: 1674.211740ms, 1, 1.674212s, 74%
+          lastMatchesFirst: 0.000160ms, 538756, 0.086097s, 5%
+     filterChains: 332.558393ms, 1, 0.332558s, 15%
+          chainToString: 0.000178ms, 62911, 0.011168s, 3%
+          stringUsesAllLetters: 0.004587ms, 62911, 0.288587s, 87%
+     sortChains: 0.002146ms, 1, 0.000002s, 0%
+
+Total Run time: 2.243472s
+Profiler Data: Average time, Count, Total time, Percent
+     Profiler: 0.000092ms, 2069374, 0.189909s, 8%
+     filterWords: 168.628454ms, 1, 0.168628s, 8%
+          isValidWord: 0.000234ms, 370104, 0.086734s, 51%
+     sortWords: 0.207901ms, 1, 0.000208s, 0%
+     getValidChains: 1634.380102ms, 1, 1.634380s, 73%
+          lastMatchesFirst: 0.000154ms, 538756, 0.083115s, 5%
+     filterChains: 334.177256ms, 1, 0.334177s, 15%
+          chainToString: 0.000179ms, 62911, 0.011245s, 3%
+          stringUsesAllLetters: 0.004626ms, 62911, 0.290998s, 87%
+     sortChains: 0.002146ms, 1, 0.000002s, 0%
+
+Total Run time: 2.236821s
+Profiler Data: Average time, Count, Total time, Percent
+     Profiler: 0.000092ms, 2069374, 0.189755s, 8%
+     filterWords: 167.933226ms, 1, 0.167933s, 8%
+          isValidWord: 0.000231ms, 370104, 0.085675s, 51%
+     sortWords: 0.213623ms, 1, 0.000214s, 0%
+     getValidChains: 1629.493952ms, 1, 1.629494s, 73%
+          lastMatchesFirst: 0.000150ms, 538756, 0.080790s, 5%
+     filterChains: 333.603621ms, 1, 0.333604s, 15%
+          chainToString: 0.000180ms, 62911, 0.011342s, 3%
+          stringUsesAllLetters: 0.004618ms, 62911, 0.290503s, 87%
+     sortChains: 0.001669ms, 1, 0.000002s, 0%
+
+Total Run time: 2.278437s
+Profiler Data: Average time, Count, Total time, Percent
+     Profiler: 0.000092ms, 2069374, 0.189393s, 8%
+     filterWords: 168.337107ms, 1, 0.168337s, 7%
+          isValidWord: 0.000233ms, 370104, 0.086377s, 51%
+     sortWords: 0.119925ms, 1, 0.000120s, 0%
+     getValidChains: 1671.219826ms, 1, 1.671220s, 73%
+          lastMatchesFirst: 0.000148ms, 538756, 0.079726s, 5%
+     filterChains: 332.438946ms, 1, 0.332439s, 15%
+          chainToString: 0.000173ms, 62911, 0.010872s, 3%
+          stringUsesAllLetters: 0.004610ms, 62911, 0.290042s, 87%
+     sortChains: 0.001907ms, 1, 0.000002s, 0%
+
+Total Run time: 2.253890s
+Profiler Data: Average time, Count, Total time, Percent
+     Profiler: 0.000091ms, 2069374, 0.188112s, 8%
+     filterWords: 166.751385ms, 1, 0.166751s, 7%
+          isValidWord: 0.000229ms, 370104, 0.084934s, 50%
+     sortWords: 0.118732ms, 1, 0.000119s, 0%
+     getValidChains: 1660.566330ms, 1, 1.660566s, 73%
+          lastMatchesFirst: 0.000149ms, 538756, 0.080096s, 4%
+     filterChains: 326.241732ms, 1, 0.326242s, 14%
+          chainToString: 0.000175ms, 62911, 0.010987s, 3%
+          stringUsesAllLetters: 0.004517ms, 62911, 0.284198s, 87%
+     sortChains: 0.001669ms, 1, 0.000002s, 0%
+
+Total Run time: 2.263321s
+Profiler Data: Average time, Count, Total time, Percent
+     Profiler: 0.000091ms, 2069374, 0.188357s, 8%
+     filterWords: 166.975737ms, 1, 0.166976s, 7%
+          isValidWord: 0.000232ms, 370104, 0.085685s, 51%
+     sortWords: 0.117064ms, 1, 0.000117s, 0%
+     getValidChains: 1668.415308ms, 1, 1.668415s, 74%
+          lastMatchesFirst: 0.000149ms, 538756, 0.080230s, 5%
+     filterChains: 327.129602ms, 1, 0.327130s, 14%
+          chainToString: 0.000172ms, 62911, 0.010844s, 3%
+          stringUsesAllLetters: 0.004529ms, 62911, 0.284954s, 87%
+     sortChains: 0.001907ms, 1, 0.000002s, 0%
+
