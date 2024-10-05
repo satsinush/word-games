@@ -13,11 +13,13 @@
 namespace Profiler{
 
     const double NANO_TO_SEC = 1.0/1000000000;
+
+    //returns time in seconds
     double getTime(){
-        //returns time in seconds
         return(std::chrono::duration_cast<std::chrono::nanoseconds>((std::chrono::system_clock::now()).time_since_epoch()).count()*NANO_TO_SEC);
     }
 
+    //class used to keep track of the time and number of calls a function has
     class functionProfile{
         public:
         std::string functionName = "";
@@ -37,6 +39,8 @@ namespace Profiler{
             this->functionList = std::vector<std::string>();
         }
 
+        //updates the function profile
+        //@param p points to the function profile to be set as the current function
         void update(double time, functionProfile*& p){
             if(this->startTime == 0){
                 this->startTime = getTime();
@@ -49,7 +53,8 @@ namespace Profiler{
             }
         }
     };
-
+    
+    //Class to drive the function profiles and log profiler data
     class Profiler{
         public:
         functionProfile* profilerUpdater;
@@ -63,6 +68,7 @@ namespace Profiler{
             this->start();
         }
 
+        //appends a string with line break to log.txt
         void log(const std::string& message){
             std::ofstream logFile;
             if(this->logDirectory==""){
@@ -75,7 +81,9 @@ namespace Profiler{
             logFile.close();
         }
 
-        void updateProfiler(const std::string& functionName, bool start){
+        //updates or creates a function profile depending on what the current function profile is
+        //@param start true if the starting a new function or false if ending the function
+        void updateProfile(const std::string& functionName, bool start){
             double t = getTime();
 
             if(currentProfile->functionName == functionName && !start){
@@ -94,18 +102,23 @@ namespace Profiler{
             this->profilerUpdater->totalTime += getTime()-t;
         }
 
+        //updates function profile to start
+        //@param ignore profile is only updated if true, used to skip unnecessary calls in recusive functions 
         void startProfile(const std::string& functionName, bool ignore=false){
             if(!ignore){
-                updateProfiler(functionName, true);
+                updateProfile(functionName, true);
             }
         }
 
+        //updates function profile to end
+        //@param ignore profile is only updated if true, used to skip unnecessary calls in recusive functions 
         void endProfile(const std::string& functionName, bool ignore=false){
             if(!ignore){
-                updateProfiler(functionName, false);
+                updateProfile(functionName, false);
             }
         }
 
+        //sets the start time to the current time and initializes Main and Profiler funciton profiles
         void start(){
             this->startTime = getTime();
             this->main = functionProfile("Main", nullptr);
@@ -118,6 +131,7 @@ namespace Profiler{
             //this->profileMap = std::map<std::string, functionProfile>();
 
         }
+        //sets the end time to the current time
         void end(){
             this->endTime = getTime();
         }
@@ -147,31 +161,7 @@ namespace Profiler{
             this->main.totalTime = totalRunTime;
             if(main.childProfileMap.size() > 0){
                 log("Profiler Data: Average time, Count, Total time, Percent");
-                /*
-                log(
-                    this->profilerUpdater->functionName + ": " + 
-                    std::to_string((this->profilerUpdater->totalTime/this->profilerUpdater->count)*1000) + "ms, " + 
-                    std::to_string(this->profilerUpdater->count) + ", " + 
-                    std::to_string(this->profilerUpdater->totalTime) + "s, " +
-                    std::to_string(int(round((this->profilerUpdater->totalTime/totalRunTime)*100))) + "%"
-                );
-                for(std::string& s: this->functionList){
-                    functionProfile& f = this->profileMap.at(s);
-                    std::string indent;
-                    for(int i = 0; i < f.depth; i++){
-                        indent.append("     ");
-                    }
-                    log(
-                        indent +
-                        f.functionName + ": " + 
-                        std::to_string((f.totalTime/f.count)*1000) + "ms, " + 
-                        std::to_string(f.count) + ", " + 
-                        std::to_string(f.totalTime) + "s, " +
-                        std::to_string(int(round((f.totalTime/totalRunTime)*100))) + "%"
-                    );
-                }
-                */
-               logChildProfiles(main, 1);
+                logChildProfiles(main, 1);
             }
             log("");
         }
