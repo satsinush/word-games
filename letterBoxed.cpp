@@ -276,22 +276,23 @@ int main(){
 
     string side1, side2, side3, side4;
 
-    /*
-    cout << "Side 1: ";
-    cin >> side1;
-    cout << "Side 2: ";
-    cin >> side2;
-    cout << "Side 3: ";
-    cin >> side3;
-    cout << "Side 4: ";
-    cin >> side4;
-    */
-   
-   
-    side1 = "uvj";
-    side2 = "swi";
-    side3 = "tge";
-    side4 = "bac";
+    bool allowInput = true;
+
+    if(allowInput){
+        cout << "Side 1: ";
+        cin >> side1;
+        cout << "Side 2: ";
+        cin >> side2;
+        cout << "Side 3: ";
+        cin >> side3;
+        cout << "Side 4: ";
+        cin >> side4;
+    }else{
+        side1 = "uvj";
+        side2 = "swi";
+        side3 = "tge";
+        side4 = "bac";
+    }
 
     stringToLower(side1);
     stringToLower(side2);
@@ -314,9 +315,12 @@ int main(){
 
     int maxDepth;
 
-    cout << "Max depth: ";
-    //cin >> maxDepth;
-    maxDepth = 2;
+    if(allowInput){
+        cout << "Max depth: ";
+        cin >> maxDepth;
+    }else{
+        maxDepth = 2;
+    }
 
     cout << "\nSearching for all possible word strings (Max depth = " << maxDepth << ")\n\n";
     vector<vector<string>> chains = getValidChains(words, maxDepth);
