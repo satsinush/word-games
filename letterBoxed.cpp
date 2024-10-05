@@ -71,18 +71,18 @@ vector<string> filterWords(vector<string>& words, vector<string>& sides){
 void sortWords(vector<string>& words, bool ascending=true){
     profiler.startProfile(__func__);
 
-    auto compAscending = [](string& a, string& b){
+    auto compAscending = [](string a, string b){
         return(a.size() < b.size());
     };
 
-    auto compDescending = [](string& a, string& b){
+    auto compDescending = [](string a, string b){
         return(a.size() > b.size());
     };
 
     if(ascending){
-        sort(words.begin(),words.end(),compAscending);
+        stable_sort(words.begin(),words.end(),compAscending);
     }else{
-        sort(words.begin(),words.end(),compAscending);
+        stable_sort(words.begin(),words.end(),compDescending);
     }
 
     profiler.endProfile(__func__);
@@ -94,18 +94,18 @@ void sortWords(vector<string>& words, bool ascending=true){
 void sortChains(vector<vector<string>>& chains, bool ascending=true){
     profiler.startProfile(__func__);
 
-    auto compAscending = [](vector<string>& a, vector<string>& b){
+    auto compAscending = [](vector<string> a, vector<string> b){
         return(a.size() < b.size());
     };
 
-    auto compDescending = [](vector<string>& a, vector<string>& b){
+    auto compDescending = [](vector<string> a, vector<string> b){
         return(a.size() > b.size());
     };
 
     if(ascending){
-        sort(chains.begin(),chains.end(),compAscending);
+        stable_sort(chains.begin(),chains.end(),compAscending);
     }else{
-        sort(chains.begin(),chains.end(),compAscending);
+        stable_sort(chains.begin(),chains.end(),compDescending);
     }
 
     profiler.endProfile(__func__);
@@ -301,12 +301,11 @@ int main(){
 
     vector<string> sides = {side1,side2,side3,side4};
 
-    cout << "\nFiltering word chain for valid words\n\n";
+    cout << "\nFiltering word list for valid words\n\n";
     words = filterWords(words, sides);
-    cout << "Sorting word chain\n\n";
+    cout << "Sorting words\n\n";
     sortWords(words, true);
 
-    cout << "\n";
     for(string& w: words){
         cout << w << "\n";
     }cout << "\n";
@@ -322,13 +321,12 @@ int main(){
         maxDepth = 2;
     }
 
-    cout << "\nSearching for all possible word strings (Max depth = " << maxDepth << ")\n\n";
+    cout << "\nSearching for all possible word chains (Max depth = " << maxDepth << ")\n\n";
     vector<vector<string>> chains = getValidChains(words, maxDepth);
-    cout << "Filtering string chain\n\n";
+    cout << "Filtering word chains\n\n";
     chains = filterChains(chains, sides);
-    cout << "Sorting string chain\n\n";
+    cout << "Sorting word chains\n\n";
     sortChains(chains, false);
-    
     
     for(vector<string>& v: chains){
         for(string& s: v){
