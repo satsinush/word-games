@@ -4,6 +4,7 @@
 #include <vector>
 #include <algorithm>
 #include <conio.h> 
+#include <set>
 
 #include "profiler.cpp"
 
@@ -24,15 +25,18 @@ bool stringContainsChar(string& s, char c){
 //@param sides list of letters used to create the word
 //@param lastSide used for recursion to skip the last used side
 bool isValidWord(string& word, vector<string>& sides, int lastSide = -1, int depth = 0){  
-    profiler.startProfile(__func__, depth!=0);
-    if(word.length() < 3 && lastSide == -1){
-        profiler.endProfile(__func__, depth!=0);
+    //profiler.startProfile(__func__, depth!=0);
+
+    //checks basic conditions before moving on to more complex recursive function
+    if(word.length() < 3 && depth == 0){
+        //profiler.endProfile(__func__, depth!=0);
         return(false);
     }
     if(word == ""){
-        profiler.endProfile(__func__, depth!=0);
+        //profiler.endProfile(__func__, depth!=0);
         return(true);
     }
+
     bool valid = false;
     for(int i=0; i<sides.size(); i++){
         if(i == lastSide){
@@ -43,7 +47,7 @@ bool isValidWord(string& word, vector<string>& sides, int lastSide = -1, int dep
             valid = isValidWord(newWord, sides, i, depth+1);
         }
     }
-    profiler.endProfile(__func__, depth!=0);
+    //profiler.endProfile(__func__, depth!=0);
     return(valid);
 }
 
@@ -51,7 +55,7 @@ bool isValidWord(string& word, vector<string>& sides, int lastSide = -1, int dep
 //@param words list of words to filter
 //@param sides list of letters to create each word
 vector<string> filterWords(vector<string>& words, vector<string>& sides){
-    profiler.startProfile(__func__);
+    //profiler.startProfile(__func__);
 
     vector<string> newWords = {};
     for(string& word: words){
@@ -60,7 +64,7 @@ vector<string> filterWords(vector<string>& words, vector<string>& sides){
         }
     }
 
-    profiler.endProfile(__func__);
+    //profiler.endProfile(__func__);
     return(newWords);
 }
 
@@ -69,7 +73,7 @@ vector<string> filterWords(vector<string>& words, vector<string>& sides){
 //@param words list of words to sort
 //@param ascending whether to sort in ascending (true) or descending (false)
 void sortWords(vector<string>& words, bool ascending=true){
-    profiler.startProfile(__func__);
+    //profiler.startProfile(__func__);
 
     auto compAscending = [](string a, string b){
         return(a.size() < b.size());
@@ -85,14 +89,14 @@ void sortWords(vector<string>& words, bool ascending=true){
         stable_sort(words.begin(),words.end(),compDescending);
     }
 
-    profiler.endProfile(__func__);
+    //profiler.endProfile(__func__);
 }
 
 //sorts vector of words by length of each word
 //@param chains list of chains to sort
 //@param ascending whether to sort in ascending (true) or descending (false)
 void sortChains(vector<vector<string>>& chains, bool ascending=true){
-    profiler.startProfile(__func__);
+    //profiler.startProfile(__func__);
 
     auto compAscending = [](vector<string> a, vector<string> b){
         return(a.size() < b.size());
@@ -108,24 +112,20 @@ void sortChains(vector<vector<string>>& chains, bool ascending=true){
         stable_sort(chains.begin(),chains.end(),compDescending);
     }
 
-    profiler.endProfile(__func__);
+    //profiler.endProfile(__func__);
 }
 
 //returns true if the last letter of the first word is the same as the first letter as the last word or if word1 is blank
 bool lastMatchesFirst(string& word1, string& word2){
-    profiler.startProfile(__func__);
-    if(word1 == ""){
-        profiler.endProfile(__func__);
-        return(true);
-    }
-    profiler.endProfile(__func__);
-    return(word1[word1.size()-1] == word2[0]);
+    //profiler.startProfile(__func__);
+    //profiler.endProfile(__func__);
+    return(word1[word1.size()-1] == word2[0] || word1 == "");
 }
 
 //appends each word in the chain to a string but omits the first letter of each word after the first
 //@param chain list of words to turn into a string
 string chainToString(vector<string>& chain){
-    profiler.startProfile(__func__);
+    //profiler.startProfile(__func__);
     string out = "";
     int i = 0;
     for(string& s: chain){
@@ -136,7 +136,7 @@ string chainToString(vector<string>& chain){
         }
         i++;
     }
-    profiler.endProfile(__func__);
+    //profiler.endProfile(__func__);
     return(out);
 }
 
@@ -158,12 +158,33 @@ bool isEmpty(vector<string>& chain){
 //@param sidesLeft list of letters remaining to be used, same as sides on first call, updated during recursion
 //@param lastSide used for recursion to skip the last used side
 bool stringUsesAllLetters(string& chainString, vector<string>& sides, vector<string>& sidesLeft, int lastSide = -1, int depth=0){
-    profiler.startProfile(__func__, depth!=0);
-    if(lastSide == -1){
+    //profiler.startProfile(__func__, depth!=0);
+
+    if(depth == 0){
         sidesLeft = sides;
+
+        //checks basic conditions before moving on to more complex recursive function
+        string sidesString = sides[0];
+        for(int i = 1; i<sides.size(); i++){
+            sidesString.append(sides[i]);
+        }
+
+        if(chainString.size() < sidesString.size()){
+            //profiler.endProfile(__func__, depth!=0);
+            return(false);
+        }
+
+        set<char> chainSet = set<char>(chainString.begin(), chainString.end());
+        set<char> sidesSet  = set<char>(sidesString.begin(), sidesString.end());
+
+        if(chainSet != sidesSet){
+            //profiler.endProfile(__func__, depth!=0);
+            return(false);
+        }
     }
+
     if(isEmpty(sidesLeft)){
-        profiler.endProfile(__func__, depth!=0);
+        //profiler.endProfile(__func__, depth!=0);
         return(true);
     }
     
@@ -198,7 +219,7 @@ bool stringUsesAllLetters(string& chainString, vector<string>& sides, vector<str
             }   
         }
     }
-    profiler.endProfile(__func__, depth!=0);
+    //profiler.endProfile(__func__, depth!=0);
     return(valid);
 }
 
@@ -207,31 +228,41 @@ bool stringUsesAllLetters(string& chainString, vector<string>& sides, vector<str
 //@param maxDepth specifies the max number of words in each chain
 //@param lastWord used for recurion to determine the last word in the chain
 //@param depth used to determine the depth of recursion in the function
-vector<vector<string>> getValidChains(vector<string>& words, int maxDepth = 5, string lastWord = "", int depth = 0){
-    profiler.startProfile(__func__, depth!=0);
+vector<vector<string>> getValidChains(vector<string>& words, string& lastWord, int maxDepth, int depth = 0){
+    //profiler.startProfile(__func__, depth!=0);
+
     if(words.size() == 0 || depth+1 > maxDepth){
-        profiler.endProfile(__func__, depth!=0);
+        //profiler.endProfile(__func__, depth!=0);
         return(vector<vector<string>>{});
+    }
+
+    if(depth == 0){
+        lastWord = "";
     }
     
     vector<vector<string>> validStrings = {};
     validStrings.reserve(words.size());
+    bool hasMatched = false;
     for(int i = 0; i < words.size(); i++){
         string& w = words[i];
         if(lastMatchesFirst(lastWord, w)){
+            hasMatched = true;
             vector<string> newWords(words.begin(),words.begin()+i);
             newWords.insert(newWords.end(),words.begin()+i+1,words.end());
             
-            validStrings.push_back({w}); 
+            validStrings.push_back({w});
             vector<string> v;
-            for(vector<string>& s: getValidChains(newWords,maxDepth, w, depth+1)){
+            for(vector<string>& s: getValidChains(newWords, w, maxDepth, depth+1)){
                 v = {w};
                 v.insert(v.end(),s.begin(),s.end());
                 validStrings.push_back(v);
             }
         }
+        else if(hasMatched){
+            break; //breaks out of loop since all words are sorted alphabetically from left to right
+        }
     }
-    profiler.endProfile(__func__, depth!=0);
+    //profiler.endProfile(__func__, depth!=0);
     return(validStrings);
 }
 
@@ -239,7 +270,7 @@ vector<vector<string>> getValidChains(vector<string>& words, int maxDepth = 5, s
 //@param chains list of chains to filter
 //@param sides list of letters to create each chain
 vector<vector<string>> filterChains(vector<vector<string>>& chains, vector<string>& sides){
-    profiler.startProfile(__func__);
+    //profiler.startProfile(__func__);
     vector<vector<string>> out = {};
     out.reserve(chains.size());
     for(vector<string>& v: chains){
@@ -248,7 +279,7 @@ vector<vector<string>> filterChains(vector<vector<string>>& chains, vector<strin
             out.push_back(v);
         }
     }
-    profiler.endProfile(__func__);
+    //profiler.endProfile(__func__);
     return(out);
 }
 
@@ -276,7 +307,7 @@ int main(){
 
     string side1, side2, side3, side4;
 
-    bool allowInput = true;
+    bool allowInput = false;
 
     if(allowInput){
         cout << "Side 1: ";
@@ -304,9 +335,11 @@ int main(){
     cout << "\nFiltering word list for valid words\n\n";
     words = filterWords(words, sides);
     cout << "Sorting words\n\n";
-    sortWords(words, true);
 
-    for(string& w: words){
+    vector<string> lengthSorted = words;
+    sortWords(lengthSorted, true);
+
+    for(string& w: lengthSorted){
         cout << w << "\n";
     }cout << "\n";
 
@@ -317,12 +350,14 @@ int main(){
     if(allowInput){
         cout << "Max depth: ";
         cin >> maxDepth;
+        cout << "\n";
     }else{
         maxDepth = 2;
     }
 
-    cout << "\nSearching for all possible word chains (Max depth = " << maxDepth << ")\n\n";
-    vector<vector<string>> chains = getValidChains(words, maxDepth);
+    cout << "Searching for all possible word chains (Max depth = " << maxDepth << ")\n\n";
+    string blank = "";
+    vector<vector<string>> chains = getValidChains(words, blank, maxDepth);
     cout << "Filtering word chains\n\n";
     chains = filterChains(chains, sides);
     cout << "Sorting word chains\n\n";

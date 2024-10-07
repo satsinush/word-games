@@ -143,10 +143,11 @@ namespace Profiler{
                 for(int i = 0; i < depth; i++){
                     indent.append("     ");
                 }
+                double average = (f.count == 0) ? 0: (f.totalTime/f.count);
                 log(
                     indent +
                     f.functionName + ": " + 
-                    std::to_string((f.totalTime/f.count)*1000) + "ms, " + 
+                    std::to_string(average*1000) + "ms, " + 
                     std::to_string(f.count) + ", " + 
                     std::to_string(f.totalTime) + "s, " +
                     std::to_string(int(round((f.totalTime/profile.totalTime)*100))) + "%"
