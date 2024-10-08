@@ -1,3 +1,7 @@
+Total Run time: 2.062132s
+Profiler Data: Average time, Count, Total time, Percent
+     Profiler: nanms, 0, 0.000000s, 0%
+
 Total Run time: 2.589491s
 Profiler Data: Average time, Count, Total time, Percent
      Profiler: 0.000091ms, 2069374, 0.187786s, 7%
@@ -235,4 +239,3 @@ Profiler Data: Average time, Count, Total time, Percent
 Total Run time: 1.889180s
 Profiler Data: Average time, Count, Total time, Percent
      Profiler: 0.000000ms, 0, 0.000000s, 0%
-
