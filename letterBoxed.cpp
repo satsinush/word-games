@@ -164,6 +164,8 @@ bool stringUsesAllLetters(string& chainString, vector<string>& sides, vector<str
         sidesLeft = sides;
 
         //checks basic conditions before moving on to more complex recursive function
+
+        //TODO cache sideString to not run loop every call
         string sidesString = sides[0];
         for(int i = 1; i<sides.size(); i++){
             sidesString.append(sides[i]);
@@ -175,6 +177,8 @@ bool stringUsesAllLetters(string& chainString, vector<string>& sides, vector<str
         }
 
         set<char> chainSet = set<char>(chainString.begin(), chainString.end());
+
+        //TODO cache sideSet
         set<char> sidesSet  = set<char>(sidesString.begin(), sidesString.end());
 
         if(chainSet != sidesSet){
@@ -233,6 +237,9 @@ vector<vector<string>> getValidChains(vector<string>& words, string& lastWord, i
 
     if(words.size() == 0 || depth+1 > maxDepth){
         profiler.endProfile(__func__, depth!=0);
+
+        //TODO return {lastWord}, see line 269
+
         return(vector<vector<string>>{});
     }
 
@@ -241,18 +248,31 @@ vector<vector<string>> getValidChains(vector<string>& words, string& lastWord, i
     }
     
     vector<vector<string>> validStrings = {};
+
+    //TODO only reserve what will be needed
+
     validStrings.reserve(words.size());
     bool hasMatched = false;
     for(int i = 0; i < words.size(); i++){
+
+        //TODO skip words that use the same letters as the last word?
+
         string& w = words[i];
         if(lastMatchesFirst(lastWord, w)){
             hasMatched = true;
+
+            //TODO remove creating new vector for new words, not necessary
+            //running the loop one more time for each word will be more efficient than creating a new vector in each loop
+
             vector<string> newWords(words.begin(),words.begin()+i);
             newWords.insert(newWords.end(),words.begin()+i+1,words.end());
-            
+
             validStrings.push_back({w});
             vector<string> v;
             for(vector<string>& s: getValidChains(newWords, w, maxDepth, depth+1)){
+                //TODO return {w} in getValidChains to prevent additional insert statement
+                //also consolidate to using one pushback statement per function
+                
                 v = {w};
                 v.insert(v.end(),s.begin(),s.end());
                 validStrings.push_back(v);
@@ -265,6 +285,8 @@ vector<vector<string>> getValidChains(vector<string>& words, string& lastWord, i
     profiler.endProfile(__func__, depth!=0);
     return(validStrings);
 }
+
+//TODO combine filter chains and get chains to minimize memory usage
 
 //returns a new list of chains that all contain every letter from the given the sides
 //@param chains list of chains to filter
