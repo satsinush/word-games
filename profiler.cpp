@@ -104,7 +104,7 @@ namespace Profiler{
 
         //updates function profile to start
         //@param ignore profile is only updated if true, used to skip unnecessary calls in recusive functions 
-        void startProfile(const std::string& functionName, bool ignore=false){
+        void profileStart(const std::string& functionName, bool ignore=false){
             if(!ignore){
                 updateProfile(functionName, true);
             }
@@ -112,7 +112,7 @@ namespace Profiler{
 
         //updates function profile to end
         //@param ignore profile is only updated if true, used to skip unnecessary calls in recusive functions 
-        void endProfile(const std::string& functionName, bool ignore=false){
+        void profileEnd(const std::string& functionName, bool ignore=false){
             if(!ignore){
                 updateProfile(functionName, false);
             }
