@@ -772,3 +772,25 @@ Total Run time: 0.153088s
 Profiler Data: Average time, Count, Total time, Percent
      Profiler: 0.000000ms, 0, 0.000000s, 0%
 
+Total Run time: 8.058900s
+Profiler Data: Average time, Count, Total time, Percent
+     Profiler: 0.000000ms, 0, 0.000000s, 0%
+
+Total Run time: 10.400105s
+Profiler Data: Average time, Count, Total time, Percent
+     Profiler: 0.000092ms, 11064226, 1.014580s, 10%
+     filterWords: 157.147646ms, 1, 0.157148s, 2%
+          isValidWord: 0.000200ms, 370104, 0.074113s, 47%
+     sortStrings: 0.292540ms, 1, 0.000293s, 0%
+     getAllChains: 10139.668465ms, 1, 10.139668s, 97%
+          stringUsesAllLetters: 0.001343ms, 5162005, 6.931312s, 68%
+     sortChains: 1.510143ms, 1, 0.001510s, 0%
+
+Total Run time: 0.151016s
+Profiler Data: Average time, Count, Total time, Percent
+     Profiler: 0.000000ms, 0, 0.000000s, 0%
+
+Total Run time: 8.094975s
+Profiler Data: Average time, Count, Total time, Percent
+     Profiler: 0.000000ms, 0, 0.000000s, 0%
+

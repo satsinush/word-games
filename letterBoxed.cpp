@@ -32,7 +32,7 @@ struct SideStruct{
 //@param minLength minimum length for each word
 //@param lastSide used for recursion to skip the last used side
 //@param depth keeps track of recursion depth
-bool isValidWord(string& word, vector<string>& sides, int minLength = 3, int lastSide = -1, int depth = 0){  
+bool isValidWord(const string& word, const vector<string>& sides, const int minLength = 3, const int lastSide = -1, const int depth = 0){  
     //profiler.profileStart(__func__, depth!=0);
 
     //checks basic conditions before moving on to more complex recursive function
@@ -62,7 +62,7 @@ bool isValidWord(string& word, vector<string>& sides, int minLength = 3, int las
 //@param words list of words to filter
 //@param sides list of letters to create each word
 //@param minLength minimum length for each word
-vector<string> filterWords(vector<string>& words, vector<string>& sides, int minLength = 3){
+vector<string> filterWords(vector<string>& words, const vector<string>& sides, const int minLength = 3){
     //profiler.profileStart(__func__);
 
     vector<string> newWords = {};
@@ -80,7 +80,7 @@ vector<string> filterWords(vector<string>& words, vector<string>& sides, int min
 //sorts vector of words by length of each word
 //@param words list of words to sort
 //@param ascending whether to sort in ascending (true) or descending (false)
-void sortStrings(vector<string>& words, bool ascending=true){
+void sortStrings(vector<string>& words, const bool ascending=true){
     //profiler.profileStart(__func__);
 
     auto compAscending = [](string a, string b){
@@ -103,7 +103,7 @@ void sortStrings(vector<string>& words, bool ascending=true){
 //sorts vector of words by length of each word
 //@param chains list of chains to sort
 //@param ascending whether to sort in ascending (true) or descending (false)
-void sortChains(vector<ChainStruct>& chains, bool ascending=true){
+void sortChains(vector<ChainStruct>& chains, const bool ascending=true){
     //profiler.profileStart(__func__);
 
     auto compAscending = [](ChainStruct a, ChainStruct b){
@@ -141,12 +141,10 @@ bool isEmpty(vector<string>& chain){
 //@param sidesLeft list of letters remaining to be used, same as sides on first call, updated during recursion
 //@param lastSide used for recursion to skip the last used side
 //@param depth keeps track of recursion depth
-bool stringUsesAllLetters(string& chainString, SideStruct& sideStruct, vector<string>& sidesLeft, int lastSide = -1, int depth=0){
+bool stringUsesAllLetters(const string& chainString, const SideStruct& sideStruct, vector<string>& sidesLeft, const int lastSide = -1, const int depth=0){
     //profiler.profileStart(__func__, depth!=0);
 
     if(depth == 0){
-        sidesLeft = sideStruct.sides;
-
         //checks basic conditions before moving on to more complex recursive function
 
         if(chainString.size() < sideStruct.sideString.size()){
@@ -210,7 +208,7 @@ bool stringUsesAllLetters(string& chainString, SideStruct& sideStruct, vector<st
 //@param words words used in each chain
 //@param sideStruct sideStruct that contains sides to create each word
 //@param maxDepth maximum length of each chain
-vector<ChainStruct> getAllChains(vector<string>& words, SideStruct& sideStruct, int maxDepth){
+vector<ChainStruct> getAllChains(vector<string>& words, SideStruct& sideStruct, const int maxDepth){
     //profiler.profileStart(__func__);
     
     vector<ChainStruct> allChains = {};
@@ -414,7 +412,7 @@ int main(){
 
         cout << words.size() << " valid word(s) found\n\n";
 
-        int maxDepth = 2;
+        int maxDepth = 3;
 
         if(allowInput){
             cout << "Max depth (min = 1, max = 4): ";
