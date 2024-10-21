@@ -26,6 +26,11 @@ struct SideStruct{
     set<char> sideSet;
 };
 
+struct LetterIndexer{
+    int start;
+    int end;
+};
+
 //returns true if the word can be made with the sides given
 //@param word string to check
 //@param sides list of letters used to create the word
@@ -208,7 +213,7 @@ bool stringUsesAllLetters(const string& chainString, const SideStruct& sideStruc
 //@param words words used in each chain
 //@param sideStruct sideStruct that contains sides to create each word
 //@param maxDepth maximum length of each chain
-vector<ChainStruct> getAllChains(vector<string>& words, SideStruct& sideStruct, const int maxDepth){
+vector<ChainStruct> getAllChains(vector<string>& words, SideStruct& sideStruct, LetterIndexer letterIndexes[], const int maxDepth){
     //profiler.profileStart(__func__);
     
     vector<ChainStruct> allChains = {};
@@ -229,23 +234,17 @@ vector<ChainStruct> getAllChains(vector<string>& words, SideStruct& sideStruct, 
     for(int i = 1; i<maxDepth-1; i++){
         numChains = allChains.size();
         for(int c = lastIndex; c < numChains; c++){
-            bool matched = false;
-            for(string& word: words){
-                if(allChains[c].chainString[allChains[c].chainString.size()-1] == word[0]){
-                    matched = true;
-                    allChains.push_back(allChains[c]);
-                    ChainStruct& chain = allChains[allChains.size()-1];
-                    chain.chainString.append(word.begin()+1,word.end());
-                    chain.printString += " "+word;
+            int startIndex = letterIndexes[(int)allChains[c].chainString[allChains[c].chainString.size()-1]-97].start;
+            int endIndex = letterIndexes[(int)allChains[c].chainString[allChains[c].chainString.size()-1]-97].end;
+            for(int w = startIndex; w < endIndex; w++){
+                allChains.push_back(allChains[c]);
+                ChainStruct& chain = allChains[allChains.size()-1];
+                chain.chainString.append(words[w].begin()+1,words[w].end());
+                chain.printString += " "+words[w];
 
-                    if(stringUsesAllLetters(chain.chainString, sideStruct, sideStruct.sides)){
-                        chain.length = i+1;
-                        validChains.push_back(chain);
-                    }
-                }else{
-                    if(matched){
-                        break;
-                    }
+                if(stringUsesAllLetters(chain.chainString, sideStruct, sideStruct.sides)){
+                    chain.length = i+1;
+                    validChains.push_back(chain);
                 }
             }
         }
@@ -254,18 +253,12 @@ vector<ChainStruct> getAllChains(vector<string>& words, SideStruct& sideStruct, 
 
     numChains = allChains.size();
     for(int c = lastIndex; c < numChains; c++){
-        bool matched = false;
-        for(string& word: words){
-            if(allChains[c].chainString[allChains[c].chainString.size()-1] == word[0]){
-                matched = true;
-                string s = allChains[c].chainString+string(word.begin()+1,word.end());
-                if(stringUsesAllLetters(s, sideStruct, sideStruct.sides)){
-                    validChains.push_back(ChainStruct{"",allChains[c].printString+" "+word,maxDepth});
-                }
-            }else{
-                if(matched){
-                    break;
-                }
+        int startIndex = letterIndexes[(int)allChains[c].chainString[allChains[c].chainString.size()-1]-97].start;
+        int endIndex = letterIndexes[(int)allChains[c].chainString[allChains[c].chainString.size()-1]-97].end;
+        for(int w = startIndex; w < endIndex; w++){
+            string s = allChains[c].chainString+string(words[w].begin()+1,words[w].end());
+            if(stringUsesAllLetters(s, sideStruct, sideStruct.sides)){
+                validChains.push_back(ChainStruct{"",allChains[c].printString+" "+words[w],maxDepth});
             }
         }
     }
@@ -401,6 +394,20 @@ int main(){
 
         cout << "Filtering word list for valid words\n\n";
         words = filterWords(words, sideStruct.sides, minWordLength);
+
+        LetterIndexer letterIndexers[26]{};
+        char currentChar = words[0][0];
+        LetterIndexer currentIndexer{0,0};
+        for(int i = 0; i < words.size(); i++){
+            if(currentChar != words[i][0]){
+                currentIndexer.end = i;
+                letterIndexers[(int)words[i-1][0]-97] = LetterIndexer{currentIndexer};
+
+                currentIndexer.start = i;
+            }
+            currentChar = words[i][0];
+        }
+        letterIndexers[(int)currentChar-97] = LetterIndexer{currentIndexer.start, (int)words.size()-1};
         cout << "Sorting words\n\n";
 
         vector<string> lengthSorted = words;
@@ -412,7 +419,7 @@ int main(){
 
         cout << words.size() << " valid word(s) found\n\n";
 
-        int maxDepth = 3;
+        int maxDepth = 2;
 
         if(allowInput){
             cout << "Max depth (min = 1, max = 4): ";
@@ -422,7 +429,7 @@ int main(){
         cout << "Max depth = " << maxDepth << "\n\n";
 
         cout << "Searching for all possible word chains\n\n";
-        vector<ChainStruct> chains = getAllChains(words, sideStruct, maxDepth);
+        vector<ChainStruct> chains = getAllChains(words, sideStruct, letterIndexers, maxDepth);
         cout << "Sorting word chains\n\n";
         sortChains(chains, false);
 
