@@ -1,14 +1,13 @@
 #include <cmath>
 #include <vector>
-#include <algorithm>
 #include <fstream>
-#include <filesystem>
-#include <unordered_map>
 #include <map>
 #include <string>
+#include <chrono>
 
 #include <iostream>
 #include <conio.h>
+#include <iomanip>
 
 namespace Profiler{
 

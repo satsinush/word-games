@@ -806,43 +806,11 @@ Total Run time: 0.142333s
 Profiler Data: Average time, Count, Total time, Percent
      Profiler: 0.000000ms, 0, 0.000000s, 0%
 
-Total Run time: 0.403047s
+Total Run time: 0.141734s
 Profiler Data: Average time, Count, Total time, Percent
      Profiler: 0.000000ms, 0, 0.000000s, 0%
 
-Total Run time: 9.501517s
-Profiler Data: Average time, Count, Total time, Percent
-     Profiler: 0.000000ms, 0, 0.000000s, 0%
-
-Total Run time: 11.322221s
-Profiler Data: Average time, Count, Total time, Percent
-     Profiler: 0.000000ms, 0, 0.000000s, 0%
-
-Total Run time: 8.809646s
-Profiler Data: Average time, Count, Total time, Percent
-     Profiler: 0.000000ms, 0, 0.000000s, 0%
-
-Total Run time: 8.783813s
-Profiler Data: Average time, Count, Total time, Percent
-     Profiler: 0.000000ms, 0, 0.000000s, 0%
-
-Total Run time: 9.716697s
-Profiler Data: Average time, Count, Total time, Percent
-     Profiler: 0.000000ms, 0, 0.000000s, 0%
-
-Total Run time: 9.036065s
-Profiler Data: Average time, Count, Total time, Percent
-     Profiler: 0.000000ms, 0, 0.000000s, 0%
-
-Total Run time: 11.294963s
-Profiler Data: Average time, Count, Total time, Percent
-     Profiler: 0.000000ms, 0, 0.000000s, 0%
-
-Total Run time: 8.979682s
-Profiler Data: Average time, Count, Total time, Percent
-     Profiler: 0.000000ms, 0, 0.000000s, 0%
-
-Total Run time: 0.540999s
+Total Run time: 7.791034s
 Profiler Data: Average time, Count, Total time, Percent
      Profiler: 0.000000ms, 0, 0.000000s, 0%
 

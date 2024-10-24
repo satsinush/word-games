@@ -410,7 +410,7 @@ vector<ChainStruct> getAllChainsInput(vector<string>& words, SideStruct& sideStr
 int main(){
     cout << "Reading word file\n\n";
 
-    bool allowInput = false;
+    bool allowInput = true;
     if(!allowInput){
         profiler.start();
     }
