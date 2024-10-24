@@ -231,36 +231,29 @@ vector<ChainStruct> getAllChains(vector<string>& words, SideStruct& sideStruct, 
         }
     }
     int numChains;
-    for(int i = 1; i<maxDepth-1; i++){
+    for(int i = 1; i<maxDepth; i++){
         numChains = allChains.size();
         for(int c = lastIndex; c < numChains; c++){
             int startIndex = letterIndexes[(int)allChains[c].chainString[allChains[c].chainString.size()-1]-97].start;
             int endIndex = letterIndexes[(int)allChains[c].chainString[allChains[c].chainString.size()-1]-97].end;
             for(int w = startIndex; w < endIndex; w++){
-                allChains.push_back(allChains[c]);
-                ChainStruct& chain = allChains[allChains.size()-1];
-                chain.chainString.append(words[w].begin()+1,words[w].end());
-                chain.printString += " "+words[w];
-
-                if(stringUsesAllLetters(chain.chainString, sideStruct, sideStruct.sides)){
-                    chain.length = i+1;
-                    validChains.push_back(chain);
+                string s = allChains[c].chainString+string(words[w].begin()+1,words[w].end());
+                if(stringUsesAllLetters(s, sideStruct, sideStruct.sides)){
+                    validChains.push_back(ChainStruct{
+                            "",
+                            allChains[c].printString+" "+words[w],
+                            i+1
+                        });
+                }else if(i<maxDepth-1){
+                    allChains.push_back(ChainStruct{
+                            allChains[c].chainString+string(words[w].begin()+1,words[w].end()),
+                            allChains[c].printString+" "+words[w]
+                            ,i+1
+                        });
                 }
             }
         }
         lastIndex = numChains;
-    }
-
-    numChains = allChains.size();
-    for(int c = lastIndex; c < numChains; c++){
-        int startIndex = letterIndexes[(int)allChains[c].chainString[allChains[c].chainString.size()-1]-97].start;
-        int endIndex = letterIndexes[(int)allChains[c].chainString[allChains[c].chainString.size()-1]-97].end;
-        for(int w = startIndex; w < endIndex; w++){
-            string s = allChains[c].chainString+string(words[w].begin()+1,words[w].end());
-            if(stringUsesAllLetters(s, sideStruct, sideStruct.sides)){
-                validChains.push_back(ChainStruct{"",allChains[c].printString+" "+words[w],maxDepth});
-            }
-        }
     }
 
     //profiler.profileEnd(__func__);
@@ -335,11 +328,89 @@ string getSide(){
     }
 }
 
+bool getContinue(){
+    while(true){
+        char c;
+        if(cin >> c){
+            c = tolower(c);
+            if(c == 'y'){
+                return(true);
+            }
+            if(c == 'n'){
+                return(false);
+            }
+        }else{
+            cin.clear();
+            cin.ignore();
+            continue;
+        }
+    }
+}
+
+//Returns a new vector of chains that can be created from the given sides
+//Gets user input after each iteration to continue
+//@param words words used in each chain
+//@param sideStruct sideStruct that contains sides to create each word
+//@param maxDepth maximum length of each chain
+vector<ChainStruct> getAllChainsInput(vector<string>& words, SideStruct& sideStruct, LetterIndexer letterIndexes[], const int maxDepth){
+    //profiler.profileStart(__func__);
+    
+    vector<ChainStruct> allChains = {};
+    allChains.reserve(pow(words.size(),(maxDepth-1)/2));
+    
+    vector<ChainStruct> validChains = {};
+    allChains.reserve(words.size()*maxDepth);
+    
+    int lastIndex = 0;
+    for(string& word: words){
+        allChains.push_back({word, word});
+        
+        if(stringUsesAllLetters(word, sideStruct, sideStruct.sides)){
+            validChains.push_back({word, word});
+        }
+    }
+    int numChains;
+    for(int i = 1; i<maxDepth; i++){
+        cout << validChains.size() << " valid chain(s) with " << i << " letter(s) found. Continue (y/n): ";
+        if(!getContinue()){
+            cout<<"\n";
+            break;
+        }
+        cout<<"\n";
+
+        numChains = allChains.size();
+        for(int c = lastIndex; c < numChains; c++){
+            int startIndex = letterIndexes[(int)allChains[c].chainString[allChains[c].chainString.size()-1]-97].start;
+            int endIndex = letterIndexes[(int)allChains[c].chainString[allChains[c].chainString.size()-1]-97].end;
+            for(int w = startIndex; w < endIndex; w++){
+                string s = allChains[c].chainString+string(words[w].begin()+1,words[w].end());
+                if(stringUsesAllLetters(s, sideStruct, sideStruct.sides)){
+                    validChains.push_back(ChainStruct{
+                            "",
+                            allChains[c].printString+" "+words[w],
+                            i+1
+                        });
+                }else if(i<maxDepth-1){
+                    allChains.push_back(ChainStruct{
+                            allChains[c].chainString+string(words[w].begin()+1,words[w].end()),
+                            allChains[c].printString+" "+words[w]
+                            ,i+1
+                        });
+                }
+            }
+        }
+        lastIndex = numChains;
+    }
+
+    //profiler.profileEnd(__func__);
+    return validChains;
+}
+
 
 int main(){
     cout << "Reading word file\n\n";
 
-    bool allowInput = true;
+    bool allowInput = false;
     if(!allowInput){
         profiler.start();
     }
@@ -422,14 +493,20 @@ int main(){
         int maxDepth = 2;
 
         if(allowInput){
-            cout << "Max depth (min = 1, max = 4): ";
-            maxDepth = getInt(1, 4);
-            cout << "\n";
+            //cout << "Max depth (min = 1, max = 4): ";
+            //maxDepth = getInt(1, 4);
+            //cout << "\n";
+            maxDepth = 4;
         }
         cout << "Max depth = " << maxDepth << "\n\n";
 
         cout << "Searching for all possible word chains\n\n";
-        vector<ChainStruct> chains = getAllChains(words, sideStruct, letterIndexers, maxDepth);
+        vector<ChainStruct> chains;
+        if(!allowInput){
+            chains = getAllChains(words, sideStruct, letterIndexers, maxDepth);
+        }else{
+            chains = getAllChainsInput(words, sideStruct, letterIndexers, maxDepth);
+        }
         cout << "Sorting word chains\n\n";
         sortChains(chains, false);
 
