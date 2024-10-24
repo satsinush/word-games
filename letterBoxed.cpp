@@ -8,6 +8,7 @@
 #include <cctype>
 
 #include "profiler.cpp"
+#include "status.cpp"
 
 using namespace std;
 
@@ -260,6 +261,11 @@ vector<ChainStruct> getAllChains(vector<string>& words, SideStruct& sideStruct, 
     return validChains;
 }
 
+Status::Printer printer = Status::Printer();
+void printStatus(int length, int numChains, int numWords, int c, int w){
+    printer.printUpdate(to_string(c) + " " + to_string(w), 0.01);
+}
+
 //converts each uppercase char in the string to lower case
 //@param d string to update
 string stringToLower(string& d){
@@ -397,11 +403,12 @@ vector<ChainStruct> getAllChainsInput(vector<string>& words, SideStruct& sideStr
                             ,i+1
                         });
                 }
+                printStatus(i,numChains,words.size(),c,w);
             }
         }
         lastIndex = numChains;
     }
-
+    cout << "\n";
     //profiler.profileEnd(__func__);
     return validChains;
 }
@@ -526,7 +533,7 @@ int main(){
 
         cout << chains.size() << " solution(s) found";
 
-        getch();
+        _getch();
 
         cout << "\n\n\n\n";
         loops++;
