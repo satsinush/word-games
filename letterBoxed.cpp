@@ -6,13 +6,13 @@
 #include <conio.h> 
 #include <set>
 #include <cctype>
+#include <filesystem>
 
-#include "profiler.cpp"
-#include "status.cpp"
+#include "utils.cpp"
 
 using namespace std;
 
-Profiler::Profiler profiler;
+Utils::Profiler profiler;
 
 struct ChainStruct
 {
@@ -261,11 +261,6 @@ vector<ChainStruct> getAllChains(vector<string>& words, SideStruct& sideStruct, 
     return validChains;
 }
 
-Status::Printer printer = Status::Printer();
-void printStatus(int length, int numChains, int numWords, int c, int w){
-    printer.printUpdate(to_string(c) + " " + to_string(w), 0.01);
-}
-
 //converts each uppercase char in the string to lower case
 //@param d string to update
 string stringToLower(string& d){
@@ -336,9 +331,12 @@ string getSide(){
 
 bool getContinue(){
     while(true){
-        char c;
-        if(cin >> c){
-            c = tolower(c);
+        string s;
+        if(cin >> s){
+            if(s.size() == 0){
+                continue;
+            }
+            char c = tolower(s[0]);
             if(c == 'y'){
                 return(true);
             }
@@ -353,14 +351,15 @@ bool getContinue(){
     }
 }
 
+Utils::Process process = Utils::Process();
+int averageWords = 0; //stores number of average words of each starting letter in the list of all valid words, used for calculating estimated time remaining
+
 //Returns a new vector of chains that can be created from the given sides
 //Gets user input after each iteration to continue
 //@param words words used in each chain
 //@param sideStruct sideStruct that contains sides to create each word
 //@param maxDepth maximum length of each chain
-vector<ChainStruct> getAllChainsInput(vector<string>& words, SideStruct& sideStruct, LetterIndexer letterIndexes[], const int maxDepth){
-    //profiler.profileStart(__func__);
-    
+vector<ChainStruct> getAllChainsInput(vector<string>& words, SideStruct& sideStruct, LetterIndexer letterIndexes[], const int maxDepth){    
     vector<ChainStruct> allChains = {};
     allChains.reserve(pow(words.size(),(maxDepth-1)/2));
     
@@ -376,8 +375,13 @@ vector<ChainStruct> getAllChainsInput(vector<string>& words, SideStruct& sideStr
         }
     }
     int numChains;
+    int numValidChains = 0;
     for(int i = 1; i<maxDepth; i++){
-        cout << validChains.size() << " valid chain(s) with " << i << " letter(s) found. Continue (y/n): ";
+        for(int j = numValidChains; j<validChains.size(); j++){
+            cout << validChains[j].printString << "\n";
+        }if(validChains.size() > 0){cout << "\n";}
+        cout << validChains.size()-numValidChains << " valid chain(s) with " << i << " letter(s) found. Continue (y/n): ";
+        numValidChains = validChains.size();
         if(!getContinue()){
             cout<<"\n";
             break;
@@ -385,10 +389,14 @@ vector<ChainStruct> getAllChainsInput(vector<string>& words, SideStruct& sideStr
         cout<<"\n";
 
         numChains = allChains.size();
+        process.start();
         for(int c = lastIndex; c < numChains; c++){
+            int chainIndex = c-lastIndex;
             int startIndex = letterIndexes[(int)allChains[c].chainString[allChains[c].chainString.size()-1]-97].start;
             int endIndex = letterIndexes[(int)allChains[c].chainString[allChains[c].chainString.size()-1]-97].end;
             for(int w = startIndex; w < endIndex; w++){
+                int wordNum = w-startIndex;
+                process.update((double)(chainIndex*averageWords+wordNum) / ((numChains-lastIndex)*averageWords), 1);
                 string s = allChains[c].chainString+string(words[w].begin()+1,words[w].end());
                 if(stringUsesAllLetters(s, sideStruct, sideStruct.sides)){
                     validChains.push_back(ChainStruct{
@@ -403,16 +411,13 @@ vector<ChainStruct> getAllChainsInput(vector<string>& words, SideStruct& sideStr
                             ,i+1
                         });
                 }
-                printStatus(i,numChains,words.size(),c,w);
             }
         }
+        process.clearLine();
         lastIndex = numChains;
     }
-    cout << "\n";
-    //profiler.profileEnd(__func__);
     return validChains;
 }
-
 
 int main(){
     cout << "Reading word file\n\n";
@@ -421,15 +426,20 @@ int main(){
     if(!allowInput){
         profiler.start();
     }
-    ifstream file("words.txt");
+
+    string file_path = __FILE__;
+    string dir_path = file_path.substr(0, file_path.rfind("\\"));
+    ifstream file(dir_path + "\\words.txt");
 
     vector<string> allWords = {};
     string line;
-    while (getline (file, line)) {
-        // Output the text from the file
-        allWords.push_back(line);
+    if(file.is_open()){
+        while (getline (file, line)) {
+            allWords.push_back(line);
+        }
+        file.close();
     }
-    file.close();
+
 
     int loops = 0;
     while(allowInput || loops == 0)
@@ -476,62 +486,64 @@ int main(){
         LetterIndexer letterIndexers[26]{};
         char currentChar = words[0][0];
         LetterIndexer currentIndexer{0,0};
+        int totalWords = 0;
+        int numLetters = 0;
         for(int i = 0; i < words.size(); i++){
             if(currentChar != words[i][0]){
                 currentIndexer.end = i;
                 letterIndexers[(int)words[i-1][0]-97] = LetterIndexer{currentIndexer};
+                totalWords += currentIndexer.end-currentIndexer.start;
+                numLetters ++;
 
                 currentIndexer.start = i;
             }
             currentChar = words[i][0];
         }
+        averageWords = totalWords/numLetters;
         letterIndexers[(int)currentChar-97] = LetterIndexer{currentIndexer.start, (int)words.size()-1};
-        cout << "Sorting words\n\n";
 
-        vector<string> lengthSorted = words;
-        sortStrings(lengthSorted, true);
-
-        for(string& w: lengthSorted){
-            cout << w << "\n";
-        }if(lengthSorted.size() > 0){cout << "\n";}
-
-        cout << words.size() << " valid word(s) found\n\n";
 
         int maxDepth = 2;
-
         if(allowInput){
-            //cout << "Max depth (min = 1, max = 4): ";
-            //maxDepth = getInt(1, 4);
-            //cout << "\n";
+            //cout << "Max depth (min = 1, max = 4): "; maxDepth = getInt(1, 4); cout << "\n";
+
+            cout << "Sorting words\n\n";
+            vector<string> lengthSorted = words;
+            sortStrings(lengthSorted, true);
+            for(string& w: lengthSorted){
+                cout << w << "\n";
+            }if(lengthSorted.size() > 0){cout << "\n";}
+
             maxDepth = 4;
         }
+        cout << words.size() << " valid word(s) found\n\n";
+
         cout << "Max depth = " << maxDepth << "\n\n";
 
         cout << "Searching for all possible word chains\n\n";
         vector<ChainStruct> chains;
         if(!allowInput){
             chains = getAllChains(words, sideStruct, letterIndexers, maxDepth);
-        }else{
-            chains = getAllChainsInput(words, sideStruct, letterIndexers, maxDepth);
-        }
-        cout << "Sorting word chains\n\n";
-        sortChains(chains, false);
 
-        if(loops == 0 && !allowInput){
             profiler.end();
             profiler.logProfilerData();
-        }
-        
-        int lastLength = 0;
-        for(ChainStruct& c: chains){
-            if(lastLength != c.length && lastLength != 0){
-                cout << "\n";
-            }
-            cout << c.printString << "\n";
-            lastLength = c.length;
-        }if(chains.size() > 0){cout << "\n";}
+        }else{
+            chains = getAllChainsInput(words, sideStruct, letterIndexers, maxDepth);
 
-        cout << chains.size() << " solution(s) found";
+            cout << "Sorting word chains\n\n";
+            sortChains(chains, false);
+
+            int lastLength = 0;
+            for(ChainStruct& c: chains){
+                if(lastLength != c.length && lastLength != 0){
+                    cout << "\n";
+                }
+                cout << c.printString << "\n";
+                lastLength = c.length;
+            }if(chains.size() > 0){cout << "\n";}
+        }
+
+        cout << chains.size() << " total solution(s) found";
 
         _getch();
 
