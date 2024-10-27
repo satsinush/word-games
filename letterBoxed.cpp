@@ -381,6 +381,7 @@ vector<ChainStruct> getAllChainsInput(vector<string>& words, SideStruct& sideStr
             cout << validChains[j].printString << "\n";
         }if(validChains.size() > 0){cout << "\n";}
         cout << validChains.size()-numValidChains << " valid chain(s) with " << i << " letter(s) found. Continue (y/n): ";
+
         numValidChains = validChains.size();
         if(!getContinue()){
             cout<<"\n";
