@@ -66,7 +66,8 @@
         "ratio": "cpp",
         "sstream": "cpp",
         "set": "cpp",
-        "regex": "cpp"
+        "regex": "cpp",
+        "array": "cpp"
     },
     "C_Cpp.default.cppStandard": "c++20",
     "clangd.arguments": [

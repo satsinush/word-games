@@ -3,554 +3,407 @@
 #include <string>
 #include <vector>
 #include <algorithm>
-#include <conio.h> 
+#include <conio.h>
 #include <set>
 #include <cctype>
 #include <filesystem>
-
+#include <array>
+#include <limits>
+#include <chrono>
 #include "utils.cpp"
 
 using namespace std;
 
 Utils::Profiler profiler;
-
-struct ChainStruct
-{
-    string chainString;
-    string printString;
-    int length = 1;
-};
-
-struct SideStruct{
-    vector<string> sides;
-    string sideString;
-    set<char> sideSet;
-};
-
-struct LetterIndexer{
-    int start;
-    int end;
-};
-
-//returns true if the word can be made with the sides given
-//@param word string to check
-//@param sides list of letters used to create the word
-//@param minLength minimum length for each word
-//@param lastSide used for recursion to skip the last used side
-//@param depth keeps track of recursion depth
-bool isValidWord(const string& word, const vector<string>& sides, const int minLength = 3, const int lastSide = -1, const int depth = 0){  
-    //profiler.profileStart(__func__, depth!=0);
-
-    //checks basic conditions before moving on to more complex recursive function
-    if(word.length() < minLength && depth == 0){
-        //profiler.profileEnd(__func__, depth!=0);
-        return(false);
-    }
-    if(depth == word.size()){
-        //profiler.profileEnd(__func__, depth!=0);
-        return(true);
-    }
-
-    bool valid = false;
-    for(int i=0; i<sides.size(); i++){
-        if(i == lastSide){
-            continue;
-        }
-        if(sides[i].find(word[depth]) != string::npos){
-            valid = isValidWord(word, sides, minLength, i, depth+1);
-        }
-    }
-    //profiler.profileEnd(__func__, depth!=0);
-    return(valid);
-}
-
-//returns a new vector with only the words that can be made from the given sides
-//@param words list of words to filter
-//@param sides list of letters to create each word
-//@param minLength minimum length for each word
-vector<string> filterWords(vector<string>& words, const vector<string>& sides, const int minLength = 3){
-    //profiler.profileStart(__func__);
-
-    vector<string> newWords = {};
-    newWords.reserve(words.size()/150);
-    for(string& word: words){
-        if(isValidWord(word,sides, minLength)){
-            newWords.push_back(word);
-        }
-    }
-
-    //profiler.profileEnd(__func__);
-    return(newWords);
-}
-
-//sorts vector of words by length of each word
-//@param words list of words to sort
-//@param ascending whether to sort in ascending (true) or descending (false)
-void sortStrings(vector<string>& words, const bool ascending=true){
-    //profiler.profileStart(__func__);
-
-    auto compAscending = [](string a, string b){
-        return(a.size() < b.size());
-    };
-
-    auto compDescending = [](string a, string b){
-        return(a.size() > b.size());
-    };
-
-    if(ascending){
-        stable_sort(words.begin(),words.end(),compAscending);
-    }else{
-        stable_sort(words.begin(),words.end(),compDescending);
-    }
-
-    //profiler.profileEnd(__func__);
-}
-
-//sorts vector of words by length of each word
-//@param chains list of chains to sort
-//@param ascending whether to sort in ascending (true) or descending (false)
-void sortChains(vector<ChainStruct>& chains, const bool ascending=true){
-    //profiler.profileStart(__func__);
-
-    auto compAscending = [](ChainStruct a, ChainStruct b){
-        return(a.length < b.length);
-    };
-
-    auto compDescending = [](ChainStruct a, ChainStruct b){
-        return(a.length > b.length);
-    };
-
-    if(ascending){
-        stable_sort(chains.begin(),chains.end(),compAscending);
-    }else{
-        stable_sort(chains.begin(),chains.end(),compDescending);
-    }
-
-    //profiler.profileEnd(__func__);
-}
-
-//returns true if the vector only contains empty strings
-//@param chain chain to check if empty
-bool isEmpty(vector<string>& chain){
-    for(string& s: chain){
-        if(s != ""){
-            return(false);
-        }
-    }
-    return(true);
-}
-
-//returns true if the string provided can use all letters on each side.
-//Uses a recursive algorithm to check all possibilities if there are duplicate letters
-//@param chainString string to check use of all letters
-//@param sideStruct sideStruct that contains sides to create each word
-//@param sidesLeft list of letters remaining to be used, same as sides on first call, updated during recursion
-//@param lastSide used for recursion to skip the last used side
-//@param depth keeps track of recursion depth
-bool stringUsesAllLetters(const string& chainString, const SideStruct& sideStruct, vector<string>& sidesLeft, const int lastSide = -1, const int depth=0){
-    //profiler.profileStart(__func__, depth!=0);
-
-    if(depth == 0){
-        //checks basic conditions before moving on to more complex recursive function
-
-        if(chainString.size() < sideStruct.sideString.size()){
-            //profiler.profileEnd(__func__, depth!=0);
-            return(false);
-        }
-
-        set<char> chainSet = set<char>(chainString.begin(), chainString.end()); //faster than inline for some reason
-
-        if(chainSet != sideStruct.sideSet){
-            //profiler.profileEnd(__func__, depth!=0);
-            return(false);
-        }
-    }
-
-    if(isEmpty(sidesLeft)){
-        //profiler.profileEnd(__func__, depth!=0);
-        return(true);
-    }
-    
-    bool valid = false;
-    for(int i=0; i<sideStruct.sides.size(); i++){
-        if(lastSide == i){
-            continue;
-        }
-
-        for(int c=0; c<sideStruct.sides[i].size(); c++){
-            if(sideStruct.sides[i][c] == chainString[depth]){
-
-                int index =  sidesLeft[i].find(sideStruct.sides[i][c]);
-                bool result;
-                if(index != string::npos){
-                    vector<string> newLeft(sidesLeft);
-                    //newLeft[i].erase(newLeft[i].begin()+index); //slower than for loop
-                    
-                    newLeft[i].clear();
-                    for(int x = 0; x < index; x++){
-                        newLeft[i] += sidesLeft[i][x];
-                    }
-                    for(int x = index+1; x < sidesLeft[i].size(); x++){
-                        newLeft[i] += sidesLeft[i][x];
-                    }
-
-                    result = stringUsesAllLetters(chainString, sideStruct, newLeft, i, depth+1);
-                }else{
-                    result = stringUsesAllLetters(chainString, sideStruct, sidesLeft, i, depth+1);
-                }
-
-                if(result){
-                    valid = true;
-                }
-            }   
-        }
-    }
-    //profiler.profileEnd(__func__, depth!=0);
-    return(valid);
-}
-
-
-//Returns a new vector of chains that can be created from the given sides
-//@param words words used in each chain
-//@param sideStruct sideStruct that contains sides to create each word
-//@param maxDepth maximum length of each chain
-vector<ChainStruct> getAllChains(vector<string>& words, SideStruct& sideStruct, LetterIndexer letterIndexes[], const int maxDepth){
-    //profiler.profileStart(__func__);
-    
-    vector<ChainStruct> allChains = {};
-    allChains.reserve(pow(words.size(),(maxDepth-1)/2));
-    
-    vector<ChainStruct> validChains = {};
-    allChains.reserve(words.size()*maxDepth);
-    
-    int lastIndex = 0;
-    for(string& word: words){
-        allChains.push_back({word, word});
-        
-        if(stringUsesAllLetters(word, sideStruct, sideStruct.sides)){
-            validChains.push_back({word, word});
-        }
-    }
-    int numChains;
-    for(int i = 1; i<maxDepth; i++){
-        numChains = allChains.size();
-        for(int c = lastIndex; c < numChains; c++){
-            int startIndex = letterIndexes[(int)allChains[c].chainString[allChains[c].chainString.size()-1]-97].start;
-            int endIndex = letterIndexes[(int)allChains[c].chainString[allChains[c].chainString.size()-1]-97].end;
-            for(int w = startIndex; w < endIndex; w++){
-                string s = allChains[c].chainString+string(words[w].begin()+1,words[w].end());
-                if(stringUsesAllLetters(s, sideStruct, sideStruct.sides)){
-                    validChains.push_back(ChainStruct{
-                            "",
-                            allChains[c].printString+" "+words[w],
-                            i+1
-                        });
-                }else if(i<maxDepth-1){
-                    allChains.push_back(ChainStruct{
-                            allChains[c].chainString+string(words[w].begin()+1,words[w].end()),
-                            allChains[c].printString+" "+words[w]
-                            ,i+1
-                        });
-                }
-            }
-        }
-        lastIndex = numChains;
-    }
-
-    //profiler.profileEnd(__func__);
-    return validChains;
-}
-
-//converts each uppercase char in the string to lower case
-//@param d string to update
-string stringToLower(string& d){
-    string data;
-    for(char c: d){
-        data += tolower(c);
-    }
-    return(data);
-}
-
-int getInt(double min = -INFINITY, double max = INFINITY){
-    while(true){
-        string s;
-        if(cin >> s){
-            bool digit = true;
-            for(char c: s){
-                if(!isdigit(c)){
-                    digit = false;
-                }
-            }
-            if(!digit){
-                continue;
-            }
-
-            int i = stoi(s);
-
-            if(i < min){
-                continue;
-            }
-            if(i > max){
-                continue;
-            }
-            return(i);
-        }else{
-            cin.clear();
-            cin.ignore();
-            continue;
-        }
-    }
-}
-
-string getSide(){
-    while(true){
-        string s;
-        if(cin >> s){
-            if(s.size() != 3){
-                continue;
-            }
-
-            bool alpha = true;
-            for(char c: s){
-                if(!isalpha(c)){
-                    alpha = false;
-                }
-            }
-            if(!alpha){
-                continue;
-            }
-
-            return(stringToLower(s));
-        }else{
-            cin.clear();
-            cin.ignore();
-            continue;
-        }
-    }
-}
-
-bool getContinue(){
-    while(true){
-        string s;
-        if(cin >> s){
-            if(s.size() == 0){
-                continue;
-            }
-            char c = tolower(s[0]);
-            if(c == 'y'){
-                return(true);
-            }
-            if(c == 'n'){
-                return(false);
-            }
-        }else{
-            cin.clear();
-            cin.ignore();
-            continue;
-        }
-    }
-}
-
 Utils::Process process = Utils::Process();
-int averageWords = 0; //stores number of average words of each starting letter in the list of all valid words, used for calculating estimated time remaining
 
-//Returns a new vector of chains that can be created from the given sides
-//Gets user input after each iteration to continue
-//@param words words used in each chain
-//@param sideStruct sideStruct that contains sides to create each word
-//@param maxDepth maximum length of each chain
-vector<ChainStruct> getAllChainsInput(vector<string>& words, SideStruct& sideStruct, LetterIndexer letterIndexes[], const int maxDepth){    
-    vector<ChainStruct> allChains = {};
-    allChains.reserve(pow(words.size(),(maxDepth-1)/2));
-    
-    vector<ChainStruct> validChains = {};
-    allChains.reserve(words.size()*maxDepth);
-    
-    int lastIndex = 0;
-    for(string& word: words){
-        allChains.push_back({word, word});
-        
-        if(stringUsesAllLetters(word, sideStruct, sideStruct.sides)){
-            validChains.push_back({word, word});
-        }
+// Structure to hold puzzle data (unchanged).
+struct PuzzleData
+{
+    std::array<char, 12> allLetters;
+    std::array<int, 12> letterToSideMapping;
+    std::set<char> uniquePuzzleLetters;
+};
+
+// Represents a single valid word path (unchanged).
+struct WordPath
+{
+    std::string wordString;
+    std::vector<int> charGlobalIndexes;
+    int lastCharSide;
+};
+
+// Structure for storing a final, valid solution.
+struct Solution
+{
+    std::string text; // The full solution string, e.g., "cat tube"
+    int wordCount;    // The number of words in the solution.
+};
+
+// Indexer for words starting with a specific character (unchanged).
+struct CharStartIndexer
+{
+    int start = 0;
+    int end = 0;
+};
+
+// --- Helper Functions ---
+
+// Converts a string to all lowercase characters.
+std::string stringToLower(std::string d)
+{
+    std::string data;
+    data.reserve(d.length()); // Reserve memory to avoid reallocations.
+    for (char c : d)
+    {
+        data += static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
     }
-    int numChains;
-    int numValidChains = 0;
-    for(int i = 1; i<maxDepth; i++){
-        for(int j = numValidChains; j<validChains.size(); j++){
-            cout << validChains[j].printString << "\n";
-        }if(validChains.size() > 0){cout << "\n";}
-        cout << validChains.size()-numValidChains << " valid chain(s) with " << i << " letter(s) found. Continue (y/n): ";
-
-        numValidChains = validChains.size();
-        if(!getContinue()){
-            cout<<"\n";
-            break;
-        }
-        cout<<"\n";
-
-        numChains = allChains.size();
-        process.start();
-        for(int c = lastIndex; c < numChains; c++){
-            int chainIndex = c-lastIndex;
-            int startIndex = letterIndexes[(int)allChains[c].chainString[allChains[c].chainString.size()-1]-97].start;
-            int endIndex = letterIndexes[(int)allChains[c].chainString[allChains[c].chainString.size()-1]-97].end;
-            for(int w = startIndex; w < endIndex; w++){
-                int wordNum = w-startIndex;
-                process.update((double)(chainIndex*averageWords+wordNum) / ((numChains-lastIndex)*averageWords), 1);
-                string s = allChains[c].chainString+string(words[w].begin()+1,words[w].end());
-                if(stringUsesAllLetters(s, sideStruct, sideStruct.sides)){
-                    validChains.push_back(ChainStruct{
-                            "",
-                            allChains[c].printString+" "+words[w],
-                            i+1
-                        });
-                }else if(i<maxDepth-1){
-                    allChains.push_back(ChainStruct{
-                            allChains[c].chainString+string(words[w].begin()+1,words[w].end()),
-                            allChains[c].printString+" "+words[w]
-                            ,i+1
-                        });
-                }
-            }
-        }
-        process.clearLine();
-        lastIndex = numChains;
-    }
-    return validChains;
+    return data;
 }
 
-int main(){
-    cout << "Reading word file\n\n";
-
-    bool allowInput = true;
-    if(!allowInput){
-        profiler.start();
+// Recursive helper for generating all valid WordPath objects for a given string word.
+// It explores all possible sequences of letter global indices that form the word,
+// respecting the "no same side consecutively" rule.
+void findWordPathsRecursive(
+    const std::string &word,
+    const PuzzleData &puzzleData,
+    std::vector<WordPath> &results,
+    std::vector<int> &currentPathGlobalIndexes,
+    int lastUsedSide,
+    int depth)
+{
+    // Base case: If we have successfully mapped all characters of the word to global indices.
+    if (depth == word.length())
+    {
+        // A complete WordPath has been found. Store it.
+        // The last used side is simply the side of the last character's global index.
+        results.push_back({word, currentPathGlobalIndexes, puzzleData.letterToSideMapping[currentPathGlobalIndexes.back()]});
+        return;
     }
 
-    string file_path = __FILE__;
-    string dir_path = file_path.substr(0, file_path.rfind("\\"));
-    ifstream file(dir_path + "\\words.txt");
+    char targetChar = word[depth]; // The character from the word we are currently trying to place.
 
-    vector<string> allWords = {};
-    string line;
-    if(file.is_open()){
-        while (getline (file, line)) {
-            allWords.push_back(line);
+    // Iterate through all 12 global letter indices in the puzzle.
+    for (int globalIdx = 0; globalIdx < puzzleData.allLetters.size(); ++globalIdx)
+    {
+        // Check if the character at the current global index matches the target character.
+        if (puzzleData.allLetters[globalIdx] == targetChar)
+        {
+            int currentSide = puzzleData.letterToSideMapping[globalIdx];
+
+            // Apply the Letter Boxed rule: a character cannot be followed by another character
+            // from the same side *within the same word*.
+            if (depth > 0 && currentSide == lastUsedSide)
+            {
+                continue; // Skip: cannot use a letter from the same side consecutively.
+            }
+
+            // If valid, add the current global index to the path and recurse.
+            currentPathGlobalIndexes.push_back(globalIdx);
+            findWordPathsRecursive(word, puzzleData, results, currentPathGlobalIndexes, currentSide, depth + 1);
+            currentPathGlobalIndexes.pop_back(); // Backtrack: remove for the next possibility.
+        }
+    }
+}
+
+// Generates all possible WordPath representations for a given word string based on puzzle rules.
+// This function acts as a wrapper for the recursive helper.
+std::vector<WordPath> getWordPaths(const std::string &word, const PuzzleData &puzzleData, const int minLength)
+{
+    if (word.length() < minLength)
+    {
+        return {}; // Word is too short.
+    }
+
+    std::vector<WordPath> paths;
+    std::vector<int> currentPathGlobalIndexes;
+    // Start the recursive search. -1 for lastUsedSide indicates no side has been used yet for the first character.
+    findWordPathsRecursive(word, puzzleData, paths, currentPathGlobalIndexes, -1, 0);
+    return paths;
+}
+
+// Filters the dictionary words and generates all valid WordPath objects for the given puzzle.
+// This is the core function for pre-processing the word list.
+std::vector<WordPath> filterWords(const std::vector<std::string> &allDictionaryWords, const PuzzleData &puzzleData, const int minLength = 3)
+{
+    profiler.profileStart("filterWords");
+    std::vector<WordPath> allValidWordPaths;
+    // Pre-allocate memory, assuming a typical hit rate for words.
+    allValidWordPaths.reserve(allDictionaryWords.size() / 100);
+
+    for (const std::string &word : allDictionaryWords)
+    {
+        // For each word in the dictionary, find all ways it can be formed using the puzzle letters.
+        std::vector<WordPath> paths = getWordPaths(word, puzzleData, minLength);
+        // Add all found paths for this word to the main list of valid word paths.
+        allValidWordPaths.insert(allValidWordPaths.end(), paths.begin(), paths.end());
+    }
+    profiler.profileEnd("filterWords");
+    return allValidWordPaths;
+}
+
+// Sorts a vector of WordPath objects by their word string length.
+void sortWordPathsByLength(std::vector<WordPath> &wordPaths, const bool ascending = true)
+{
+    profiler.profileStart("sortWordPathsByLength");
+    auto compAscending = [](const WordPath &a, const WordPath &b)
+    {
+        return a.wordString.length() < b.wordString.length();
+    };
+
+    auto compDescending = [](const WordPath &a, const WordPath &b)
+    {
+        return a.wordString.length() > b.wordString.length();
+    };
+
+    if (ascending)
+    {
+        std::stable_sort(wordPaths.begin(), wordPaths.end(), compAscending);
+    }
+    else
+    {
+        std::stable_sort(wordPaths.begin(), wordPaths.end(), compDescending);
+    }
+    profiler.profileEnd("sortWordPathsByLength");
+}
+
+// --- OPTIMIZED RECURSIVE SOLUTION FINDER ---
+
+// Helper to reconstruct the print string from word path indices.
+std::string reconstructPrintString(const std::vector<size_t> &wordPathIndices, const std::vector<WordPath> &allValidWordPaths)
+{
+    std::string printStr = "";
+    for (size_t i = 0; i < wordPathIndices.size(); ++i)
+    {
+        if (i > 0)
+        {
+            printStr += " ";
+        }
+        printStr += allValidWordPaths[wordPathIndices[i]].wordString;
+    }
+    return printStr;
+}
+
+/**
+ * @brief Recursively finds solutions using a Depth-First Search (DFS) approach.
+ *
+ * @param lastWordPathIndex The index in `allValidWordPaths` of the word we are extending.
+ * @param currentPathIndices The vector of word indices forming the current chain.
+ * @param lettersCovered The set of unique characters covered by the current chain.
+ * @param currentDepth The current number of words in the chain.
+ * @param maxDepth The maximum number of words allowed in a solution.
+ * @param allValidWordPaths A constant reference to the master list of all valid word paths.
+ * @param puzzleData A constant reference to the puzzle data.
+ * @param letterIndexers A constant reference to the start/end indices for words.
+ * @param solutions A reference to the vector where final solutions are stored.
+ */
+void findSolutionsRecursive(
+    size_t lastWordPathIndex,
+    std::vector<size_t> currentPathIndices,
+    std::set<char> lettersCovered,
+    int currentDepth,
+    const int maxDepth,
+    const std::vector<WordPath> &allValidWordPaths,
+    const PuzzleData &puzzleData,
+    const CharStartIndexer letterIndexers[26],
+    std::vector<Solution> &solutions)
+{
+    // Base case: If we have reached the maximum search depth, stop this path.
+    if (currentDepth >= maxDepth)
+    {
+        return;
+    }
+
+    const WordPath &lastWord = allValidWordPaths[lastWordPathIndex];
+    char connectingChar = puzzleData.allLetters[lastWord.charGlobalIndexes.back()];
+    int connectingIndex = lastWord.charGlobalIndexes.back();
+
+    // Use the pre-computed indexer to find candidate words efficiently.
+    const auto &indexer = letterIndexers[connectingChar - 'a'];
+    for (int w = indexer.start; w < indexer.end; ++w)
+    {
+        const WordPath &nextWord = allValidWordPaths[w];
+
+        // Chaining rule: next word must start with the exact same global letter index.
+        if (nextWord.charGlobalIndexes[0] == connectingIndex)
+        {
+            // Create copies for the new recursive path
+            std::vector<size_t> newPathIndices = currentPathIndices;
+            newPathIndices.push_back(w);
+
+            std::set<char> newLettersCovered = lettersCovered;
+            for (size_t i = 1; i < nextWord.charGlobalIndexes.size(); ++i) // Start from 1, as char 0 is the connector
+            {
+                newLettersCovered.insert(puzzleData.allLetters[nextWord.charGlobalIndexes[i]]);
+            }
+
+            // Check if this new chain is a solution.
+            if (newLettersCovered.size() == puzzleData.uniquePuzzleLetters.size())
+            {
+                solutions.push_back({reconstructPrintString(newPathIndices, allValidWordPaths), (int)newPathIndices.size()});
+            }
+            else
+            {
+                // Recurse to find longer chains.
+                findSolutionsRecursive(w, newPathIndices, newLettersCovered, currentDepth + 1, maxDepth, allValidWordPaths, puzzleData, letterIndexers, solutions);
+            }
+        }
+    }
+}
+
+int main()
+{
+    std::cout << "Reading word file...\n\n";
+
+    std::string file_path = __FILE__;
+    std::filesystem::path current_dir = std::filesystem::path(file_path).parent_path();
+    std::ifstream file(current_dir / "words.txt");
+
+    std::vector<std::string> allDictionaryWords;
+    std::string line;
+    if (file.is_open())
+    {
+        while (std::getline(file, line))
+        {
+            allDictionaryWords.push_back(line);
         }
         file.close();
+        std::cout << "Loaded " << allDictionaryWords.size() << " words from dictionary.\n\n";
     }
-
-
-    int loops = 0;
-    while(allowInput || loops == 0)
+    else
     {
-        vector<string> words = allWords;
-
-        string side1, side2, side3, side4;
-
-        int minWordLength = 3;
-        if(allowInput){
-            cout << "Side 1: ";
-            side1 = getSide();
-            cout << "Side 2: ";
-            side2 = getSide();
-            cout << "Side 3: ";
-            side3 = getSide();
-            cout << "Side 4: ";
-            side4 = getSide();
-
-            cout << "\nMinimum word length (min = 3): ";
-            minWordLength = getInt(3);
-            cout << "\n";
-        }else{
-            side1 = "uvj";
-            side2 = "swi";
-            side3 = "tge";
-            side4 = "bac";
-        }
-
-        SideStruct sideStruct;
-        sideStruct.sideString = side1;
-        sideStruct.sideString.append(side2);
-        sideStruct.sideString.append(side3);
-        sideStruct.sideString.append(side4);
-
-        cout << "Minimum word length = " << minWordLength << "\n\n";
-
-        sideStruct.sides = {side1,side2,side3,side4};
-        sideStruct.sideSet = set<char>(sideStruct.sideString.begin(), sideStruct.sideString.end());
-
-        cout << "Filtering word list for valid words\n\n";
-        words = filterWords(words, sideStruct.sides, minWordLength);
-
-        LetterIndexer letterIndexers[26]{};
-        char currentChar = words[0][0];
-        LetterIndexer currentIndexer{0,0};
-        int totalWords = 0;
-        int numLetters = 0;
-        for(int i = 0; i < words.size(); i++){
-            if(currentChar != words[i][0]){
-                currentIndexer.end = i;
-                letterIndexers[(int)words[i-1][0]-97] = LetterIndexer{currentIndexer};
-                totalWords += currentIndexer.end-currentIndexer.start;
-                numLetters ++;
-
-                currentIndexer.start = i;
-            }
-            currentChar = words[i][0];
-        }
-        averageWords = totalWords/numLetters;
-        letterIndexers[(int)currentChar-97] = LetterIndexer{currentIndexer.start, (int)words.size()-1};
-
-
-        int maxDepth = 2;
-        if(allowInput){
-            //cout << "Max depth (min = 1, max = 4): "; maxDepth = getInt(1, 4); cout << "\n";
-
-            cout << "Sorting words\n\n";
-            vector<string> lengthSorted = words;
-            sortStrings(lengthSorted, true);
-            for(string& w: lengthSorted){
-                cout << w << "\n";
-            }if(lengthSorted.size() > 0){cout << "\n";}
-
-            maxDepth = 4;
-        }
-        cout << words.size() << " valid word(s) found\n\n";
-
-        cout << "Max depth = " << maxDepth << "\n\n";
-
-        cout << "Searching for all possible word chains\n\n";
-        vector<ChainStruct> chains;
-        if(!allowInput){
-            chains = getAllChains(words, sideStruct, letterIndexers, maxDepth);
-
-            profiler.end();
-            profiler.logProfilerData();
-        }else{
-            chains = getAllChainsInput(words, sideStruct, letterIndexers, maxDepth);
-
-            cout << "Sorting word chains\n\n";
-            sortChains(chains, false);
-
-            int lastLength = 0;
-            for(ChainStruct& c: chains){
-                if(lastLength != c.length && lastLength != 0){
-                    cout << "\n";
-                }
-                cout << c.printString << "\n";
-                lastLength = c.length;
-            }if(chains.size() > 0){cout << "\n";}
-        }
-
-        cout << chains.size() << " total solution(s) found";
-
-        _getch();
-
-        cout << "\n\n\n\n";
-        loops++;
+        std::cerr << "Error: Could not open words.txt. Please ensure 'words.txt' is in the same directory as the executable.\n";
+        std::cout << "\nPress any key to exit.\n";
+        _getch(); // Wait for user acknowledgment
+        return 1; // Exit with error
     }
-    
-    return(0);
+
+    profiler.start();
+
+    std::string side1 = "uvj";
+    std::string side2 = "swi";
+    std::string side3 = "tge";
+    std::string side4 = "bac";
+    int minWordLength = 3;
+    int maxDepth = 3;
+
+    PuzzleData puzzleData;
+    for (int i = 0; i < 3; ++i)
+    {
+        puzzleData.allLetters[i] = side1[i];
+        puzzleData.letterToSideMapping[i] = 0; // Side 0
+        puzzleData.uniquePuzzleLetters.insert(side1[i]);
+    }
+    for (int i = 0; i < 3; ++i)
+    {
+        puzzleData.allLetters[i + 3] = side2[i];
+        puzzleData.letterToSideMapping[i + 3] = 1; // Side 1
+        puzzleData.uniquePuzzleLetters.insert(side2[i]);
+    }
+    for (int i = 0; i < 3; ++i)
+    {
+        puzzleData.allLetters[i + 6] = side3[i];
+        puzzleData.letterToSideMapping[i + 6] = 2; // Side 2
+        puzzleData.uniquePuzzleLetters.insert(side3[i]);
+    }
+    for (int i = 0; i < 3; ++i)
+    {
+        puzzleData.allLetters[i + 9] = side4[i];
+        puzzleData.letterToSideMapping[i + 9] = 3; // Side 3
+        puzzleData.uniquePuzzleLetters.insert(side4[i]);
+    }
+
+    std::cout << "Puzzle: [" << side1 << "] [" << side2 << "] [" << side3 << "] [" << side4 << "]\n";
+    std::cout << "Minimum word length = " << minWordLength << "\n";
+    std::cout << "Maximum chain length = " << maxDepth << "\n\n";
+
+    std::cout << "Filtering dictionary for valid words...\n\n";
+    std::vector<WordPath> allValidWordPaths = filterWords(allDictionaryWords, puzzleData, minWordLength);
+
+    // Sorting and indexing logic (same as original)
+    std::sort(allValidWordPaths.begin(), allValidWordPaths.end(),
+              [](const WordPath &a, const WordPath &b)
+              { return a.wordString[0] < b.wordString[0]; });
+
+    CharStartIndexer letterIndexers[26];
+    for (int k = 0; k < 26; ++k)
+    {
+        letterIndexers[k].start = 0;
+        letterIndexers[k].end = 0;
+    }
+
+    if (!allValidWordPaths.empty())
+    {
+        char currentChar = allValidWordPaths[0].wordString[0];
+        letterIndexers[currentChar - 'a'].start = 0;
+        for (size_t i = 0; i < allValidWordPaths.size(); ++i)
+        {
+            if (allValidWordPaths[i].wordString[0] != currentChar)
+            {
+                letterIndexers[currentChar - 'a'].end = static_cast<int>(i);
+                currentChar = allValidWordPaths[i].wordString[0];
+                letterIndexers[currentChar - 'a'].start = static_cast<int>(i);
+            }
+        }
+        letterIndexers[currentChar - 'a'].end = static_cast<int>(allValidWordPaths.size());
+    }
+
+    std::cout << allValidWordPaths.size() << " valid word path(s) found.\n\n";
+
+    std::cout << "Searching for all possible word chains...\n\n";
+
+    // --- NEW DFS-BASED SEARCH ---
+    std::vector<Solution> solutions;
+
+    // Iterate through every valid word as a potential start to a chain.
+    for (size_t i = 0; i < allValidWordPaths.size(); ++i)
+    {
+        const auto &startWord = allValidWordPaths[i];
+
+        // 1. Check if the single word is a solution itself.
+        std::set<char> initialLetters;
+        for (int globalIdx : startWord.charGlobalIndexes)
+        {
+            initialLetters.insert(puzzleData.allLetters[globalIdx]);
+        }
+
+        if (initialLetters.size() == puzzleData.uniquePuzzleLetters.size())
+        {
+            solutions.push_back({startWord.wordString, 1});
+        }
+
+        // 2. Start the recursive search for longer chains starting with this word.
+        findSolutionsRecursive(i, {i}, initialLetters, 1, maxDepth, allValidWordPaths, puzzleData, letterIndexers, solutions);
+    }
+
+    profiler.end();
+    profiler.logProfilerData();
+
+    // Sort and print the final solutions
+    std::sort(solutions.begin(), solutions.end(), [](const Solution &a, const Solution &b)
+              {
+        if (a.wordCount != b.wordCount)
+            return a.wordCount < b.wordCount;
+        return a.text < b.text; });
+
+    // Remove duplicate solutions
+    solutions.erase(std::unique(solutions.begin(), solutions.end(), [](const Solution &a, const Solution &b)
+                                { return a.text == b.text; }),
+                    solutions.end());
+
+    for (const auto &s : solutions)
+    {
+        std::cout << s.text << "\n";
+    }
+    if (!solutions.empty())
+    {
+        std::cout << "\n";
+    }
+
+    std::cout << solutions.size() << " total solution(s) found.\n";
+
+    std::cout << "\nPress any key to exit.\n";
+    _getch();
+
+    return 0;
 }
