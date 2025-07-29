@@ -3,7 +3,7 @@
 #include <string>
 #include <vector>
 #include <algorithm>
-#include <conio.h> // For _getch()
+#include <conio.h>
 #include <set>
 #include <cctype>
 #include <filesystem>
@@ -12,6 +12,7 @@
 #include <chrono>
 #include <map>
 #include <bitset>
+#include <unordered_map>
 #include "utils.cpp"
 
 using namespace std;
@@ -73,6 +74,26 @@ struct EquivalenceKey
     }
 };
 
+// --- Helper for hashing and equality for EquivalenceKey for unordered_map ---
+struct EquivalenceKeyHash
+{
+    std::size_t operator()(const EquivalenceKey &k) const
+    {
+        std::size_t h1 = std::hash<int>()(k.startIndex);
+        std::size_t h2 = std::hash<int>()(k.endIndex);
+        std::size_t h3 = std::hash<unsigned long>()(k.usedChars.to_ulong());
+        return h1 ^ (h2 << 1) ^ (h3 << 2);
+    }
+};
+
+// Provide == operator for EquivalenceKey for unordered_map
+inline bool operator==(const EquivalenceKey &a, const EquivalenceKey &b)
+{
+    return a.startIndex == b.startIndex &&
+           a.endIndex == b.endIndex &&
+           a.usedChars == b.usedChars;
+}
+
 /**
  * @brief Represents a class of equivalent words.
  *
@@ -83,6 +104,17 @@ struct EquivalenceClass
 {
     EquivalenceKey key;
     std::vector<const WordPath *> words; // Pointers to the actual words in this class
+};
+
+// --- New Struct for User Configuration ---
+struct Config
+{
+    std::array<char, 12> letters;
+    int minWordLength = 3;
+    int minUniqueLetters = 1;
+    int maxDepth = 3;
+    bool pruneRedundantPaths = true;
+    bool pruneDominatedClasses = true; // <--- Add this parameter
 };
 
 // --- Helper Functions ---
@@ -253,7 +285,7 @@ void expandAndStoreSolutions(
 // STAGE 2: Recursively finds solutions using a DFS on Equivalence Classes.
 void findClassSolutionsRecursive(
     const EquivalenceClass *lastClass,
-    std::vector<const EquivalenceClass *> currentClassPath,
+    std::vector<const EquivalenceClass *> &currentClassPath, // pass by reference
     std::bitset<12> lettersCovered,
     int currentDepth,
     const int maxDepth,
@@ -290,27 +322,165 @@ void findClassSolutionsRecursive(
 
             std::bitset<12> newLettersCovered = lettersCovered | nextClass.key.usedChars;
 
-            std::vector<const EquivalenceClass *> newClassPath = currentClassPath;
-            newClassPath.push_back(&nextClass);
+            currentClassPath.push_back(&nextClass);
 
             if (newLettersCovered.count() == puzzleData.uniquePuzzleLetters.count())
             {
-                classSolutions.push_back(newClassPath);
+                classSolutions.push_back(currentClassPath);
             }
             else
             {
                 // Continue searching to find longer solutions that might start with the same path.
-                findClassSolutionsRecursive(&nextClass, newClassPath, newLettersCovered, currentDepth + 1, maxDepth, pruneRedundantPaths, allEqClasses, classIndexers, puzzleData, classSolutions);
+                findClassSolutionsRecursive(&nextClass, currentClassPath, newLettersCovered, currentDepth + 1, maxDepth, pruneRedundantPaths, allEqClasses, classIndexers, puzzleData, classSolutions);
             }
+
+            currentClassPath.pop_back(); // Backtrack
         }
     }
 }
 
-int main()
-{
-    std::cout << "Reading word file...\n\n";
+// --- Console and Input Helper Functions ---
 
-    // Determine the path to the words.txt file relative to the executable.
+void drawPuzzleBox(const std::array<char, 12> &letters)
+{
+#ifdef _WIN32
+    system("cls");
+#else
+    cout << "\033[2J\033[1;1H";
+#endif
+
+    cout << "Enter the 12 letters for the puzzle. Use Backspace to correct." << endl
+         << endl;
+
+    // Draw letters around an empty box, displayed as uppercase
+    auto up = [](char c)
+    { return static_cast<char>(std::toupper(static_cast<unsigned char>(c))); };
+
+    cout << "     " << up(letters[0]) << " " << up(letters[1]) << " " << up(letters[2]) << endl;
+    cout << "   +-------+" << endl;
+    cout << " " << up(letters[11]) << " |       | " << up(letters[3]) << endl;
+    cout << " " << up(letters[10]) << " |       | " << up(letters[4]) << endl;
+    cout << " " << up(letters[9]) << " |       | " << up(letters[5]) << endl;
+    cout << "   +-------+" << endl;
+    cout << "     " << up(letters[8]) << " " << up(letters[7]) << " " << up(letters[6]) << endl;
+    cout << endl
+         << endl;
+}
+
+// Gathers all puzzle settings from the user.
+Config getUserConfiguration()
+{
+    Config config;
+    std::array<char, 12> letters;
+    letters.fill('_'); // Initialize with placeholders
+
+    int currentIndex = 0;
+    bool done = false;
+    while (!done)
+    {
+        for (int i = currentIndex + 1; i < 12; i++)
+        {
+            letters[i] = '*'; // Reset unused letters
+        }
+        letters[currentIndex] = '_'; // Reset current letter
+        drawPuzzleBox(letters);
+
+        if (currentIndex >= 12 && !done)
+        {
+            // Ask for confirmation
+            cout << "Press enter to confirm: ";
+        }
+
+        char input = _getch();
+
+        if (isalpha(input) && currentIndex < 12)
+        {
+            letters[currentIndex] = tolower(input);
+            currentIndex++;
+        }
+        if (input == 8)
+        { // ASCII for Backspace
+            if (currentIndex > 0)
+            {
+                currentIndex--;
+                letters[currentIndex] = '_';
+            }
+        }
+        else if ((input == '\r' || input == '\n') && currentIndex >= 12)
+        {
+            done = true;
+        }
+    }
+
+    config.letters = letters;
+    drawPuzzleBox(config.letters); // Final draw
+
+    // Get other settings
+    cout << "Enter minimum word length (e.g., 3): ";
+    cin >> config.minWordLength;
+    cout << "Enter minimum unique letters per word (e.g., 2): ";
+    cin >> config.minUniqueLetters;
+    cout << "Enter max solution depth (e.g., 3 words): ";
+    cin >> config.maxDepth;
+    cout << "Prune redundant paths? (1 = yes, 0 = no): ";
+    cin >> config.pruneRedundantPaths;
+    cout << "Prune dominated equivalence classes? (1 = yes, 0 = no): ";
+    cin >> config.pruneDominatedClasses;
+
+    cout << endl;
+    return config;
+}
+
+// Prune dominated equivalence classes: remove classes that are strictly dominated by another
+void pruneDominatedClasses(std::vector<EquivalenceClass> &allEqClasses)
+{
+    // Group classes by (startIndex, endIndex)
+    std::map<std::pair<int, int>, std::vector<size_t>> groups;
+    for (size_t i = 0; i < allEqClasses.size(); ++i)
+    {
+        auto key = std::make_pair(allEqClasses[i].key.startIndex, allEqClasses[i].key.endIndex);
+        groups[key].push_back(i);
+    }
+
+    std::vector<bool> keep(allEqClasses.size(), true);
+
+    for (const auto &group : groups)
+    {
+        const auto &indices = group.second;
+        for (size_t i = 0; i < indices.size(); ++i)
+        {
+            for (size_t j = 0; j < indices.size(); ++j)
+            {
+                if (i == j)
+                    continue;
+                const auto &a = allEqClasses[indices[i]].key.usedChars;
+                const auto &b = allEqClasses[indices[j]].key.usedChars;
+                // If B is a strict superset of A, mark A for removal
+                if ((b & a) == a && b != a)
+                {
+                    keep[indices[i]] = false;
+                    break;
+                }
+            }
+        }
+    }
+
+    // Remove dominated classes
+    std::vector<EquivalenceClass> filtered;
+    filtered.reserve(allEqClasses.size());
+    for (size_t i = 0; i < allEqClasses.size(); ++i)
+    {
+        if (keep[i])
+            filtered.push_back(std::move(allEqClasses[i]));
+    }
+    allEqClasses = std::move(filtered);
+}
+
+// Helper function to run the solver for a given config
+void runSolver(const Config &config)
+{
+    // --- Load Dictionary ---
+    std::cout << "Reading word file...\n\n";
     std::string file_path_str = __FILE__;
     std::filesystem::path current_dir = std::filesystem::path(file_path_str).parent_path();
     std::ifstream file(current_dir / "words.txt");
@@ -331,43 +501,41 @@ int main()
         std::cerr << "Error: Could not open words.txt. Please ensure it's in the same directory as the executable.\n";
         std::cout << "\nPress any key to exit.\n";
         _getch();
-        return 1;
+        return;
     }
 
-    // --- Puzzle Configuration ---
-    std::vector<std::string> sides = {"uvj", "swi", "tge", "bac"};
-
-    // These settings have the potential to exclude some solutions, but they speed up the search.
-    int minWordLength = 4;           // Minimum word length
-    int minUniqueLetters = 3;        // Minimum unique letters in each word
-    int maxDepth = 3;                // Max words in a solution
-    bool pruneRedundantPaths = true; // Whether to prune paths that don't contribute new letters
-
+    // --- Setup PuzzleData from Config ---
     PuzzleData puzzleData;
-    int letterIndex = 0;
-    for (int side = 0; side < 4; ++side)
+    puzzleData.allLetters = config.letters;
+
+    // Sides: 0=Top, 1=Left, 2=Right, 3=Bottom
+    for (int i = 0; i < 3; ++i)
+        puzzleData.letterToSideMapping[i] = 0; // Top
+    for (int i = 3; i < 6; ++i)
+        puzzleData.letterToSideMapping[i] = 1; // Left
+    for (int i = 6; i < 9; ++i)
+        puzzleData.letterToSideMapping[i] = 2; // Right
+    for (int i = 9; i < 12; ++i)
+        puzzleData.letterToSideMapping[i] = 3; // Bottom
+
+    for (int i = 0; i < 12; ++i)
     {
-        for (int i = 0; i < 3; ++i)
-        {
-            puzzleData.allLetters[letterIndex] = sides[side][i];
-            puzzleData.letterToSideMapping[letterIndex] = side;
-            int idx = letterIndex;
-            puzzleData.uniquePuzzleLetters.set(idx);
-            ++letterIndex;
-        }
+        puzzleData.uniquePuzzleLetters.set(i);
     }
 
+    // --- Start Solver ---
+    cout << "Configuration set. Starting solver..." << endl;
     profiler.start();
 
     // --- STAGE 1: Filter dictionary and create all raw WordPath objects ---
     std::cout << "Filtering dictionary for valid words...\n";
     std::vector<int> allPathIndices; // Master vector for all path indices
-    std::vector<WordPath> allValidWordPaths = filterWords(allDictionaryWords, puzzleData, minWordLength, minUniqueLetters, allPathIndices);
+    std::vector<WordPath> allValidWordPaths = filterWords(allDictionaryWords, puzzleData, config.minWordLength, config.minUniqueLetters, allPathIndices);
     std::cout << allValidWordPaths.size() << " valid word path(s) found.\n\n";
 
     // --- STAGE 2: Group WordPaths into Equivalence Classes ---
     std::cout << "Building equivalence classes...\n";
-    std::map<EquivalenceKey, EquivalenceClass> eqClassMap;
+    std::unordered_map<EquivalenceKey, EquivalenceClass, EquivalenceKeyHash> eqClassMap;
     for (const auto &wp : allValidWordPaths)
     {
         EquivalenceKey key;
@@ -390,9 +558,15 @@ int main()
     }
     std::cout << allEqClasses.size() << " unique equivalence classes created.\n\n";
 
+    // --- Prune dominated equivalence classes if enabled ---
+    if (config.pruneDominatedClasses)
+    {
+        pruneDominatedClasses(allEqClasses);
+        std::cout << allEqClasses.size() << " equivalence classes after pruning dominated classes.\n\n";
+    }
+
     // --- STAGE 3: Find solutions using the equivalence class graph ---
     std::cout << "Searching for class-based solution paths...\n";
-
     std::sort(allEqClasses.begin(), allEqClasses.end(),
               [&](const EquivalenceClass &a, const EquivalenceClass &b)
               {
@@ -425,7 +599,8 @@ int main()
             classSolutions.push_back({&startClass});
         }
         std::bitset<12> covered = startClass.key.usedChars;
-        findClassSolutionsRecursive(&startClass, {&startClass}, covered, 1, maxDepth, pruneRedundantPaths, allEqClasses, classIndexers, puzzleData, classSolutions);
+        std::vector<const EquivalenceClass *> currentClassPath = {&startClass};
+        findClassSolutionsRecursive(&startClass, currentClassPath, covered, 1, config.maxDepth, config.pruneRedundantPaths, allEqClasses, classIndexers, puzzleData, classSolutions);
     }
     std::cout << classSolutions.size() << " abstract solution path(s) found.\n\n";
 
@@ -462,9 +637,21 @@ int main()
     }
 
     std::cout << finalSolutions.size() << " total solution(s) found.\n";
+}
 
-    std::cout << "\nPress any key to exit.\n";
-    _getch();
+int main()
+{
+    while (true)
+    {
+        // --- STAGE 0: Get Configuration from User ---
+        Config config = getUserConfiguration();
 
+        runSolver(config);
+
+        std::cout << "\nPress 'q' to quit, or any other key to run again.\n";
+        char ch = _getch();
+        if (ch == 'q' || ch == 'Q')
+            break;
+    }
     return 0;
 }
