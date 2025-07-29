@@ -257,6 +257,7 @@ void findClassSolutionsRecursive(
     std::bitset<12> lettersCovered,
     int currentDepth,
     const int maxDepth,
+    bool pruneRedundantPaths,
     const std::vector<EquivalenceClass> &allEqClasses,
     const std::vector<CharStartIndexer> &classIndexers, // Indexer for classes
     const PuzzleData &puzzleData,
@@ -276,6 +277,17 @@ void findClassSolutionsRecursive(
         const EquivalenceClass &nextClass = allEqClasses[i];
         if (nextClass.key.startIndex == connectingIndex)
         {
+            if (pruneRedundantPaths)
+            {
+                // Check if nextClass provides any new letters
+                std::bitset<12> newLetters = nextClass.key.usedChars & ~lettersCovered;
+                if (newLetters.none())
+                {
+                    // All letters already covered, skip unless you want to allow cycles/extensions
+                    continue;
+                }
+            }
+
             std::bitset<12> newLettersCovered = lettersCovered | nextClass.key.usedChars;
 
             std::vector<const EquivalenceClass *> newClassPath = currentClassPath;
@@ -288,7 +300,7 @@ void findClassSolutionsRecursive(
             else
             {
                 // Continue searching to find longer solutions that might start with the same path.
-                findClassSolutionsRecursive(&nextClass, newClassPath, newLettersCovered, currentDepth + 1, maxDepth, allEqClasses, classIndexers, puzzleData, classSolutions);
+                findClassSolutionsRecursive(&nextClass, newClassPath, newLettersCovered, currentDepth + 1, maxDepth, pruneRedundantPaths, allEqClasses, classIndexers, puzzleData, classSolutions);
             }
         }
     }
@@ -325,10 +337,11 @@ int main()
     // --- Puzzle Configuration ---
     std::vector<std::string> sides = {"uvj", "swi", "tge", "bac"};
 
-    // These settings have the potential to exclude many solutions, but they speed up the search.
-    int minWordLength = 3;    // Minimum word length
-    int minUniqueLetters = 1; // Minimum unique letters in each word
-    int maxDepth = 3;         // Max words in a solution
+    // These settings have the potential to exclude some solutions, but they speed up the search.
+    int minWordLength = 4;           // Minimum word length
+    int minUniqueLetters = 3;        // Minimum unique letters in each word
+    int maxDepth = 3;                // Max words in a solution
+    bool pruneRedundantPaths = true; // Whether to prune paths that don't contribute new letters
 
     PuzzleData puzzleData;
     int letterIndex = 0;
@@ -412,7 +425,7 @@ int main()
             classSolutions.push_back({&startClass});
         }
         std::bitset<12> covered = startClass.key.usedChars;
-        findClassSolutionsRecursive(&startClass, {&startClass}, covered, 1, maxDepth, allEqClasses, classIndexers, puzzleData, classSolutions);
+        findClassSolutionsRecursive(&startClass, {&startClass}, covered, 1, maxDepth, pruneRedundantPaths, allEqClasses, classIndexers, puzzleData, classSolutions);
     }
     std::cout << classSolutions.size() << " abstract solution path(s) found.\n\n";
 
