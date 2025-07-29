@@ -7,3 +7,11 @@ Profiler Data: Average time, Count, Total time, Percent
      Profiler: 0.041604ms, 2, 0.000083s, 0%
      filterWords: 95.748425ms, 1, 0.095748s, 1%
 
+Total Run time: 12.961784s
+Profiler Data: Average time, Count, Total time, Percent
+     Profiler: 0.032902ms, 2, 0.000066s, 0%
+     filterWords: 94.676733ms, 1, 0.094677s, 1%
+
+Total Run time: 9.418365s
+Profiler Data: Average time, Count, Total time, Percent
+     Profiler: 0.000000ms, 0, 0.000000s, 0%

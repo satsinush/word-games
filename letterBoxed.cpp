@@ -3,13 +3,14 @@
 #include <string>
 #include <vector>
 #include <algorithm>
-#include <conio.h>
+#include <conio.h> // For _getch()
 #include <set>
 #include <cctype>
 #include <filesystem>
 #include <array>
 #include <limits>
 #include <chrono>
+#include <map>
 #include "utils.cpp"
 
 using namespace std;
@@ -17,7 +18,8 @@ using namespace std;
 Utils::Profiler profiler;
 Utils::Process process = Utils::Process();
 
-// Structure to hold puzzle data (unchanged).
+// --- Core Data Structures ---
+
 struct PuzzleData
 {
     std::array<char, 12> allLetters;
@@ -25,7 +27,6 @@ struct PuzzleData
     std::set<char> uniquePuzzleLetters;
 };
 
-// Represents a single valid word path (unchanged).
 struct WordPath
 {
     std::string wordString;
@@ -33,18 +34,54 @@ struct WordPath
     int lastCharSide;
 };
 
-// Structure for storing a final, valid solution.
 struct Solution
 {
     std::string text; // The full solution string, e.g., "cat tube"
     int wordCount;    // The number of words in the solution.
 };
 
-// Indexer for words starting with a specific character (unchanged).
+// Indexer for words or classes starting with a specific character.
 struct CharStartIndexer
 {
     int start = 0;
     int end = 0;
+};
+
+// --- Equivalence Class Structures ---
+
+/**
+ * @brief A key to uniquely identify an equivalence class.
+ *
+ * Two WordPaths are equivalent if they have the same start/end global indices
+ * and use the same set of unique characters.
+ */
+struct EquivalenceKey
+{
+    int startIndex;
+    int endIndex;
+    std::set<char> usedChars;
+
+    // operator< is required to use this struct as a key in std::map.
+    bool operator<(const EquivalenceKey &other) const
+    {
+        if (startIndex != other.startIndex)
+            return startIndex < other.startIndex;
+        if (endIndex != other.endIndex)
+            return endIndex < other.endIndex;
+        return usedChars < other.usedChars;
+    }
+};
+
+/**
+ * @brief Represents a class of equivalent words.
+ *
+ * All words in this class share the same key properties and can be used
+ * interchangeably in the first stage of the solution search.
+ */
+struct EquivalenceClass
+{
+    EquivalenceKey key;
+    std::vector<const WordPath *> words; // Pointers to the actual words in this class
 };
 
 // --- Helper Functions ---
@@ -53,7 +90,7 @@ struct CharStartIndexer
 std::string stringToLower(std::string d)
 {
     std::string data;
-    data.reserve(d.length()); // Reserve memory to avoid reallocations.
+    data.reserve(d.length());
     for (char c : d)
     {
         data += static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
@@ -62,8 +99,6 @@ std::string stringToLower(std::string d)
 }
 
 // Recursive helper for generating all valid WordPath objects for a given string word.
-// It explores all possible sequences of letter global indices that form the word,
-// respecting the "no same side consecutively" rule.
 void findWordPathsRecursive(
     const std::string &word,
     const PuzzleData &puzzleData,
@@ -72,181 +107,136 @@ void findWordPathsRecursive(
     int lastUsedSide,
     int depth)
 {
-    // Base case: If we have successfully mapped all characters of the word to global indices.
     if (depth == word.length())
     {
-        // A complete WordPath has been found. Store it.
-        // The last used side is simply the side of the last character's global index.
         results.push_back({word, currentPathGlobalIndexes, puzzleData.letterToSideMapping[currentPathGlobalIndexes.back()]});
         return;
     }
 
-    char targetChar = word[depth]; // The character from the word we are currently trying to place.
-
-    // Iterate through all 12 global letter indices in the puzzle.
+    char targetChar = word[depth];
     for (int globalIdx = 0; globalIdx < puzzleData.allLetters.size(); ++globalIdx)
     {
-        // Check if the character at the current global index matches the target character.
         if (puzzleData.allLetters[globalIdx] == targetChar)
         {
             int currentSide = puzzleData.letterToSideMapping[globalIdx];
-
-            // Apply the Letter Boxed rule: a character cannot be followed by another character
-            // from the same side *within the same word*.
             if (depth > 0 && currentSide == lastUsedSide)
             {
-                continue; // Skip: cannot use a letter from the same side consecutively.
+                continue;
             }
-
-            // If valid, add the current global index to the path and recurse.
             currentPathGlobalIndexes.push_back(globalIdx);
             findWordPathsRecursive(word, puzzleData, results, currentPathGlobalIndexes, currentSide, depth + 1);
-            currentPathGlobalIndexes.pop_back(); // Backtrack: remove for the next possibility.
+            currentPathGlobalIndexes.pop_back(); // Backtrack
         }
     }
 }
 
-// Generates all possible WordPath representations for a given word string based on puzzle rules.
-// This function acts as a wrapper for the recursive helper.
+// Generates all possible WordPath representations for a given word string.
 std::vector<WordPath> getWordPaths(const std::string &word, const PuzzleData &puzzleData, const int minLength)
 {
     if (word.length() < minLength)
     {
-        return {}; // Word is too short.
+        return {};
     }
-
     std::vector<WordPath> paths;
     std::vector<int> currentPathGlobalIndexes;
-    // Start the recursive search. -1 for lastUsedSide indicates no side has been used yet for the first character.
     findWordPathsRecursive(word, puzzleData, paths, currentPathGlobalIndexes, -1, 0);
     return paths;
 }
 
-// Filters the dictionary words and generates all valid WordPath objects for the given puzzle.
-// This is the core function for pre-processing the word list.
+// Filters the dictionary words and generates all valid WordPath objects for the puzzle.
 std::vector<WordPath> filterWords(const std::vector<std::string> &allDictionaryWords, const PuzzleData &puzzleData, const int minLength = 3)
 {
-    profiler.profileStart("filterWords");
     std::vector<WordPath> allValidWordPaths;
-    // Pre-allocate memory, assuming a typical hit rate for words.
     allValidWordPaths.reserve(allDictionaryWords.size() / 100);
 
     for (const std::string &word : allDictionaryWords)
     {
-        // For each word in the dictionary, find all ways it can be formed using the puzzle letters.
         std::vector<WordPath> paths = getWordPaths(word, puzzleData, minLength);
-        // Add all found paths for this word to the main list of valid word paths.
         allValidWordPaths.insert(allValidWordPaths.end(), paths.begin(), paths.end());
     }
-    profiler.profileEnd("filterWords");
     return allValidWordPaths;
 }
 
-// Sorts a vector of WordPath objects by their word string length.
-void sortWordPathsByLength(std::vector<WordPath> &wordPaths, const bool ascending = true)
-{
-    profiler.profileStart("sortWordPathsByLength");
-    auto compAscending = [](const WordPath &a, const WordPath &b)
-    {
-        return a.wordString.length() < b.wordString.length();
-    };
+// --- Solution Finding (Multi-Stage Process) ---
 
-    auto compDescending = [](const WordPath &a, const WordPath &b)
-    {
-        return a.wordString.length() > b.wordString.length();
-    };
-
-    if (ascending)
-    {
-        std::stable_sort(wordPaths.begin(), wordPaths.end(), compAscending);
-    }
-    else
-    {
-        std::stable_sort(wordPaths.begin(), wordPaths.end(), compDescending);
-    }
-    profiler.profileEnd("sortWordPathsByLength");
-}
-
-// --- OPTIMIZED RECURSIVE SOLUTION FINDER ---
-
-// Helper to reconstruct the print string from word path indices.
-std::string reconstructPrintString(const std::vector<size_t> &wordPathIndices, const std::vector<WordPath> &allValidWordPaths)
+// Helper to reconstruct a string from a path of WordPath pointers.
+std::string reconstructPrintString(const std::vector<const WordPath *> &wordPathPtrs)
 {
     std::string printStr = "";
-    for (size_t i = 0; i < wordPathIndices.size(); ++i)
+    for (size_t i = 0; i < wordPathPtrs.size(); ++i)
     {
         if (i > 0)
         {
             printStr += " ";
         }
-        printStr += allValidWordPaths[wordPathIndices[i]].wordString;
+        printStr += wordPathPtrs[i]->wordString;
     }
     return printStr;
 }
 
-/**
- * @brief Recursively finds solutions using a Depth-First Search (DFS) approach.
- *
- * @param lastWordPathIndex The index in `allValidWordPaths` of the word we are extending.
- * @param currentPathIndices The vector of word indices forming the current chain.
- * @param lettersCovered The set of unique characters covered by the current chain.
- * @param currentDepth The current number of words in the chain.
- * @param maxDepth The maximum number of words allowed in a solution.
- * @param allValidWordPaths A constant reference to the master list of all valid word paths.
- * @param puzzleData A constant reference to the puzzle data.
- * @param letterIndexers A constant reference to the start/end indices for words.
- * @param solutions A reference to the vector where final solutions are stored.
- */
-void findSolutionsRecursive(
-    size_t lastWordPathIndex,
-    std::vector<size_t> currentPathIndices,
+// STAGE 3: Expands a solution path of classes into all possible string solutions.
+void expandAndStoreSolutions(
+    const std::vector<const EquivalenceClass *> &classPath,
+    std::vector<const WordPath *> &currentWordChain,
+    int depth,
+    std::vector<Solution> &finalSolutions)
+{
+    // Base case: We have selected one word for each class in the path.
+    if (depth == classPath.size())
+    {
+        finalSolutions.push_back({reconstructPrintString(currentWordChain), (int)currentWordChain.size()});
+        return;
+    }
+
+    // Recursive step: Iterate through all words in the current class.
+    const EquivalenceClass *currentClass = classPath[depth];
+    for (const WordPath *wordPtr : currentClass->words)
+    {
+        currentWordChain.push_back(wordPtr);
+        expandAndStoreSolutions(classPath, currentWordChain, depth + 1, finalSolutions);
+        currentWordChain.pop_back(); // Backtrack
+    }
+}
+
+// STAGE 2: Recursively finds solutions using a DFS on Equivalence Classes.
+void findClassSolutionsRecursive(
+    const EquivalenceClass *lastClass,
+    std::vector<const EquivalenceClass *> currentClassPath,
     std::set<char> lettersCovered,
     int currentDepth,
     const int maxDepth,
-    const std::vector<WordPath> &allValidWordPaths,
+    const std::vector<EquivalenceClass> &allEqClasses,
+    const std::vector<CharStartIndexer> &classIndexers, // Indexer for classes
     const PuzzleData &puzzleData,
-    const CharStartIndexer letterIndexers[26],
-    std::vector<Solution> &solutions)
+    std::vector<std::vector<const EquivalenceClass *>> &classSolutions)
 {
-    // Base case: If we have reached the maximum search depth, stop this path.
     if (currentDepth >= maxDepth)
     {
         return;
     }
 
-    const WordPath &lastWord = allValidWordPaths[lastWordPathIndex];
-    char connectingChar = puzzleData.allLetters[lastWord.charGlobalIndexes.back()];
-    int connectingIndex = lastWord.charGlobalIndexes.back();
+    char connectingChar = puzzleData.allLetters[lastClass->key.endIndex];
+    int connectingIndex = lastClass->key.endIndex;
 
-    // Use the pre-computed indexer to find candidate words efficiently.
-    const auto &indexer = letterIndexers[connectingChar - 'a'];
-    for (int w = indexer.start; w < indexer.end; ++w)
+    const auto &indexer = classIndexers[connectingChar - 'a'];
+    for (int i = indexer.start; i < indexer.end; ++i)
     {
-        const WordPath &nextWord = allValidWordPaths[w];
-
-        // Chaining rule: next word must start with the exact same global letter index.
-        if (nextWord.charGlobalIndexes[0] == connectingIndex)
+        const EquivalenceClass &nextClass = allEqClasses[i];
+        if (nextClass.key.startIndex == connectingIndex)
         {
-            // Create copies for the new recursive path
-            std::vector<size_t> newPathIndices = currentPathIndices;
-            newPathIndices.push_back(w);
-
             std::set<char> newLettersCovered = lettersCovered;
-            for (size_t i = 1; i < nextWord.charGlobalIndexes.size(); ++i) // Start from 1, as char 0 is the connector
-            {
-                newLettersCovered.insert(puzzleData.allLetters[nextWord.charGlobalIndexes[i]]);
-            }
+            newLettersCovered.insert(nextClass.key.usedChars.begin(), nextClass.key.usedChars.end());
 
-            // Check if this new chain is a solution.
+            std::vector<const EquivalenceClass *> newClassPath = currentClassPath;
+            newClassPath.push_back(&nextClass);
+
             if (newLettersCovered.size() == puzzleData.uniquePuzzleLetters.size())
             {
-                solutions.push_back({reconstructPrintString(newPathIndices, allValidWordPaths), (int)newPathIndices.size()});
+                classSolutions.push_back(newClassPath);
             }
-            else
-            {
-                // Recurse to find longer chains.
-                findSolutionsRecursive(w, newPathIndices, newLettersCovered, currentDepth + 1, maxDepth, allValidWordPaths, puzzleData, letterIndexers, solutions);
-            }
+
+            // Continue searching to find longer solutions that might start with the same path.
+            findClassSolutionsRecursive(&nextClass, newClassPath, newLettersCovered, currentDepth + 1, maxDepth, allEqClasses, classIndexers, puzzleData, classSolutions);
         }
     }
 }
@@ -255,8 +245,9 @@ int main()
 {
     std::cout << "Reading word file...\n\n";
 
-    std::string file_path = __FILE__;
-    std::filesystem::path current_dir = std::filesystem::path(file_path).parent_path();
+    // Determine the path to the words.txt file relative to the executable.
+    std::string file_path_str = __FILE__;
+    std::filesystem::path current_dir = std::filesystem::path(file_path_str).parent_path();
     std::ifstream file(current_dir / "words.txt");
 
     std::vector<std::string> allDictionaryWords;
@@ -265,51 +256,47 @@ int main()
     {
         while (std::getline(file, line))
         {
-            allDictionaryWords.push_back(line);
+            allDictionaryWords.push_back(stringToLower(line));
         }
         file.close();
         std::cout << "Loaded " << allDictionaryWords.size() << " words from dictionary.\n\n";
     }
     else
     {
-        std::cerr << "Error: Could not open words.txt. Please ensure 'words.txt' is in the same directory as the executable.\n";
+        std::cerr << "Error: Could not open words.txt. Please ensure it's in the same directory as the executable.\n";
         std::cout << "\nPress any key to exit.\n";
-        _getch(); // Wait for user acknowledgment
-        return 1; // Exit with error
+        _getch();
+        return 1;
     }
 
-    profiler.start();
-
-    std::string side1 = "uvj";
-    std::string side2 = "swi";
-    std::string side3 = "tge";
-    std::string side4 = "bac";
+    // --- Puzzle Configuration ---
+    std::string side1 = "uvj", side2 = "swi", side3 = "tge", side4 = "bac";
     int minWordLength = 3;
-    int maxDepth = 3;
+    int maxDepth = 2; // Max words in a solution
 
     PuzzleData puzzleData;
     for (int i = 0; i < 3; ++i)
     {
         puzzleData.allLetters[i] = side1[i];
-        puzzleData.letterToSideMapping[i] = 0; // Side 0
+        puzzleData.letterToSideMapping[i] = 0;
         puzzleData.uniquePuzzleLetters.insert(side1[i]);
     }
     for (int i = 0; i < 3; ++i)
     {
         puzzleData.allLetters[i + 3] = side2[i];
-        puzzleData.letterToSideMapping[i + 3] = 1; // Side 1
+        puzzleData.letterToSideMapping[i + 3] = 1;
         puzzleData.uniquePuzzleLetters.insert(side2[i]);
     }
     for (int i = 0; i < 3; ++i)
     {
         puzzleData.allLetters[i + 6] = side3[i];
-        puzzleData.letterToSideMapping[i + 6] = 2; // Side 2
+        puzzleData.letterToSideMapping[i + 6] = 2;
         puzzleData.uniquePuzzleLetters.insert(side3[i]);
     }
     for (int i = 0; i < 3; ++i)
     {
         puzzleData.allLetters[i + 9] = side4[i];
-        puzzleData.letterToSideMapping[i + 9] = 3; // Side 3
+        puzzleData.letterToSideMapping[i + 9] = 3;
         puzzleData.uniquePuzzleLetters.insert(side4[i]);
     }
 
@@ -317,90 +304,108 @@ int main()
     std::cout << "Minimum word length = " << minWordLength << "\n";
     std::cout << "Maximum chain length = " << maxDepth << "\n\n";
 
-    std::cout << "Filtering dictionary for valid words...\n\n";
+    profiler.start();
+
+    // --- STAGE 1: Filter dictionary and create all raw WordPath objects ---
+    std::cout << "Filtering dictionary for valid words...\n";
     std::vector<WordPath> allValidWordPaths = filterWords(allDictionaryWords, puzzleData, minWordLength);
-
-    // Sorting and indexing logic (same as original)
-    std::sort(allValidWordPaths.begin(), allValidWordPaths.end(),
-              [](const WordPath &a, const WordPath &b)
-              { return a.wordString[0] < b.wordString[0]; });
-
-    CharStartIndexer letterIndexers[26];
-    for (int k = 0; k < 26; ++k)
-    {
-        letterIndexers[k].start = 0;
-        letterIndexers[k].end = 0;
-    }
-
-    if (!allValidWordPaths.empty())
-    {
-        char currentChar = allValidWordPaths[0].wordString[0];
-        letterIndexers[currentChar - 'a'].start = 0;
-        for (size_t i = 0; i < allValidWordPaths.size(); ++i)
-        {
-            if (allValidWordPaths[i].wordString[0] != currentChar)
-            {
-                letterIndexers[currentChar - 'a'].end = static_cast<int>(i);
-                currentChar = allValidWordPaths[i].wordString[0];
-                letterIndexers[currentChar - 'a'].start = static_cast<int>(i);
-            }
-        }
-        letterIndexers[currentChar - 'a'].end = static_cast<int>(allValidWordPaths.size());
-    }
-
     std::cout << allValidWordPaths.size() << " valid word path(s) found.\n\n";
 
-    std::cout << "Searching for all possible word chains...\n\n";
-
-    // --- NEW DFS-BASED SEARCH ---
-    std::vector<Solution> solutions;
-
-    // Iterate through every valid word as a potential start to a chain.
-    for (size_t i = 0; i < allValidWordPaths.size(); ++i)
+    // --- STAGE 2: Group WordPaths into Equivalence Classes ---
+    std::cout << "Building equivalence classes...\n";
+    std::map<EquivalenceKey, EquivalenceClass> eqClassMap;
+    for (const auto &wp : allValidWordPaths)
     {
-        const auto &startWord = allValidWordPaths[i];
-
-        // 1. Check if the single word is a solution itself.
-        std::set<char> initialLetters;
-        for (int globalIdx : startWord.charGlobalIndexes)
+        EquivalenceKey key;
+        key.startIndex = wp.charGlobalIndexes.front();
+        key.endIndex = wp.charGlobalIndexes.back();
+        for (int idx : wp.charGlobalIndexes)
         {
-            initialLetters.insert(puzzleData.allLetters[globalIdx]);
+            key.usedChars.insert(puzzleData.allLetters[idx]);
         }
-
-        if (initialLetters.size() == puzzleData.uniquePuzzleLetters.size())
-        {
-            solutions.push_back({startWord.wordString, 1});
-        }
-
-        // 2. Start the recursive search for longer chains starting with this word.
-        findSolutionsRecursive(i, {i}, initialLetters, 1, maxDepth, allValidWordPaths, puzzleData, letterIndexers, solutions);
+        eqClassMap[key].words.push_back(&wp);
     }
+
+    std::vector<EquivalenceClass> allEqClasses;
+    allEqClasses.reserve(eqClassMap.size());
+    for (auto &pair : eqClassMap)
+    {
+        pair.second.key = pair.first;
+        allEqClasses.push_back(pair.second);
+    }
+    std::cout << allEqClasses.size() << " unique equivalence classes created.\n\n";
+
+    // --- STAGE 3: Find solutions using the equivalence class graph ---
+    std::cout << "Searching for class-based solution paths...\n";
+
+    std::sort(allEqClasses.begin(), allEqClasses.end(),
+              [&](const EquivalenceClass &a, const EquivalenceClass &b)
+              {
+                  return puzzleData.allLetters[a.key.startIndex] < puzzleData.allLetters[b.key.startIndex];
+              });
+
+    std::vector<CharStartIndexer> classIndexers(26);
+    if (!allEqClasses.empty())
+    {
+        char currentChar = puzzleData.allLetters[allEqClasses[0].key.startIndex];
+        classIndexers[currentChar - 'a'].start = 0;
+        for (size_t i = 0; i < allEqClasses.size(); ++i)
+        {
+            char c = puzzleData.allLetters[allEqClasses[i].key.startIndex];
+            if (c != currentChar)
+            {
+                classIndexers[currentChar - 'a'].end = static_cast<int>(i);
+                currentChar = c;
+                classIndexers[currentChar - 'a'].start = static_cast<int>(i);
+            }
+        }
+        classIndexers[currentChar - 'a'].end = static_cast<int>(allEqClasses.size());
+    }
+
+    std::vector<std::vector<const EquivalenceClass *>> classSolutions;
+    for (const auto &startClass : allEqClasses)
+    {
+        if (startClass.key.usedChars.size() == puzzleData.uniquePuzzleLetters.size())
+        {
+            classSolutions.push_back({&startClass});
+        }
+        findClassSolutionsRecursive(&startClass, {&startClass}, startClass.key.usedChars, 1, maxDepth, allEqClasses, classIndexers, puzzleData, classSolutions);
+    }
+    std::cout << classSolutions.size() << " abstract solution path(s) found.\n\n";
+
+    // --- STAGE 4: Expand class solutions into final string solutions ---
+    std::cout << "Expanding solutions into word combinations...\n";
+    std::vector<Solution> finalSolutions;
+    for (const auto &classPath : classSolutions)
+    {
+        std::vector<const WordPath *> currentWordChain;
+        expandAndStoreSolutions(classPath, currentWordChain, 0, finalSolutions);
+    }
+    std::cout << "Expansion complete.\n\n";
 
     profiler.end();
     profiler.logProfilerData();
 
-    // Sort and print the final solutions
-    std::sort(solutions.begin(), solutions.end(), [](const Solution &a, const Solution &b)
+    // --- Sort, unique, and print final solutions ---
+    std::sort(finalSolutions.begin(), finalSolutions.end(), [](const Solution &a, const Solution &b)
               {
-        if (a.wordCount != b.wordCount)
-            return a.wordCount < b.wordCount;
+        if (a.wordCount != b.wordCount) return a.wordCount < b.wordCount;
         return a.text < b.text; });
 
-    // Remove duplicate solutions
-    solutions.erase(std::unique(solutions.begin(), solutions.end(), [](const Solution &a, const Solution &b)
-                                { return a.text == b.text; }),
-                    solutions.end());
+    finalSolutions.erase(std::unique(finalSolutions.begin(), finalSolutions.end(), [](const Solution &a, const Solution &b)
+                                     { return a.text == b.text; }),
+                         finalSolutions.end());
 
-    for (const auto &s : solutions)
+    for (const auto &s : finalSolutions)
     {
         std::cout << s.text << "\n";
     }
-    if (!solutions.empty())
+    if (!finalSolutions.empty())
     {
         std::cout << "\n";
     }
 
-    std::cout << solutions.size() << " total solution(s) found.\n";
+    std::cout << finalSolutions.size() << " total solution(s) found.\n";
 
     std::cout << "\nPress any key to exit.\n";
     _getch();
