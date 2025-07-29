@@ -67,7 +67,8 @@
         "sstream": "cpp",
         "set": "cpp",
         "regex": "cpp",
-        "array": "cpp"
+        "array": "cpp",
+        "bitset": "cpp"
     },
     "C_Cpp.default.cppStandard": "c++20",
     "clangd.arguments": [
