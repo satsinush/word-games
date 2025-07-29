@@ -15,3 +15,48 @@ Profiler Data: Average time, Count, Total time, Percent
 Total Run time: 9.418365s
 Profiler Data: Average time, Count, Total time, Percent
      Profiler: 0.000000ms, 0, 0.000000s, 0%
+
+Total Run time: 9.389203s
+Profiler Data: Average time, Count, Total time, Percent
+     Profiler: 0.000000ms, 0, 0.000000s, 0%
+
+Total Run time: 9.223154s
+Profiler Data: Average time, Count, Total time, Percent
+     Profiler: 0.000000ms, 0, 0.000000s, 0%
+
+Total Run time: 8.968901s
+Profiler Data: Average time, Count, Total time, Percent
+     Profiler: 0.000000ms, 0, 0.000000s, 0%
+
+Total Run time: 10.054954s
+Profiler Data: Average time, Count, Total time, Percent
+     Profiler: 0.000000ms, 0, 0.000000s, 0%
+
+Total Run time: 1.675148s
+Profiler Data: Average time, Count, Total time, Percent
+     Profiler: 0.000000ms, 0, 0.000000s, 0%
+
+Total Run time: 1.665629s
+Profiler Data: Average time, Count, Total time, Percent
+     Profiler: 0.000000ms, 0, 0.000000s, 0%
+
+Total Run time: 1.663486s
+Profiler Data: Average time, Count, Total time, Percent
+     Profiler: 0.000000ms, 0, 0.000000s, 0%
+
+Total Run time: 1.665688s
+Profiler Data: Average time, Count, Total time, Percent
+     Profiler: 0.000000ms, 0, 0.000000s, 0%
+
+Total Run time: 1.448858s
+Profiler Data: Average time, Count, Total time, Percent
+     Profiler: 0.000000ms, 0, 0.000000s, 0%
+
+Total Run time: 1.460737s
+Profiler Data: Average time, Count, Total time, Percent
+     Profiler: 0.000000ms, 0, 0.000000s, 0%
+
+Total Run time: 1.471447s
+Profiler Data: Average time, Count, Total time, Percent
+     Profiler: 0.000000ms, 0, 0.000000s, 0%
+
