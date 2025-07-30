@@ -65,53 +65,31 @@ Config getUserConfiguration()
     Config config;
     config.letters.fill('*');
 
-    // --- Step 1: Get the 12 puzzle letters as a single line ---
+    // --- Step 1: Get the 12 puzzle letters, allowing spaces or no spaces ---
     while (true)
     {
-        std::cout << "\nEnter the 12 puzzle letters as 4 groups of 3 letters, separated by spaces (e.g. abc def ghi jkl):" << std::endl;
+        std::cout << "\nEnter the 12 puzzle letters so that the letters on each side are next to each other:" << std::endl;
         std::string input;
         std::getline(std::cin, input);
 
-        // Remove extra whitespace and split into groups
-        std::vector<std::string> groups;
-        size_t pos = 0, prev = 0;
-        while ((pos = input.find(' ', prev)) != std::string::npos)
-        {
-            std::string group = input.substr(prev, pos - prev);
-            if (!group.empty())
-                groups.push_back(group);
-            prev = pos + 1;
-        }
-        std::string lastGroup = input.substr(prev);
-        if (!lastGroup.empty())
-            groups.push_back(lastGroup);
+        // Remove all whitespace
+        input.erase(std::remove_if(input.begin(), input.end(), ::isspace), input.end());
 
-        if (groups.size() != 4 ||
-            groups[0].size() != 3 ||
-            groups[1].size() != 3 ||
-            groups[2].size() != 3 ||
-            groups[3].size() != 3)
+        if (input.size() != 12)
         {
-            std::cout << "Invalid format. Please enter exactly 4 groups of 3 letters." << std::endl;
+            std::cout << "Invalid input. Please enter exactly 12 letters." << std::endl;
             continue;
         }
 
-        // Fill config.letters
-        int idx = 0;
         bool valid = true;
-        for (const auto &group : groups)
+        for (size_t i = 0; i < 12; ++i)
         {
-            for (char c : group)
+            if (!isalpha(static_cast<unsigned char>(input[i])))
             {
-                if (!isalpha(static_cast<unsigned char>(c)))
-                {
-                    valid = false;
-                    break;
-                }
-                config.letters[idx++] = std::tolower(static_cast<unsigned char>(c));
-            }
-            if (!valid)
+                valid = false;
                 break;
+            }
+            config.letters[i] = std::tolower(static_cast<unsigned char>(input[i]));
         }
         if (!valid)
         {
@@ -128,9 +106,9 @@ Config getUserConfiguration()
 
     std::string minLengthStr = promptForValue("Enter minimum word length", "3");
     std::string minUniqueStr = promptForValue("Enter minimum unique letters per word", "2");
-    std::string maxDepthStr = promptForValue("Enter max solution depth (words)", "3");
-    std::string prunePathsStr = promptForValue("Prune redundant paths? (1=Y, 0=N)", "1");
-    std::string pruneClassesStr = promptForValue("Prune dominated classes? (1=Y, 0=N)", "1");
+    std::string maxDepthStr = promptForValue("Enter max solution depth (words)", "2");
+    std::string prunePathsStr = promptForValue("Prune redundant paths? (1: Yes, 0: No)", "1");
+    std::string pruneClassesStr = promptForValue("Prune dominated classes? (1: Yes, 0: No)", "1");
 
     // Parse final values from strings into the config struct
     try
@@ -214,7 +192,7 @@ int main()
             finalSolutions);
         profiler.end();
 
-        profiler.logProfilerData();
+        // profiler.logProfilerData();
 
         // Print results in reverse order
         for (int i = static_cast<int>(finalSolutions.size()) - 1; i >= 0; --i)
