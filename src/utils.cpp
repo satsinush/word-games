@@ -259,4 +259,9 @@ namespace Utils
         }
         log("");
     }
+
+    double Profiler::getTotalTime()
+    {
+        return this->endTime - this->startTime;
+    }
 } // namespace Utils

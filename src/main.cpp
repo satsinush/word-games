@@ -31,8 +31,7 @@ void drawPuzzleBox(const std::array<char, 12> &letters, bool clearScreen = true)
     auto up = [](char c)
     { return static_cast<char>(std::toupper(static_cast<unsigned char>(c))); };
 
-    std::cout << "--- NYT Letter Boxed Solver ---" << std::endl
-              << std::endl;
+    std::cout << std::endl;
     std::cout << "      " << up(letters[0]) << " " << up(letters[1]) << " " << up(letters[2]) << std::endl;
     std::cout << "    +-------+" << std::endl;
     std::cout << "  " << up(letters[11]) << " |       | " << up(letters[3]) << std::endl;
@@ -58,7 +57,7 @@ std::string promptForValue(const std::string &prompt, const std::string &default
 }
 
 /**
- * @brief Gathers all puzzle settings from the user via a sequential console input process.
+ * @brief Gathers all puzzle settings from the user via a single-line input process.
  * @return A Config struct populated with the user's settings.
  */
 Config getUserConfiguration()
@@ -66,53 +65,64 @@ Config getUserConfiguration()
     Config config;
     config.letters.fill('*');
 
-    // --- Step 1: Get and confirm the 12 puzzle letters ---
-    int letterIndex = 0;
+    // --- Step 1: Get the 12 puzzle letters as a single line ---
     while (true)
     {
-        drawPuzzleBox(config.letters);
+        std::cout << "\nEnter the 12 puzzle letters as 4 groups of 3 letters, separated by spaces (e.g. abc def ghi jkl):" << std::endl;
+        std::string input;
+        std::getline(std::cin, input);
 
-        // Display the appropriate prompt based on the current state
-        if (letterIndex < 12)
+        // Remove extra whitespace and split into groups
+        std::vector<std::string> groups;
+        size_t pos = 0, prev = 0;
+        while ((pos = input.find(' ', prev)) != std::string::npos)
         {
-            std::cout << "Enter letter " << letterIndex + 1 << " of 12. Use Backspace to correct." << std::endl;
+            std::string group = input.substr(prev, pos - prev);
+            if (!group.empty())
+                groups.push_back(group);
+            prev = pos + 1;
         }
-        else
+        std::string lastGroup = input.substr(prev);
+        if (!lastGroup.empty())
+            groups.push_back(lastGroup);
+
+        if (groups.size() != 4 ||
+            groups[0].size() != 3 ||
+            groups[1].size() != 3 ||
+            groups[2].size() != 3 ||
+            groups[3].size() != 3)
         {
-            std::cout << "All letters entered. Press Enter to confirm, or Backspace to change." << std::endl;
+            std::cout << "Invalid format. Please enter exactly 4 groups of 3 letters." << std::endl;
+            continue;
         }
 
-        char key = _getch();
-
-        // Handle logic based on whether we are confirming or still entering letters
-        if (letterIndex >= 12)
+        // Fill config.letters
+        int idx = 0;
+        bool valid = true;
+        for (const auto &group : groups)
         {
-            if (key == '\r')
-            { // Enter confirms and breaks the loop
-                break;
-            }
-            else if (key == 8)
-            { // Backspace allows editing
-                config.letters[letterIndex] = '*';
-                config.letters[--letterIndex] = '_';
-            }
-        }
-        else
-        { // Still entering letters
-            if (isalpha(static_cast<unsigned char>(key)))
+            for (char c : group)
             {
-                config.letters[letterIndex++] = tolower(static_cast<unsigned char>(key));
+                if (!isalpha(static_cast<unsigned char>(c)))
+                {
+                    valid = false;
+                    break;
+                }
+                config.letters[idx++] = std::tolower(static_cast<unsigned char>(c));
             }
-            else if (key == 8 && letterIndex > 0)
-            { // Backspace
-                config.letters[letterIndex] = '*';
-                config.letters[--letterIndex] = '_';
-            }
+            if (!valid)
+                break;
         }
+        if (!valid)
+        {
+            std::cout << "All characters must be letters." << std::endl;
+            continue;
+        }
+        break;
     }
 
     // --- Step 2: Get solver options using std::cin ---
-    drawPuzzleBox(config.letters);
+    drawPuzzleBox(config.letters, false);
     std::cout << "Configure solver options. Press Enter to accept the default value." << std::endl
               << std::endl;
 
@@ -181,23 +191,21 @@ int main()
             return 1;
         }
 
-        // Setup PuzzleData from the user's configuration
         PuzzleData puzzleData;
         puzzleData.allLetters = config.letters;
         for (int i = 0; i < 3; ++i)
-            puzzleData.letterToSideMapping[i] = 0; // Top
+            puzzleData.letterToSideMapping[i] = 0;
         for (int i = 3; i < 6; ++i)
-            puzzleData.letterToSideMapping[i] = 1; // Right
+            puzzleData.letterToSideMapping[i] = 1;
         for (int i = 6; i < 9; ++i)
-            puzzleData.letterToSideMapping[i] = 2; // Bottom
+            puzzleData.letterToSideMapping[i] = 2;
         for (int i = 9; i < 12; ++i)
-            puzzleData.letterToSideMapping[i] = 3; // Left
+            puzzleData.letterToSideMapping[i] = 3;
         for (int i = 0; i < 12; ++i)
             puzzleData.uniquePuzzleLetters.set(i);
 
         std::vector<Solution> finalSolutions;
 
-        // Run the solver
         profiler.start();
         runLetterBoxedSolver(
             puzzleData,
@@ -208,21 +216,32 @@ int main()
 
         profiler.logProfilerData();
 
-        // Print results
-        for (const auto &s : finalSolutions)
+        // Print results in reverse order
+        for (int i = static_cast<int>(finalSolutions.size()) - 1; i >= 0; --i)
         {
-            std::cout << s.text << "\n";
-        }
-        if (!finalSolutions.empty())
-        {
-            std::cout << "\n";
+            std::cout << finalSolutions[i].text << "\n";
         }
 
-        std::cout << finalSolutions.size() << " total solution(s) found.\n";
-        std::cout << "\nPress 'q' to quit, or any other key to run again.\n";
-        char ch = _getch();
-        if (ch == 'q' || ch == 'Q')
-            break;
+        std::cout << "\nFound " << finalSolutions.size() << " solution(s) in " << profiler.getTotalTime() << " seconds. Enter 'q' to quit, or 'r' to restart.\n\n";
+
+        while (true)
+        {
+            std::string input;
+            std::getline(std::cin, input);
+            if (!input.empty())
+            {
+                if (input[0] == 'q' || input[0] == 'Q')
+                {
+                    std::cout << finalSolutions.size() << " total solution(s) found.\n";
+                    return 0;
+                }
+                else if (input[0] == 'r' || input[0] == 'R')
+                {
+                    break; // restart outer loop
+                }
+            }
+            // If all solutions shown, only accept 'q' or 'r'
+        }
     }
     return 0;
 }

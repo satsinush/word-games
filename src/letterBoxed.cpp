@@ -386,7 +386,7 @@ void runLetterBoxedSolver(
 
     std::sort(finalSolutions.begin(), finalSolutions.end(), [](const Solution &a, const Solution &b)
               {
-        if (a.wordCount != b.wordCount) return a.wordCount > b.wordCount;
+        if (a.wordCount != b.wordCount) return a.wordCount < b.wordCount;
         return a.text < b.text; });
 
     finalSolutions.erase(std::unique(finalSolutions.begin(), finalSolutions.end(), [](const Solution &a, const Solution &b)

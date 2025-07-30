@@ -62,6 +62,7 @@ namespace Utils
         void end();
         void logChildProfiles(functionProfile &profile, int depth);
         void logProfilerData();
+        double getTotalTime();
     };
 
 } // namespace Utils
