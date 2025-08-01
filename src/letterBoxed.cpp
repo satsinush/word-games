@@ -10,6 +10,7 @@
 #include <filesystem>
 #include <fstream>
 #include <cctype>
+#include <unordered_set>
 
 using namespace std;
 
@@ -79,7 +80,7 @@ std::string reconstructPrintString(const std::vector<const WordPath *> &wordPath
 
 // Recursive helper for generating all valid WordPath objects for a given string word.
 void findWordPathsRecursive(
-    const std::string &word,
+    const Word &wordObj,
     const PuzzleData &puzzleData,
     std::vector<WordPath> &results,
     std::vector<int> &currentPathGlobalIndexes,
@@ -87,15 +88,15 @@ void findWordPathsRecursive(
     int depth,
     std::vector<int> &allPathIndices)
 {
-    if (depth == word.length())
+    if (depth == wordObj.word.length())
     {
         int offset = static_cast<int>(allPathIndices.size());
         allPathIndices.insert(allPathIndices.end(), currentPathGlobalIndexes.begin(), currentPathGlobalIndexes.end());
-        results.push_back({offset, static_cast<int>(currentPathGlobalIndexes.size()), puzzleData.letterToSideMapping[currentPathGlobalIndexes.back()]});
+        results.push_back({offset, static_cast<int>(currentPathGlobalIndexes.size()), puzzleData.letterToSideMapping[currentPathGlobalIndexes.back()], wordObj.order, wordObj.count});
         return;
     }
 
-    char targetChar = word[depth];
+    char targetChar = wordObj.word[depth];
     for (int globalIdx = 0; globalIdx < puzzleData.allLetters.size(); ++globalIdx)
     {
         if (puzzleData.allLetters[globalIdx] == targetChar)
@@ -106,7 +107,7 @@ void findWordPathsRecursive(
                 continue;
             }
             currentPathGlobalIndexes.push_back(globalIdx);
-            findWordPathsRecursive(word, puzzleData, results, currentPathGlobalIndexes, currentSide, depth + 1, allPathIndices);
+            findWordPathsRecursive(wordObj, puzzleData, results, currentPathGlobalIndexes, currentSide, depth + 1, allPathIndices);
             currentPathGlobalIndexes.pop_back(); // Backtrack
         }
     }
@@ -121,13 +122,17 @@ int getLetterBitIndex(char c, const std::array<char, 12> &allLetters)
     return -1;
 }
 
-std::vector<WordPath> filterWords(const std::vector<std::string> &allDictionaryWords, const PuzzleData &puzzleData, const int minLength, const int minUniqueLetters, std::vector<int> &allPathIndices)
+// Update WordPath to include order (already in header, just use here)
+
+// Update filterWords to take vector<Word> and propagate order to WordPath
+std::vector<WordPath> filterWords(const std::vector<Word> &allDictionaryWords, const PuzzleData &puzzleData, const int minLength, const int minUniqueLetters, std::vector<int> &allPathIndices)
 {
     std::vector<WordPath> allValidWordPaths;
     allValidWordPaths.reserve(allDictionaryWords.size() / 100);
 
-    for (const std::string &word : allDictionaryWords)
+    for (const Word &wordObj : allDictionaryWords)
     {
+        const std::string &word = wordObj.word;
         std::bitset<12> uniqueChars;
         bool containsInvalidCharacter = false;
         for (char c : word)
@@ -149,7 +154,7 @@ std::vector<WordPath> filterWords(const std::vector<std::string> &allDictionaryW
 
         std::vector<int> currentPathGlobalIndexes;
         std::vector<WordPath> paths;
-        findWordPathsRecursive(word, puzzleData, paths, currentPathGlobalIndexes, -1, 0, allPathIndices);
+        findWordPathsRecursive(wordObj, puzzleData, paths, currentPathGlobalIndexes, -1, 0, allPathIndices);
         allValidWordPaths.insert(allValidWordPaths.end(), paths.begin(), paths.end());
     }
     return allValidWordPaths;
@@ -169,7 +174,34 @@ void expandAndStoreSolutions(
     // Base case: We have selected one word for each class in the path.
     if (depth == classPath.size())
     {
-        finalSolutions.push_back({reconstructPrintString(currentWordChain, puzzleData, allPathIndices), (int)currentWordChain.size()});
+        int orderMin = currentWordChain.empty() ? 0 : currentWordChain[0]->order;
+        int orderMax = orderMin;
+        int orderSum = 0;
+        int countMin = currentWordChain.empty() ? 0 : currentWordChain[0]->count;
+        int countMax = countMin;
+        int countSum = 0;
+        for (const WordPath *wp : currentWordChain)
+        {
+            if (wp->order < orderMin)
+                orderMin = wp->order;
+            if (wp->order > orderMax)
+                orderMax = wp->order;
+            orderSum += wp->order;
+
+            if (wp->count < countMin)
+                countMin = wp->count;
+            if (wp->count > countMax)
+                countMax = wp->count;
+            countSum += wp->count;
+        }
+        finalSolutions.push_back({reconstructPrintString(currentWordChain, puzzleData, allPathIndices),
+                                  (int)currentWordChain.size(),
+                                  orderMin,
+                                  orderSum,
+                                  orderMax,
+                                  countMin,
+                                  countSum,
+                                  countMax});
         return;
     }
 
@@ -287,18 +319,13 @@ void pruneDominatedClasses(std::vector<EquivalenceClass> &allEqClasses)
 
 void runLetterBoxedSolver(
     const PuzzleData &puzzleData,
-    const std::vector<std::string> &allDictionaryWords,
+    const std::vector<Word> &allDictionaryWords,
     const Config &config,
     std::vector<Solution> &finalSolutions)
 {
     // Create a vector to hold all character indices for all valid word paths.
     std::vector<int> allPathIndices;
-
-    // Filter words from the dictionary based on the puzzle configuration.
     std::vector<WordPath> allValidWordPaths = filterWords(allDictionaryWords, puzzleData, config.minWordLength, config.minUniqueLetters, allPathIndices);
-
-    std::cout << "Found " << allValidWordPaths.size() << " valid word paths.\n"
-              << std::endl;
 
     // Create equivalence classes based on the valid word paths.
     std::unordered_map<EquivalenceKey, EquivalenceClass, EquivalenceKeyHash> eqClassMap;
@@ -323,15 +350,10 @@ void runLetterBoxedSolver(
         allEqClasses.push_back(pair.second);
     }
 
-    std::cout << "Found " << allEqClasses.size() << " equivalence classes.\n"
-              << std::endl;
-
     // If pruning dominated classes is enabled, remove dominated classes.
     if (config.pruneDominatedClasses)
     {
         pruneDominatedClasses(allEqClasses);
-        std::cout << "Kept " << allEqClasses.size() << " equivalence classes after pruning dominated classes.\n"
-                  << std::endl;
     }
 
     // Sort equivalence classes by the starting letter for efficient processing.
@@ -372,24 +394,30 @@ void runLetterBoxedSolver(
         findClassSolutionsRecursive(&startClass, currentClassPath, covered, 1, config.maxDepth, config.pruneRedundantPaths, allEqClasses, classIndexers, puzzleData, classSolutions);
     }
 
-    std::cout << "Found " << classSolutions.size() << " abstract class solutions.\n"
-              << std::endl;
-
+    // Expand each class solution into all possible word paths and store them in finalSolutions.
     for (const auto &classPath : classSolutions)
     {
         std::vector<const WordPath *> currentWordChain;
         expandAndStoreSolutions(classPath, currentWordChain, 0, finalSolutions, puzzleData, allPathIndices);
     }
 
-    std::cout << "Found " << finalSolutions.size() << " final solutions.\n"
-              << std::endl;
-
     std::sort(finalSolutions.begin(), finalSolutions.end(), [](const Solution &a, const Solution &b)
               {
-        if (a.wordCount != b.wordCount) return a.wordCount < b.wordCount;
-        return a.text < b.text; });
+                    if (a.wordCount != b.wordCount) return a.wordCount < b.wordCount;
+                    if (a.orderMax != b.orderMax) return a.orderMax < b.orderMax;
+                    if (a.countMin != b.countMin) return a.countMin > b.countMin;
+                    if (a.countSum != b.countSum) return a.countSum > b.countSum;
+                    return a.text < b.text; }); // Sort by text last
 
-    finalSolutions.erase(std::unique(finalSolutions.begin(), finalSolutions.end(), [](const Solution &a, const Solution &b)
-                                     { return a.text == b.text; }),
-                         finalSolutions.end());
+    // Deduplicate solutions by their text representation, keeping the first occurrence in sorted order
+    std::vector<Solution> deduped;
+    std::unordered_set<std::string> seen;
+    for (const auto &sol : finalSolutions)
+    {
+        if (seen.insert(sol.text).second)
+        {
+            deduped.push_back(sol);
+        }
+    }
+    finalSolutions = std::move(deduped);
 }

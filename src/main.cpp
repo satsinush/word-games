@@ -9,25 +9,35 @@
 #include <filesystem>
 #include <conio.h>
 #include <algorithm>
+#include <set>
+#include <sstream>
+#include <vector>
+#include <filesystem>
+
+/**
+ * @brief Trim leading/trailing whitespace and convert to lowercase.
+ */
+std::string trimToLower(const std::string &s)
+{
+    size_t start = s.find_first_not_of(" \t\r\n");
+    size_t end = s.find_last_not_of(" \t\r\n");
+    if (start == std::string::npos)
+        return "";
+    std::string out = s.substr(start, end - start + 1);
+    std::transform(out.begin(), out.end(), out.begin(),
+                   [](unsigned char c)
+                   { return std::tolower(c); });
+    return out;
+}
 
 // --- UI Drawing and Input Functions ---
 
 /**
  * @brief Draws the puzzle box with the current letters.
  * @param letters The array of letters to display.
- * @param clearScreen Whether to clear the console before drawing.
  */
-void drawPuzzleBox(const std::array<char, 12> &letters, bool clearScreen = true)
+void drawPuzzleBox(const std::array<char, 12> &letters)
 {
-    if (clearScreen)
-    {
-#ifdef _WIN32
-        system("cls");
-#else
-        std::cout << "\033[2J\033[1;1H";
-#endif
-    }
-
     auto up = [](char c)
     { return static_cast<char>(std::toupper(static_cast<unsigned char>(c))); };
 
@@ -40,20 +50,6 @@ void drawPuzzleBox(const std::array<char, 12> &letters, bool clearScreen = true)
     std::cout << "    +-------+" << std::endl;
     std::cout << "      " << up(letters[8]) << " " << up(letters[7]) << " " << up(letters[6]) << std::endl
               << std::endl;
-}
-
-/**
- * @brief Prompts the user for a value using std::cin, with a default fallback.
- * @param prompt The message to display to the user.
- * @param defaultValue The value to use if the user enters nothing.
- * @return The user's input or the default value.
- */
-std::string promptForValue(const std::string &prompt, const std::string &defaultValue)
-{
-    std::cout << prompt << " (default: " << defaultValue << "): ";
-    std::string input;
-    std::getline(std::cin, input);
-    return input.empty() ? defaultValue : input;
 }
 
 /**
@@ -99,31 +95,82 @@ Config getUserConfiguration()
         break;
     }
 
-    // --- Step 2: Get solver options using std::cin ---
-    drawPuzzleBox(config.letters, false);
+    drawPuzzleBox(config.letters);
+
+    // --- Step 2: Ask for default settings ---
+    std::cout << "Use default solver settings? (Press Enter for yes, any other key to edit): ";
+    std::string useDefault;
+    std::getline(std::cin, useDefault);
+
+    if (useDefault.empty())
+    {
+        // Defaults
+        config.maxDepth = 3;
+        config.minWordLength = 3;
+        config.minUniqueLetters = 2;
+        config.pruneRedundantPaths = true;
+        config.pruneDominatedClasses = true;
+        return config;
+    }
+
+    // --- Step 3: Get solver options using std::cin ---
     std::cout << "Configure solver options. Press Enter to accept the default value." << std::endl
               << std::endl;
 
-    std::string minLengthStr = promptForValue("Enter minimum word length", "3");
-    std::string minUniqueStr = promptForValue("Enter minimum unique letters per word", "2");
-    std::string maxDepthStr = promptForValue("Enter max solution depth (words)", "2");
-    std::string prunePathsStr = promptForValue("Prune redundant paths? (1: Yes, 0: No)", "1");
-    std::string pruneClassesStr = promptForValue("Prune dominated classes? (1: Yes, 0: No)", "1");
+    // Helper lambda for validated integer input
+    auto promptInt = [](const std::string &prompt, int def, int min, int max = -1)
+    {
+        while (true)
+        {
+            std::cout << prompt << " (default: " << def << "): ";
+            std::string input;
+            std::getline(std::cin, input);
+            input = trimToLower(input);
+            if (input.empty())
+                return def;
+            try
+            {
+                int val = std::stoi(input);
+                if (val < min || (max > 0 && val > max))
+                {
+                    std::cout << "Value must be at least " << min;
+                    if (max > 0)
+                        std::cout << " and at most " << max;
+                    std::cout << ".\n";
+                    continue;
+                }
+                return val;
+            }
+            catch (...)
+            {
+                std::cout << "Invalid number. Try again.\n";
+            }
+        }
+    };
 
-    // Parse final values from strings into the config struct
-    try
+    auto promptBool01 = [](const std::string &prompt, int def)
     {
-        config.minWordLength = std::stoi(minLengthStr);
-        config.minUniqueLetters = std::stoi(minUniqueStr);
-        config.maxDepth = std::stoi(maxDepthStr);
-        config.pruneRedundantPaths = (prunePathsStr != "0");
-        config.pruneDominatedClasses = (pruneClassesStr != "0");
-    }
-    catch (const std::invalid_argument &e)
-    {
-        std::cout << "Invalid number entered. Using default values for all options." << std::endl;
-        // Let the default-constructed values in Config persist.
-    }
+        while (true)
+        {
+            std::cout << prompt << " (default: " << def << "): ";
+            std::string input;
+            std::getline(std::cin, input);
+            input = trimToLower(input);
+            if (input.empty())
+                return def != 0;
+            if (input == "0" || input == "n" || input == "no" || input == "f" || input == "false")
+                return false;
+            if (input == "1" || input == "y" || input == "yes" || input == "t" || input == "true")
+                return true;
+            std::cout << "Please enter 0 or 1.\n";
+        }
+    };
+
+    config.maxDepth = promptInt("Max words per solutions", 3, 1, 4);
+    config.minWordLength = promptInt("Min word length", 3, 1);
+    config.minUniqueLetters = promptInt("Min unique letters per word", 2, 1);
+    config.pruneRedundantPaths = promptBool01("Prune redundant paths?", 1);
+    config.pruneDominatedClasses = promptBool01("Prune dominated classes?", 1);
 
     std::cout << std::endl;
     return config;
@@ -136,38 +183,126 @@ int main()
 {
     Utils::Profiler profiler;
 
+    // Try to load wordVec from binary file
+    std::vector<Word> wordVec;
+    std::filesystem::path data_dir = std::filesystem::current_path() / "data";
+    std::ifstream in(data_dir / "words.bin", std::ios::binary);
+    bool loadedFromBin = false;
+    if (in)
+    {
+        try
+        {
+            size_t n;
+            in.read(reinterpret_cast<char *>(&n), sizeof(n));
+            wordVec.resize(n);
+            for (size_t i = 0; i < n; ++i)
+            {
+                size_t len;
+                in.read(reinterpret_cast<char *>(&len), sizeof(len));
+                wordVec[i].word.resize(len);
+                in.read(&wordVec[i].word[0], len);
+                in.read(reinterpret_cast<char *>(&wordVec[i].order), sizeof(wordVec[i].order));
+                in.read(reinterpret_cast<char *>(&wordVec[i].count), sizeof(wordVec[i].count));
+                if (!in)
+                    throw std::runtime_error("Read error");
+            }
+            loadedFromBin = true;
+            in.close();
+            std::cout << "Loaded " << wordVec.size() << " words from words.bin\n";
+        }
+        catch (...)
+        {
+            std::cout << "Error loading words.bin, will rebuild from .txt files.\n";
+            in.close();
+            wordVec.clear();
+        }
+    }
+
+    if (!loadedFromBin)
+    {
+        // Automatically find all .txt files in data directory and sort alphabetically
+        std::vector<std::string> wordFiles;
+        for (const auto &entry : std::filesystem::directory_iterator(data_dir))
+        {
+            if (entry.is_regular_file() && entry.path().extension() == ".txt")
+            {
+                wordFiles.push_back(entry.path().filename().string());
+            }
+        }
+        std::sort(wordFiles.begin(), wordFiles.end());
+
+        std::cout << "Loading words from " << wordFiles.size() << " files..." << std::endl;
+
+        std::set<Word> allWords;
+        int order = 0;
+
+        for (const auto &fname : wordFiles)
+        {
+            std::ifstream file(data_dir / fname);
+            if (!file.is_open())
+            {
+                std::cerr << "Error: Could not open " << fname << ". Please ensure it's in a 'data' sub-directory.\n";
+                continue;
+            }
+            std::string line;
+            while (std::getline(file, line))
+            {
+                std::istringstream iss(line);
+                std::string word;
+                while (iss >> word)
+                {
+                    word = trimToLower(word);
+
+                    if (word.empty() || std::any_of(word.begin(), word.end(), [](unsigned char c)
+                                                    { return !std::isalpha(c); }))
+                    {
+                        std::cout << "Ignoring invalid word: " << word << std::endl;
+                        continue;
+                    }
+
+                    auto result = allWords.insert({word, order, 1});
+                    if (!result.second)
+                    {
+                        auto it = result.first;
+                        Word updatedWord = *it;
+                        allWords.erase(it);
+                        updatedWord.count += 1;
+                        allWords.insert(updatedWord);
+                    }
+                }
+            }
+            file.close();
+            order++;
+        }
+        std::cout << "Loaded " << allWords.size() << " unique words from all files.\n"
+                  << std::endl;
+        wordVec.assign(allWords.begin(), allWords.end());
+
+        // Save to binary for next time
+        std::ofstream out(data_dir / "words.bin", std::ios::binary);
+        size_t n = wordVec.size();
+        out.write(reinterpret_cast<const char *>(&n), sizeof(n));
+        for (const auto &w : wordVec)
+        {
+            size_t len = w.word.size();
+            out.write(reinterpret_cast<const char *>(&len), sizeof(len));
+            out.write(w.word.data(), len);
+            out.write(reinterpret_cast<const char *>(&w.order), sizeof(w.order));
+            out.write(reinterpret_cast<const char *>(&w.count), sizeof(w.count));
+        }
+        out.close();
+        std::cout << "Saved " << wordVec.size() << " words to words.bin\n";
+    }
+
     while (true)
     {
         Config config = getUserConfiguration();
-
-        // Load dictionary
-        std::cout << "Reading word file...\n\n";
-        std::filesystem::path exe_path = std::filesystem::current_path();
-        std::ifstream file(exe_path / "data" / "words.txt");
-
-        std::vector<std::string> allDictionaryWords;
-        std::string line;
-        if (file.is_open())
-        {
-            while (std::getline(file, line))
-            {
-                // Sanitize dictionary words to lowercase
-                std::transform(line.begin(), line.end(), line.begin(),
-                               [](unsigned char c)
-                               { return std::tolower(c); });
-                allDictionaryWords.push_back(line);
-            }
-            file.close();
-            std::cout << "Loaded " << allDictionaryWords.size() << " words from dictionary.\n"
-                      << std::endl;
-        }
-        else
-        {
-            std::cerr << "Error: Could not open words.txt. Please ensure it's in a 'data' sub-directory.\n";
-            std::cout << "\nPress any key to exit.\n";
-            _getch();
-            return 1;
-        }
+        std::cout << "\nSolver configuration:\n";
+        std::cout << "  Max words per solution: " << config.maxDepth << "\n";
+        std::cout << "  Min word length: " << config.minWordLength << "\n";
+        std::cout << "  Min unique letters per word: " << config.minUniqueLetters << "\n";
+        std::cout << "  Prune redundant paths: " << (config.pruneRedundantPaths ? "true" : "false") << "\n";
+        std::cout << "  Prune dominated classes: " << (config.pruneDominatedClasses ? "true" : "false") << "\n\n";
 
         PuzzleData puzzleData;
         puzzleData.allLetters = config.letters;
@@ -187,38 +322,56 @@ int main()
         profiler.start();
         runLetterBoxedSolver(
             puzzleData,
-            allDictionaryWords,
+            wordVec,
             config,
             finalSolutions);
         profiler.end();
-
         // profiler.logProfilerData();
 
-        // Print results in reverse order
-        for (int i = static_cast<int>(finalSolutions.size()) - 1; i >= 0; --i)
+        // Print only top 100 solutions, if 'a' is entered reprint all
+        int printLimit = 100;
+        auto printSolutions = [&](int limit)
         {
-            std::cout << finalSolutions[i].text << "\n";
-        }
+            int toPrint = std::min(limit, static_cast<int>(finalSolutions.size()));
+            for (int i = toPrint - 1; i >= 0; --i)
+            {
+                const Solution &sol = finalSolutions[i];
+                std::cout << sol.text
+                          //   << " (Count: " << sol.countMin << ", " << sol.countSum << ", " << sol.countMax << ")"
+                          //   << " (Order: " << sol.orderMin << ", " << sol.orderSum << ", " << sol.orderMax << ")"
+                          << "\n";
+            }
+            std::cout << "\nFound " + std::to_string(finalSolutions.size()) + " final solutions in " + std::to_string(profiler.getTotalTime()) + " seconds.\n";
+            if (limit < static_cast<int>(finalSolutions.size()))
+                std::cout << "Showing top " << toPrint << " of " << finalSolutions.size() << " solution(s).\n\n";
+            else
+                std::cout << "Showing all " << finalSolutions.size() << " solution(s).\n\n";
+        };
 
-        std::cout << "\nFound " << finalSolutions.size() << " solution(s) in " << profiler.getTotalTime() << " seconds. Enter 'q' to quit, or 'r' to restart.\n\n";
+        printSolutions(printLimit);
 
         while (true)
         {
+            std::cout << "Enter 'q' to quit, 'r' to restart, or 'a' to show all.\n\n";
             std::string input;
             std::getline(std::cin, input);
+            input = trimToLower(input);
             if (!input.empty())
             {
-                if (input[0] == 'q' || input[0] == 'Q')
+                if (input == "q")
                 {
-                    std::cout << finalSolutions.size() << " total solution(s) found.\n";
                     return 0;
                 }
-                else if (input[0] == 'r' || input[0] == 'R')
+                else if (input == "r")
                 {
                     break; // restart outer loop
                 }
+                else if (input == "a")
+                {
+                    std::cout << "\n";
+                    printSolutions(static_cast<int>(finalSolutions.size()));
+                }
             }
-            // If all solutions shown, only accept 'q' or 'r'
         }
     }
     return 0;

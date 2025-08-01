@@ -27,12 +27,20 @@ struct WordPath
     int indicesOffset;
     int indicesLength;
     int lastCharSide;
+    int order;
+    int count;
 };
 
 struct Solution
 {
     std::string text;
     int wordCount;
+    int orderMin;
+    int orderSum;
+    int orderMax;
+    int countMin;
+    int countSum;
+    int countMax;
 };
 
 struct CharStartIndexer
@@ -62,8 +70,16 @@ struct EquivalenceClass
     std::vector<const WordPath *> words;
 };
 
+struct Word
+{
+    std::string word;
+    int order;
+    int count;
+    bool operator<(const Word &other) const { return word < other.word; }
+};
+
 void runLetterBoxedSolver(
     const PuzzleData &puzzleData,
-    const std::vector<std::string> &allDictionaryWords,
+    const std::vector<Word> &allDictionaryWords,
     const Config &config,
     std::vector<Solution> &finalSolutions);
