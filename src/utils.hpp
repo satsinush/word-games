@@ -3,7 +3,7 @@
 #include <map>
 #include <vector>
 
-namespace Utils
+namespace ProfilerUtils
 {
 
     double getTime();
@@ -66,3 +66,21 @@ namespace Utils
     };
 
 } // namespace Utils
+
+namespace WordUtils
+{
+    struct Word
+    {
+        std::string wordString;
+        int order;
+        int count;
+        int uniqueLetters;
+        bool operator<(const Word &other) const { return wordString < other.wordString; }
+    };
+
+    std::string trimToLower(const std::string &str);
+
+    std::vector<Word> loadWords();
+
+    // Other utility functions related to words can be declared here
+} // namespace WordUtils

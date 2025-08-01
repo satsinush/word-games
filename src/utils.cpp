@@ -1,4 +1,3 @@
-#include "utils.hpp"
 #include <chrono>
 #include <string>
 #include <regex>
@@ -9,8 +8,13 @@
 #include <fstream>
 #include <map>
 #include <iomanip>
+#include <filesystem>
+#include <set>
+#include <sstream>
 
-namespace Utils
+#include "utils.hpp"
+
+namespace ProfilerUtils
 {
     const double NANO_TO_SEC = 1.0 / 1000000000;
 
@@ -265,3 +269,136 @@ namespace Utils
         return this->endTime - this->startTime;
     }
 } // namespace Utils
+
+namespace WordUtils
+{
+    std::string trimToLower(const std::string &str)
+    {
+        std::string trimmed = str;
+        trimmed.erase(trimmed.begin(), std::find_if(trimmed.begin(), trimmed.end(), [](unsigned char ch)
+                                                    { return !std::isspace(ch); }));
+        trimmed.erase(std::find_if(trimmed.rbegin(), trimmed.rend(), [](unsigned char ch)
+                                   { return !std::isspace(ch); })
+                          .base(),
+                      trimmed.end());
+        std::transform(trimmed.begin(), trimmed.end(), trimmed.begin(), ::tolower);
+        return trimmed;
+    }
+
+    // Loads words from words.bin if available, otherwise from .txt files in data directory and saves to words.bin.
+    std::vector<Word> loadWords()
+    {
+        std::filesystem::path data_dir = std::filesystem::current_path() / "data";
+        std::vector<Word> allWordsVec;
+        std::ifstream in(data_dir / "words.bin", std::ios::binary);
+        bool loadedFromBin = false;
+        if (in)
+        {
+            try
+            {
+                size_t n;
+                in.read(reinterpret_cast<char *>(&n), sizeof(n));
+                allWordsVec.resize(n);
+                for (size_t i = 0; i < n; ++i)
+                {
+                    size_t len;
+                    in.read(reinterpret_cast<char *>(&len), sizeof(len));
+                    allWordsVec[i].wordString.resize(len);
+                    in.read(&allWordsVec[i].wordString[0], len);
+                    in.read(reinterpret_cast<char *>(&allWordsVec[i].uniqueLetters), sizeof(allWordsVec[i].uniqueLetters));
+                    in.read(reinterpret_cast<char *>(&allWordsVec[i].order), sizeof(allWordsVec[i].order));
+                    in.read(reinterpret_cast<char *>(&allWordsVec[i].count), sizeof(allWordsVec[i].count));
+                    if (!in)
+                        throw std::runtime_error("Read error");
+                }
+                loadedFromBin = true;
+                in.close();
+                std::cout << "Loaded " << allWordsVec.size() << " words from words.bin\n";
+            }
+            catch (...)
+            {
+                std::cout << "Error loading words.bin, will rebuild from .txt files.\n";
+                in.close();
+                allWordsVec.clear();
+            }
+        }
+
+        if (!loadedFromBin)
+        {
+            std::vector<std::string> wordFiles;
+            for (const auto &entry : std::filesystem::directory_iterator(data_dir))
+            {
+                if (entry.is_regular_file() && entry.path().extension() == ".txt")
+                {
+                    wordFiles.push_back(entry.path().filename().string());
+                }
+            }
+            std::sort(wordFiles.begin(), wordFiles.end());
+
+            std::cout << "Loading words from " << wordFiles.size() << " files..." << std::endl;
+
+            std::set<Word> allWordsSet;
+            int order = 0;
+
+            for (const auto &fname : wordFiles)
+            {
+                std::ifstream file(data_dir / fname);
+                if (!file.is_open())
+                {
+                    std::cerr << "Error: Could not open " << fname << ". Please ensure it's in a 'data' sub-directory.\n";
+                    continue;
+                }
+                std::string line;
+                while (std::getline(file, line))
+                {
+                    std::istringstream iss(line);
+                    std::string word;
+                    while (iss >> word)
+                    {
+                        word = trimToLower(word);
+
+                        if (word.empty() || std::any_of(word.begin(), word.end(), [](unsigned char c)
+                                                        { return !std::isalpha(c); }))
+                        {
+                            std::cout << "Ignoring invalid word: " << word << std::endl;
+                            continue;
+                        }
+
+                        int uniqueLetters = std::set<char>(word.begin(), word.end()).size();
+                        auto result = allWordsSet.insert({word, order, 1, uniqueLetters});
+                        if (!result.second)
+                        {
+                            auto it = result.first;
+                            Word updatedWord = *it;
+                            allWordsSet.erase(it);
+                            updatedWord.count += 1;
+                            allWordsSet.insert(updatedWord);
+                        }
+                    }
+                }
+                file.close();
+                order++;
+            }
+            std::cout << "Loaded " << allWordsSet.size() << " unique words from all files.\n"
+                      << std::endl;
+            allWordsVec.assign(allWordsSet.begin(), allWordsSet.end());
+
+            // Save to binary for next time
+            std::ofstream out(data_dir / "words.bin", std::ios::binary);
+            size_t n = allWordsVec.size();
+            out.write(reinterpret_cast<const char *>(&n), sizeof(n));
+            for (const auto &w : allWordsVec)
+            {
+                size_t len = w.wordString.size();
+                out.write(reinterpret_cast<const char *>(&len), sizeof(len));
+                out.write(w.wordString.data(), len);
+                out.write(reinterpret_cast<const char *>(&w.uniqueLetters), sizeof(w.uniqueLetters));
+                out.write(reinterpret_cast<const char *>(&w.order), sizeof(w.order));
+                out.write(reinterpret_cast<const char *>(&w.count), sizeof(w.count));
+            }
+            out.close();
+            std::cout << "Saved " << allWordsVec.size() << " words to words.bin\n";
+        }
+        return allWordsVec;
+    }
+} // namespace WordUtils

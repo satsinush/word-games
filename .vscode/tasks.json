@@ -9,7 +9,7 @@
                 "-g",
                 "${workspaceFolder}\\src\\*.cpp", // Use wildcard for all .cpp files
                 "-o",
-                "${workspaceFolder}\\letterBoxed.exe",
+                "${workspaceFolder}\\wordGames.exe",
                 "-std=c++20"
             ],
             "options": {
