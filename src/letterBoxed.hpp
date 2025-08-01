@@ -20,6 +20,7 @@ struct PuzzleData
     std::array<char, 12> allLetters;
     std::array<int, 12> letterToSideMapping;
     std::bitset<12> uniquePuzzleLetters;
+    std::array<int, 256> charToIndexMap;
 };
 
 struct WordPath
@@ -81,5 +82,6 @@ struct Word
 void runLetterBoxedSolver(
     const PuzzleData &puzzleData,
     const std::vector<Word> &allDictionaryWords,
+    int totalLetterCount,
     const Config &config,
     std::vector<Solution> &finalSolutions);

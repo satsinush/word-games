@@ -68,7 +68,8 @@
         "set": "cpp",
         "regex": "cpp",
         "array": "cpp",
-        "bitset": "cpp"
+        "bitset": "cpp",
+        "unordered_set": "cpp"
     },
     "C_Cpp.default.cppStandard": "c++20",
     "clangd.arguments": [

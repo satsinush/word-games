@@ -64,7 +64,7 @@ Config getUserConfiguration()
     // --- Step 1: Get the 12 puzzle letters, allowing spaces or no spaces ---
     while (true)
     {
-        std::cout << "\nEnter the 12 puzzle letters so that the letters on each side are next to each other:" << std::endl;
+        std::cout << "\nEnter the 12 puzzle letters (ex. abc def ghi jkl):" << std::endl;
         std::string input;
         std::getline(std::cin, input);
 
@@ -96,26 +96,6 @@ Config getUserConfiguration()
     }
 
     drawPuzzleBox(config.letters);
-
-    // --- Step 2: Ask for default settings ---
-    std::cout << "Use default solver settings? (Press Enter for yes, any other key to edit): ";
-    std::string useDefault;
-    std::getline(std::cin, useDefault);
-
-    if (useDefault.empty())
-    {
-        // Defaults
-        config.maxDepth = 3;
-        config.minWordLength = 3;
-        config.minUniqueLetters = 2;
-        config.pruneRedundantPaths = true;
-        config.pruneDominatedClasses = true;
-        return config;
-    }
-
-    // --- Step 3: Get solver options using std::cin ---
-    std::cout << "Configure solver options. Press Enter to accept the default value." << std::endl
-              << std::endl;
 
     // Helper lambda for validated integer input
     auto promptInt = [](const std::string &prompt, int def, int min, int max = -1)
@@ -166,13 +146,54 @@ Config getUserConfiguration()
         }
     };
 
-    config.maxDepth = promptInt("Max words per solutions", 3, 1, 4);
+    // --- Step 2: Preset selection ---
+    std::cout << "Select solver preset:\n"
+              << "  1: Default (Will find ALL solutions up to 2 words)\n"
+              << "  2: Fast (Will find most solutions up to 2 words quickly)\n"
+              << "  3: Thorough (Will find ALL solutions up to 3 words)\n"
+              << "  0: Custom (Configure manually)\n";
+    int preset = promptInt("Enter preset number or blank for Default: ", 1, 0, 3);
+
+    if (preset == 1)
+    {
+        // Default
+        config.maxDepth = 2;
+        config.minWordLength = 3;
+        config.minUniqueLetters = 2;
+        config.pruneRedundantPaths = true;
+        config.pruneDominatedClasses = false;
+        return config;
+    }
+    else if (preset == 2)
+    {
+        // Fast: less thorough, faster
+        config.maxDepth = 2;
+        config.minWordLength = 4;
+        config.minUniqueLetters = 3;
+        config.pruneRedundantPaths = true;
+        config.pruneDominatedClasses = true;
+        return config;
+    }
+    else if (preset == 3)
+    {
+        // Thorough: more exhaustive, slower
+        config.maxDepth = 3;
+        config.minWordLength = 3;
+        config.minUniqueLetters = 1;
+        config.pruneRedundantPaths = false;
+        config.pruneDominatedClasses = false;
+        return config;
+    }
+
+    // --- Step 3: Get solver options using std::cin ---
+    std::cout << "Configure solver options. Press Enter to accept the default value." << std::endl
+              << std::endl;
+
+    config.maxDepth = promptInt("Max words per solutions", 2, 1, 4);
     config.minWordLength = promptInt("Min word length", 3, 1);
     config.minUniqueLetters = promptInt("Min unique letters per word", 2, 1);
     config.pruneRedundantPaths = promptBool01("Prune redundant paths?", 1);
-    config.pruneDominatedClasses = promptBool01("Prune dominated classes?", 1);
-
-    std::cout << std::endl;
+    config.pruneDominatedClasses = promptBool01("Prune dominated classes?", 0);
     return config;
 }
 
@@ -294,6 +315,12 @@ int main()
         std::cout << "Saved " << wordVec.size() << " words to words.bin\n";
     }
 
+    int totalLetterCount = 0;
+    for (const auto &word : wordVec)
+    {
+        totalLetterCount += word.word.size();
+    }
+
     while (true)
     {
         Config config = getUserConfiguration();
@@ -303,6 +330,8 @@ int main()
         std::cout << "  Min unique letters per word: " << config.minUniqueLetters << "\n";
         std::cout << "  Prune redundant paths: " << (config.pruneRedundantPaths ? "true" : "false") << "\n";
         std::cout << "  Prune dominated classes: " << (config.pruneDominatedClasses ? "true" : "false") << "\n\n";
+
+        std::cout << "Running solver...\n\n";
 
         PuzzleData puzzleData;
         puzzleData.allLetters = config.letters;
@@ -316,6 +345,11 @@ int main()
             puzzleData.letterToSideMapping[i] = 3;
         for (int i = 0; i < 12; ++i)
             puzzleData.uniquePuzzleLetters.set(i);
+        puzzleData.charToIndexMap.fill(-1); // Initialize all to -1
+        for (int i = 0; i < 12; ++i)
+        {
+            puzzleData.charToIndexMap[static_cast<unsigned char>(puzzleData.allLetters[i])] = i;
+        }
 
         std::vector<Solution> finalSolutions;
 
@@ -323,10 +357,11 @@ int main()
         runLetterBoxedSolver(
             puzzleData,
             wordVec,
+            totalLetterCount,
             config,
             finalSolutions);
         profiler.end();
-        // profiler.logProfilerData();
+        profiler.logProfilerData();
 
         // Print only top 100 solutions, if 'a' is entered reprint all
         int printLimit = 100;

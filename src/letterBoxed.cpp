@@ -30,7 +30,12 @@ std::size_t EquivalenceKeyHash::operator()(const EquivalenceKey &k) const
     std::size_t h1 = std::hash<int>()(k.startIndex);
     std::size_t h2 = std::hash<int>()(k.endIndex);
     std::size_t h3 = std::hash<unsigned long>()(k.usedChars.to_ulong());
-    return h1 ^ (h2 << 1) ^ (h3 << 2);
+
+    // Combine hashes
+    std::size_t seed = h1;
+    seed ^= h2 + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+    seed ^= h3 + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+    return seed;
 }
 
 bool operator==(const EquivalenceKey &a, const EquivalenceKey &b)
@@ -66,14 +71,32 @@ std::string reconstructWordString(const WordPath *wp, const PuzzleData &puzzleDa
 // Helper to reconstruct a string from a path of WordPath pointers.
 std::string reconstructPrintString(const std::vector<const WordPath *> &wordPathPtrs, const PuzzleData &puzzleData, const std::vector<int> &allPathIndices)
 {
-    std::string printStr = "";
+    if (wordPathPtrs.empty())
+    {
+        return "";
+    }
+
+    // 1. Calculate final string size
+    size_t totalLen = wordPathPtrs.size() - 1; // For spaces between words
+    for (const auto *wp : wordPathPtrs)
+    {
+        totalLen += wp->indicesLength;
+    }
+
+    // 2. Reserve and build
+    std::string printStr;
+    printStr.reserve(totalLen);
     for (size_t i = 0; i < wordPathPtrs.size(); ++i)
     {
         if (i > 0)
         {
-            printStr += " ";
+            printStr += ' ';
         }
-        printStr += reconstructWordString(wordPathPtrs[i], puzzleData, allPathIndices);
+        // Append characters directly
+        for (int j = 0; j < wordPathPtrs[i]->indicesLength; ++j)
+        {
+            printStr += puzzleData.allLetters[allPathIndices[wordPathPtrs[i]->indicesOffset + j]];
+        }
     }
     return printStr;
 }
@@ -113,23 +136,11 @@ void findWordPathsRecursive(
     }
 }
 
-// Helper to get the bit index for a char in allLetters
-int getLetterBitIndex(char c, const std::array<char, 12> &allLetters)
-{
-    for (int i = 0; i < 12; ++i)
-        if (allLetters[i] == c)
-            return i;
-    return -1;
-}
-
 // Update WordPath to include order (already in header, just use here)
 
 // Update filterWords to take vector<Word> and propagate order to WordPath
-std::vector<WordPath> filterWords(const std::vector<Word> &allDictionaryWords, const PuzzleData &puzzleData, const int minLength, const int minUniqueLetters, std::vector<int> &allPathIndices)
+void filterWords(std::vector<WordPath> &allValidWordPaths, const std::vector<Word> &allDictionaryWords, const PuzzleData &puzzleData, const int minLength, const int minUniqueLetters, std::vector<int> &allPathIndices)
 {
-    std::vector<WordPath> allValidWordPaths;
-    allValidWordPaths.reserve(allDictionaryWords.size() / 100);
-
     for (const Word &wordObj : allDictionaryWords)
     {
         const std::string &word = wordObj.word;
@@ -137,7 +148,7 @@ std::vector<WordPath> filterWords(const std::vector<Word> &allDictionaryWords, c
         bool containsInvalidCharacter = false;
         for (char c : word)
         {
-            int idx = getLetterBitIndex(c, puzzleData.allLetters);
+            int idx = puzzleData.charToIndexMap[static_cast<unsigned char>(c)];
             if (idx == -1)
             {
                 containsInvalidCharacter = true;
@@ -153,11 +164,11 @@ std::vector<WordPath> filterWords(const std::vector<Word> &allDictionaryWords, c
             continue;
 
         std::vector<int> currentPathGlobalIndexes;
+        currentPathGlobalIndexes.reserve(word.length());
         std::vector<WordPath> paths;
         findWordPathsRecursive(wordObj, puzzleData, paths, currentPathGlobalIndexes, -1, 0, allPathIndices);
         allValidWordPaths.insert(allValidWordPaths.end(), paths.begin(), paths.end());
     }
-    return allValidWordPaths;
 }
 
 // --- Solution Finding (Multi-Stage Process) ---
@@ -224,7 +235,7 @@ void findClassSolutionsRecursive(
     const int maxDepth,
     bool pruneRedundantPaths,
     const std::vector<EquivalenceClass> &allEqClasses,
-    const std::vector<CharStartIndexer> &classIndexers, // Indexer for classes
+    const std::array<CharStartIndexer, 256> &classIndexers,
     const PuzzleData &puzzleData,
     std::vector<std::vector<const EquivalenceClass *>> &classSolutions)
 {
@@ -233,14 +244,11 @@ void findClassSolutionsRecursive(
         return;
     }
 
-    char connectingChar = puzzleData.allLetters[lastClass->key.endIndex];
-    int connectingIndex = lastClass->key.endIndex;
-
-    const auto &indexer = classIndexers[connectingChar - 'a'];
-    for (int i = indexer.start; i < indexer.end; ++i)
+    int end = classIndexers[static_cast<unsigned char>(puzzleData.allLetters[lastClass->key.endIndex])].end;
+    for (int i = classIndexers[static_cast<unsigned char>(puzzleData.allLetters[lastClass->key.endIndex])].start; i < end; ++i)
     {
         const EquivalenceClass &nextClass = allEqClasses[i];
-        if (nextClass.key.startIndex == connectingIndex)
+        if (nextClass.key.startIndex == lastClass->key.endIndex)
         {
             // Compute new letters covered by adding nextClass's usedChars
             std::bitset<12> newLettersCovered = lettersCovered | nextClass.key.usedChars;
@@ -273,11 +281,11 @@ void findClassSolutionsRecursive(
 // --- Prune dominated equivalence classes: remove classes that are strictly dominated by another
 void pruneDominatedClasses(std::vector<EquivalenceClass> &allEqClasses)
 {
-    // Group classes by (startIndex, endIndex)
-    std::map<std::pair<int, int>, std::vector<size_t>> groups;
+    // Use unordered_map with combined key for faster grouping
+    std::unordered_map<long long, std::vector<size_t>> groups;
     for (size_t i = 0; i < allEqClasses.size(); ++i)
     {
-        auto key = std::make_pair(allEqClasses[i].key.startIndex, allEqClasses[i].key.endIndex);
+        long long key = (static_cast<long long>(allEqClasses[i].key.startIndex) << 32) | allEqClasses[i].key.endIndex;
         groups[key].push_back(i);
     }
 
@@ -286,19 +294,25 @@ void pruneDominatedClasses(std::vector<EquivalenceClass> &allEqClasses)
     for (const auto &group : groups)
     {
         const auto &indices = group.second;
-        for (size_t i = 0; i < indices.size(); ++i)
+        // Sort indices by popcount of usedChars descending (supersets first)
+        std::vector<size_t> sorted = indices;
+        std::sort(sorted.begin(), sorted.end(), [&](size_t a, size_t b)
+                  { return allEqClasses[a].key.usedChars.count() > allEqClasses[b].key.usedChars.count(); });
+
+        for (size_t i = 0; i < sorted.size(); ++i)
         {
-            for (size_t j = 0; j < indices.size(); ++j)
+            if (!keep[sorted[i]])
+                continue;
+            const auto &a = allEqClasses[sorted[i]].key.usedChars;
+            for (size_t j = i + 1; j < sorted.size(); ++j)
             {
-                if (i == j)
+                if (!keep[sorted[j]])
                     continue;
-                const auto &a = allEqClasses[indices[i]].key.usedChars;
-                const auto &b = allEqClasses[indices[j]].key.usedChars;
-                // If B is a strict superset of A, mark A for removal
-                if ((b & a) == a && b != a)
+                const auto &b = allEqClasses[sorted[j]].key.usedChars;
+                // If A is a strict superset of B, mark B for removal
+                if ((a & b) == b && a != b)
                 {
-                    keep[indices[i]] = false;
-                    break;
+                    keep[sorted[j]] = false;
                 }
             }
         }
@@ -320,15 +334,20 @@ void pruneDominatedClasses(std::vector<EquivalenceClass> &allEqClasses)
 void runLetterBoxedSolver(
     const PuzzleData &puzzleData,
     const std::vector<Word> &allDictionaryWords,
+    int totalLetterCount,
     const Config &config,
     std::vector<Solution> &finalSolutions)
 {
     // Create a vector to hold all character indices for all valid word paths.
     std::vector<int> allPathIndices;
-    std::vector<WordPath> allValidWordPaths = filterWords(allDictionaryWords, puzzleData, config.minWordLength, config.minUniqueLetters, allPathIndices);
+    allPathIndices.reserve(totalLetterCount / 100); // Reserve space for indices
+    std::vector<WordPath> allValidWordPaths;
+    allValidWordPaths.reserve(allDictionaryWords.size() / 100);
+    filterWords(allValidWordPaths, allDictionaryWords, puzzleData, config.minWordLength, config.minUniqueLetters, allPathIndices);
 
     // Create equivalence classes based on the valid word paths.
     std::unordered_map<EquivalenceKey, EquivalenceClass, EquivalenceKeyHash> eqClassMap;
+    eqClassMap.reserve(allValidWordPaths.size()); // Reserve space for classes
     for (const auto &wp : allValidWordPaths)
     {
         EquivalenceKey key;
@@ -363,26 +382,27 @@ void runLetterBoxedSolver(
                   return puzzleData.allLetters[a.key.startIndex] < puzzleData.allLetters[b.key.startIndex];
               });
     // Create a CharStartIndexer to efficiently access classes by their starting character.
-    std::vector<CharStartIndexer> classIndexers(26);
+    std::array<CharStartIndexer, 256> classIndexers{};
     if (!allEqClasses.empty())
     {
         char currentChar = puzzleData.allLetters[allEqClasses[0].key.startIndex];
-        classIndexers[currentChar - 'a'].start = 0;
+        classIndexers[static_cast<unsigned char>(currentChar)].start = 0;
         for (size_t i = 0; i < allEqClasses.size(); ++i)
         {
             char c = puzzleData.allLetters[allEqClasses[i].key.startIndex];
             if (c != currentChar)
             {
-                classIndexers[currentChar - 'a'].end = static_cast<int>(i);
+                classIndexers[static_cast<unsigned char>(currentChar)].end = static_cast<int>(i);
                 currentChar = c;
-                classIndexers[currentChar - 'a'].start = static_cast<int>(i);
+                classIndexers[static_cast<unsigned char>(currentChar)].start = static_cast<int>(i);
             }
         }
-        classIndexers[currentChar - 'a'].end = static_cast<int>(allEqClasses.size());
+        classIndexers[static_cast<unsigned char>(currentChar)].end = static_cast<int>(allEqClasses.size());
     }
 
     // Find all solutions by recursively exploring equivalence classes.
     std::vector<std::vector<const EquivalenceClass *>> classSolutions;
+    // classSolutions.reserve(allEqClasses.size() / 10); // Skip reserving, class solutions can vary widely in size
     for (const auto &startClass : allEqClasses)
     {
         if (startClass.key.usedChars.count() == puzzleData.uniquePuzzleLetters.count())
@@ -394,6 +414,7 @@ void runLetterBoxedSolver(
         findClassSolutionsRecursive(&startClass, currentClassPath, covered, 1, config.maxDepth, config.pruneRedundantPaths, allEqClasses, classIndexers, puzzleData, classSolutions);
     }
 
+    finalSolutions.reserve(classSolutions.size() * 2); // Reserve space for final solutions
     // Expand each class solution into all possible word paths and store them in finalSolutions.
     for (const auto &classPath : classSolutions)
     {
@@ -411,7 +432,9 @@ void runLetterBoxedSolver(
 
     // Deduplicate solutions by their text representation, keeping the first occurrence in sorted order
     std::vector<Solution> deduped;
+    deduped.reserve(finalSolutions.size());
     std::unordered_set<std::string> seen;
+    seen.reserve(finalSolutions.size());
     for (const auto &sol : finalSolutions)
     {
         if (seen.insert(sol.text).second)
