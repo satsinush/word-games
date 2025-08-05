@@ -2,7 +2,6 @@
 #include <string>
 #include <regex>
 #include <iostream>
-#include <conio.h>
 #include <cmath>
 #include <vector>
 #include <fstream>
@@ -313,11 +312,9 @@ namespace WordUtils
                 }
                 loadedFromBin = true;
                 in.close();
-                std::cout << "Loaded " << allWordsVec.size() << " words from words.bin\n";
             }
             catch (...)
             {
-                std::cout << "Error loading words.bin, will rebuild from .txt files.\n";
                 in.close();
                 allWordsVec.clear();
             }
@@ -334,8 +331,6 @@ namespace WordUtils
                 }
             }
             std::sort(wordFiles.begin(), wordFiles.end());
-
-            std::cout << "Loading words from " << wordFiles.size() << " files..." << std::endl;
 
             std::set<Word> allWordsSet;
             int order = 0;
@@ -360,7 +355,6 @@ namespace WordUtils
                         if (word.empty() || std::any_of(word.begin(), word.end(), [](unsigned char c)
                                                         { return !std::isalpha(c); }))
                         {
-                            std::cout << "Ignoring invalid word: " << word << std::endl;
                             continue;
                         }
 
@@ -379,8 +373,6 @@ namespace WordUtils
                 file.close();
                 order++;
             }
-            std::cout << "Loaded " << allWordsSet.size() << " unique words from all files.\n"
-                      << std::endl;
             allWordsVec.assign(allWordsSet.begin(), allWordsSet.end());
 
             // Save to binary for next time
@@ -397,7 +389,6 @@ namespace WordUtils
                 out.write(reinterpret_cast<const char *>(&w.count), sizeof(w.count));
             }
             out.close();
-            std::cout << "Saved " << allWordsVec.size() << " words to words.bin\n";
         }
         return allWordsVec;
     }

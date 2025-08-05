@@ -6,6 +6,7 @@
 #include <set>
 #include <sstream>
 #include <filesystem>
+#include <fstream>
 
 #include "utils.hpp"
 #include "letterBoxed.hpp"
@@ -183,6 +184,108 @@ LetterBoxed::Config getLetterBoxedConfig()
     config.pruneRedundantPaths = promptBool01("Prune redundant paths?", 1);
     config.pruneDominatedClasses = promptBool01("Prune dominated classes?", 0);
     return config;
+}
+
+// Helper: Parse Letter Boxed config from command line args
+bool parseLetterBoxedArgs(int argc, char *argv[], LetterBoxed::Config &config)
+{
+    if (argc < 3)
+        return false;
+    std::string letters = argv[2];
+    letters.erase(std::remove_if(letters.begin(), letters.end(), ::isspace), letters.end());
+    if (letters.size() != 12)
+        return false;
+    for (size_t i = 0; i < 12; ++i)
+    {
+        if (!isalpha(static_cast<unsigned char>(letters[i])))
+            return false;
+        config.allLetters[i] = std::tolower(static_cast<unsigned char>(letters[i]));
+    }
+    for (int i = 0; i < 3; ++i)
+        config.letterToSideMapping[i] = 0;
+    for (int i = 3; i < 6; ++i)
+        config.letterToSideMapping[i] = 1;
+    for (int i = 6; i < 9; ++i)
+        config.letterToSideMapping[i] = 2;
+    for (int i = 9; i < 12; ++i)
+        config.letterToSideMapping[i] = 3;
+    for (int i = 0; i < 12; ++i)
+        config.uniquePuzzleLetters.set(i);
+    config.charToIndexMap.fill(-1);
+    for (int i = 0; i < 12; ++i)
+        config.charToIndexMap[static_cast<unsigned char>(config.allLetters[i])] = i;
+    // Preset selection by number
+    config.maxDepth = 2;
+    config.minWordLength = 3;
+    config.minUniqueLetters = 2;
+    config.pruneRedundantPaths = true;
+    config.pruneDominatedClasses = false;
+    if (argc > 3)
+    {
+        int preset = std::stoi(argv[3]);
+        if (preset == 1)
+        {
+            // Default
+            config.maxDepth = 2;
+            config.minWordLength = 3;
+            config.minUniqueLetters = 2;
+            config.pruneRedundantPaths = true;
+            config.pruneDominatedClasses = false;
+        }
+        else if (preset == 2)
+        {
+            // Fast
+            config.maxDepth = 2;
+            config.minWordLength = 4;
+            config.minUniqueLetters = 3;
+            config.pruneRedundantPaths = true;
+            config.pruneDominatedClasses = true;
+        }
+        else if (preset == 3)
+        {
+            // Thorough
+            config.maxDepth = 3;
+            config.minWordLength = 3;
+            config.minUniqueLetters = 1;
+            config.pruneRedundantPaths = false;
+            config.pruneDominatedClasses = false;
+        }
+        else if (preset == 0 && argc >= 9)
+        {
+            // Custom
+            config.maxDepth = std::stoi(argv[4]);
+            config.minWordLength = std::stoi(argv[5]);
+            config.minUniqueLetters = std::stoi(argv[6]);
+            config.pruneRedundantPaths = std::stoi(argv[7]) != 0;
+            config.pruneDominatedClasses = std::stoi(argv[8]) != 0;
+        }
+    }
+    return true;
+}
+
+// Helper: Parse Spelling Bee config from command line args
+bool parseSpellingBeeArgs(int argc, char *argv[], SpellingBee::Config &config)
+{
+    if (argc < 3)
+        return false;
+    std::string letters = argv[2];
+    letters.erase(std::remove_if(letters.begin(), letters.end(), ::isspace), letters.end());
+    if (letters.size() != 7)
+        return false;
+    std::set<char> seen;
+    for (size_t i = 0; i < 7; ++i)
+    {
+        char c = std::tolower(static_cast<unsigned char>(letters[i]));
+        if (!isalpha(static_cast<unsigned char>(letters[i])))
+            return false;
+        if (seen.count(c))
+            return false;
+        seen.insert(c);
+        config.allLetters[i] = c;
+    }
+    for (char c : config.allLetters)
+        config.validLettersMap[static_cast<unsigned char>(c)] = true;
+    return true;
 }
 
 void runLetterBoxedGame(const std::vector<WordUtils::Word> &wordVec, bool logData = false)
@@ -375,11 +478,300 @@ void runSpellingBeeGame(const std::vector<WordUtils::Word> &allWordsVec, bool lo
     }
 }
 
+// --- Helper: Parse flags from argv ---
+struct CmdArgs
+{
+    std::string mode;
+    std::string letters;
+    int preset = -1;
+    int maxDepth = -1;
+    int minWordLength = -1;
+    int minUniqueLetters = -1;
+    int pruneRedundantPaths = -1;
+    int pruneDominatedClasses = -1;
+    int maxResults = 100;
+    int start = 0; // for read mode
+    int end = -1;  // for read mode
+    bool valid = false;
+};
+
+CmdArgs parseFlags(int argc, char *argv[])
+{
+    CmdArgs args;
+    int customFlagCount = 0;
+    for (int i = 1; i < argc; ++i)
+    {
+        std::string a = argv[i];
+        if (a == "--mode" && i + 1 < argc)
+        {
+            args.mode = argv[++i];
+        }
+        else if (a == "--letters" && i + 1 < argc)
+        {
+            args.letters = argv[++i];
+        }
+        else if (a == "--preset" && i + 1 < argc)
+        {
+            args.preset = std::stoi(argv[++i]);
+        }
+        else if (a == "--maxDepth" && i + 1 < argc)
+        {
+            args.maxDepth = std::stoi(argv[++i]);
+        }
+        else if (a == "--minWordLength" && i + 1 < argc)
+        {
+            args.minWordLength = std::stoi(argv[++i]);
+        }
+        else if (a == "--minUniqueLetters" && i + 1 < argc)
+        {
+            args.minUniqueLetters = std::stoi(argv[++i]);
+        }
+        else if (a == "--pruneRedundantPaths" && i + 1 < argc)
+        {
+            args.pruneRedundantPaths = std::stoi(argv[++i]);
+        }
+        else if (a == "--pruneDominatedClasses" && i + 1 < argc)
+        {
+            args.pruneDominatedClasses = std::stoi(argv[++i]);
+        }
+        else if (a == "--maxResults" && i + 1 < argc)
+        {
+            args.maxResults = std::stoi(argv[++i]);
+        }
+        else if (a == "--start" && i + 1 < argc)
+        {
+            args.start = std::stoi(argv[++i]);
+        }
+        else if (a == "--end" && i + 1 < argc)
+        {
+            args.end = std::stoi(argv[++i]);
+        }
+    }
+    args.valid = true;
+    if (args.mode.empty() && args.letters.empty())
+    {
+        std::cout << "Mode and letters are required arguments.\n";
+        args.valid = false;
+    }
+    if (args.mode == "letterboxed" && (args.preset < 1 || args.preset > 3) && (args.maxDepth == -1 || args.minWordLength == -1 || args.minUniqueLetters == -1 || args.pruneRedundantPaths == -1 || args.pruneDominatedClasses == -1))
+    {
+        std::cout << "Invalid argument combination.\n";
+        args.valid = false;
+    }
+    if (args.mode == "read" && (args.start < 0 || args.end < args.start))
+    {
+        std::cout << "Invalid read range.\n";
+        args.valid = false;
+    }
+    return args;
+}
+
 // --- Combined Main Loop ---
-int main()
+int main(int argc, char *argv[])
 {
     std::vector<WordUtils::Word> allWordsVec = WordUtils::loadWords();
     bool logData = false;
+
+    // Print usage if argument is "help"
+    if (argc > 1 && (std::string(argv[1]) == "--help" || std::string(argv[1]) == "help" || std::string(argv[1]) == "-h"))
+    {
+        std::cout << "Usage:\n";
+        std::cout << "  Letter Boxed:\n";
+        std::cout << "    " << argv[0] << " --mode letterboxed --letters <12letters> [--preset <1|2|3|0>]\n";
+        std::cout << "      preset: 1=Default, 2=Fast, 3=Thorough, 0=Custom\n";
+        std::cout << "      If preset=0, add:\n";
+        std::cout << "        --maxDepth <int> --minWordLength <int> --minUniqueLetters <int> --pruneRedundantPaths <0|1> --pruneDominatedClasses <0|1>\n";
+        std::cout << "  Spelling Bee:\n";
+        std::cout << "    " << argv[0] << " --mode spellingbee --letters <7letters>\n";
+        std::cout << "  Help:\n";
+        std::cout << "    " << argv[0] << " --help\n";
+        return 0;
+    }
+
+    CmdArgs cmd = parseFlags(argc, argv);
+    if (cmd.valid)
+    {
+        if (cmd.mode == "letterboxed")
+        {
+            LetterBoxed::Config config;
+            std::string letters = cmd.letters;
+            letters.erase(std::remove_if(letters.begin(), letters.end(), ::isspace), letters.end());
+            if (letters.size() != 12)
+            {
+                std::cout << "Invalid Letter Boxed letters.\n";
+                return 1;
+            }
+            for (size_t i = 0; i < 12; ++i)
+            {
+                if (!isalpha(static_cast<unsigned char>(letters[i])))
+                {
+                    std::cout << "Invalid Letter Boxed letters.\n";
+                    return 1;
+                }
+                config.allLetters[i] = std::tolower(static_cast<unsigned char>(letters[i]));
+            }
+            for (int i = 0; i < 3; ++i)
+                config.letterToSideMapping[i] = 0;
+            for (int i = 3; i < 6; ++i)
+                config.letterToSideMapping[i] = 1;
+            for (int i = 6; i < 9; ++i)
+                config.letterToSideMapping[i] = 2;
+            for (int i = 9; i < 12; ++i)
+                config.letterToSideMapping[i] = 3;
+            for (int i = 0; i < 12; ++i)
+                config.uniquePuzzleLetters.set(i);
+            config.charToIndexMap.fill(-1);
+            for (int i = 0; i < 12; ++i)
+                config.charToIndexMap[static_cast<unsigned char>(config.allLetters[i])] = i;
+
+            // If no preset is supplied, assume custom
+            bool presetSupplied = false;
+            for (int i = 1; i < argc; ++i)
+            {
+                if (std::string(argv[i]) == "--preset")
+                {
+                    presetSupplied = true;
+                    break;
+                }
+            }
+
+            // --- Preset logic with override ---
+            if (presetSupplied)
+            {
+                // Set defaults for the preset
+                if (cmd.preset == 1)
+                {
+                    config.maxDepth = 2;
+                    config.minWordLength = 3;
+                    config.minUniqueLetters = 2;
+                    config.pruneRedundantPaths = true;
+                    config.pruneDominatedClasses = false;
+                }
+                else if (cmd.preset == 2)
+                {
+                    config.maxDepth = 2;
+                    config.minWordLength = 4;
+                    config.minUniqueLetters = 3;
+                    config.pruneRedundantPaths = true;
+                    config.pruneDominatedClasses = true;
+                }
+                else if (cmd.preset == 3)
+                {
+                    config.maxDepth = 3;
+                    config.minWordLength = 3;
+                    config.minUniqueLetters = 1;
+                    config.pruneRedundantPaths = false;
+                    config.pruneDominatedClasses = false;
+                }
+                // Override with any supplied custom arguments
+                if (cmd.maxDepth != -1)
+                    config.maxDepth = cmd.maxDepth;
+                if (cmd.minWordLength != -1)
+                    config.minWordLength = cmd.minWordLength;
+                if (cmd.minUniqueLetters != -1)
+                    config.minUniqueLetters = cmd.minUniqueLetters;
+                if (cmd.pruneRedundantPaths != -1)
+                    config.pruneRedundantPaths = cmd.pruneRedundantPaths != 0;
+                if (cmd.pruneDominatedClasses != -1)
+                    config.pruneDominatedClasses = cmd.pruneDominatedClasses != 0;
+            }
+            else
+            {
+                // Require all custom arguments
+                if (cmd.maxDepth == -1 || cmd.minWordLength == -1 || cmd.minUniqueLetters == -1 || cmd.pruneRedundantPaths == -1 || cmd.pruneDominatedClasses == -1)
+                {
+                    std::cout << "Missing custom arguments. Required: --maxDepth --minWordLength --minUniqueLetters --pruneRedundantPaths --pruneDominatedClasses\n";
+                    return 1;
+                }
+                config.maxDepth = cmd.maxDepth;
+                config.minWordLength = cmd.minWordLength;
+                config.minUniqueLetters = cmd.minUniqueLetters;
+                config.pruneRedundantPaths = cmd.pruneRedundantPaths != 0;
+                config.pruneDominatedClasses = cmd.pruneDominatedClasses != 0;
+            }
+
+            int totalLetterCount = 0;
+            for (const auto &word : allWordsVec)
+                totalLetterCount += word.wordString.size();
+            std::vector<LetterBoxed::Solution> finalSolutions = LetterBoxed::runLetterBoxedSolver(config, allWordsVec, totalLetterCount);
+            std::ofstream tempFile("temp.txt");
+            for (const auto &sol : finalSolutions)
+            {
+                tempFile << sol.text << "\n";
+            }
+            tempFile.close();
+            std::cout << finalSolutions.size();
+            return 0;
+        }
+        else if (cmd.mode == "spellingbee")
+        {
+            SpellingBee::Config config;
+            std::string letters = cmd.letters;
+            letters.erase(std::remove_if(letters.begin(), letters.end(), ::isspace), letters.end());
+            if (letters.size() != 7)
+            {
+                std::cout << "Invalid Spelling Bee letters.\n";
+                return 1;
+            }
+            std::set<char> seen;
+            for (size_t i = 0; i < 7; ++i)
+            {
+                char c = std::tolower(static_cast<unsigned char>(letters[i]));
+                if (!isalpha(static_cast<unsigned char>(letters[i])) || seen.count(c))
+                {
+                    std::cout << "Invalid Spelling Bee letters.\n";
+                    return 1;
+                }
+                seen.insert(c);
+                config.allLetters[i] = c;
+            }
+            for (char c : config.allLetters)
+                config.validLettersMap[static_cast<unsigned char>(c)] = true;
+            std::vector<WordUtils::Word> solutions = SpellingBee::runSpellingBeeSolver(allWordsVec, config);
+            std::ofstream tempFile("temp.txt");
+            for (const auto &w : solutions)
+            {
+                tempFile << w.wordString << "\n";
+            }
+            tempFile.close();
+            std::cout << solutions.size();
+            return 0;
+        }
+        else if (cmd.mode == "read")
+        {
+            // Read and page through temp.txt
+            std::ifstream tempFile("temp.txt");
+            if (!tempFile.is_open())
+            {
+                std::cout << "Could not open temp.txt\n";
+                return 1;
+            }
+            std::vector<std::string> lines;
+            std::string line;
+            while (std::getline(tempFile, line))
+            {
+                lines.push_back(line);
+            }
+            tempFile.close();
+            int start = std::max(0, cmd.start);
+            int end = (cmd.end == -1) ? static_cast<int>(lines.size()) : std::min(cmd.end, static_cast<int>(lines.size()));
+            if (start >= end || start >= static_cast<int>(lines.size()))
+            {
+                std::cout << "No results in specified range.\n";
+                return 0;
+            }
+            for (int i = start; i < end; ++i)
+            {
+                std::cout << lines[i] << "\n";
+            }
+            return 0;
+        }
+        else
+        {
+            std::cout << "Unknown mode. Use --mode letterboxed, --mode spellingbee, or --mode read.\n";
+            return 1;
+        }
+    }
 
     while (true)
     {
@@ -390,9 +782,10 @@ int main()
         std::cout << "Enter choice: ";
         std::string input;
         std::getline(std::cin, input);
+        input = WordUtils::trimToLower(input);
         if (input.empty())
             continue;
-        if (input == "q" || input == "Q")
+        if (input == "q")
             break;
         if (input == "1")
             runLetterBoxedGame(allWordsVec, logData);
@@ -401,6 +794,5 @@ int main()
         else
             std::cout << "Invalid choice. Try again.\n";
     }
-    std::cout << "Goodbye!\n";
     return 0;
 }
