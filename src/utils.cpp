@@ -288,6 +288,7 @@ namespace WordUtils
     std::vector<Word> loadWords()
     {
         std::filesystem::path data_dir = std::filesystem::current_path() / "data";
+        std::filesystem::path word_lists_dir = std::filesystem::current_path() / "word_lists";
         std::vector<Word> allWordsVec;
         std::ifstream in(data_dir / "words.bin", std::ios::binary);
         bool loadedFromBin = false;
@@ -323,7 +324,7 @@ namespace WordUtils
         if (!loadedFromBin)
         {
             std::vector<std::string> wordFiles;
-            for (const auto &entry : std::filesystem::directory_iterator(data_dir))
+            for (const auto &entry : std::filesystem::directory_iterator(word_lists_dir))
             {
                 if (entry.is_regular_file() && entry.path().extension() == ".txt")
                 {
@@ -337,7 +338,7 @@ namespace WordUtils
 
             for (const auto &fname : wordFiles)
             {
-                std::ifstream file(data_dir / fname);
+                std::ifstream file(word_lists_dir / fname);
                 if (!file.is_open())
                 {
                     std::cerr << "Error: Could not open " << fname << ". Please ensure it's in a 'data' sub-directory.\n";
