@@ -783,7 +783,7 @@ int main(int argc, char *argv[])
                 tempFile << w.wordString << "\n";
             }
             tempFile.close();
-            std::cout << solutions.size();
+            std::cout << solutions.size() << "\n";
             std::cout << cmd.file;
             return 0;
         }
