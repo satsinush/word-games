@@ -592,7 +592,7 @@ int main(int argc, char *argv[])
         std::cout << "  Letter Boxed:\n";
         std::cout << "    " << argv[0] << " --mode letterboxed --letters <12letters> [--preset <1|2|3|0>] [--file <filename>]\n";
         std::cout << "      --letters: Specify the 12 letters for the Letter Boxed puzzle.\n";
-        std::cout << "      --preset: 1=Default, 2=Fast, 3=Thorough, 0=Custom.\n";
+        std::cout << "      --preset: 1=Default, 2=Fast, 3=Thorough, 0=Custom. (optional)\n";
         std::cout << "      --maxDepth: Maximum number of words per solution (required if preset=0).\n";
         std::cout << "      --minWordLength: Minimum word length (required if preset=0).\n";
         std::cout << "      --minUniqueLetters: Minimum unique letters per word (required if preset=0).\n";
@@ -784,6 +784,7 @@ int main(int argc, char *argv[])
             }
             tempFile.close();
             std::cout << solutions.size();
+            std::cout << cmd.file;
             return 0;
         }
         else if (cmd.mode == "read")
