@@ -490,8 +490,9 @@ struct CmdArgs
     int pruneRedundantPaths = -1;
     int pruneDominatedClasses = -1;
     int maxResults = 100;
-    int start = 0; // for read mode
-    int end = -1;  // for read mode
+    int start = 0;                         // for read mode
+    int end = -1;                          // for read mode
+    std::string file = "results/temp.txt"; // default file for output/input
     bool valid = false;
 };
 
@@ -546,6 +547,10 @@ CmdArgs parseFlags(int argc, char *argv[])
         {
             args.end = std::stoi(argv[++i]);
         }
+        else if (a == "--file" && i + 1 < argc)
+        {
+            args.file = argv[++i];
+        }
     }
     args.valid = true;
     if (args.mode.empty() && args.letters.empty())
@@ -572,25 +577,68 @@ int main(int argc, char *argv[])
     std::vector<WordUtils::Word> allWordsVec = WordUtils::loadWords();
     bool logData = false;
 
+    CmdArgs cmd = parseFlags(argc, argv);
+
     // Print usage if argument is "help"
-    if (argc > 1 && (std::string(argv[1]) == "--help" || std::string(argv[1]) == "help" || std::string(argv[1]) == "-h"))
+    if (argc > 1 && (std::string(argv[1]) == "--help" || std::string(argv[1]) == "help" || std::string(argv[1]) == "-h" || !cmd.valid))
     {
         std::cout << "Usage:\n";
+        std::cout << "  --mode <mode>: Specify the mode of operation. Options are:\n";
+        std::cout << "      letterboxed: Solve the Letter Boxed puzzle.\n";
+        std::cout << "      spellingbee: Solve the Spelling Bee puzzle.\n";
+        std::cout << "      read: Read and display results from a file.\n";
+        std::cout << "\n";
+
         std::cout << "  Letter Boxed:\n";
-        std::cout << "    " << argv[0] << " --mode letterboxed --letters <12letters> [--preset <1|2|3|0>]\n";
-        std::cout << "      preset: 1=Default, 2=Fast, 3=Thorough, 0=Custom\n";
-        std::cout << "      If preset=0, add:\n";
-        std::cout << "        --maxDepth <int> --minWordLength <int> --minUniqueLetters <int> --pruneRedundantPaths <0|1> --pruneDominatedClasses <0|1>\n";
+        std::cout << "    " << argv[0] << " --mode letterboxed --letters <12letters> [--preset <1|2|3|0>] [--file <filename>]\n";
+        std::cout << "      --letters: Specify the 12 letters for the Letter Boxed puzzle.\n";
+        std::cout << "      --preset: 1=Default, 2=Fast, 3=Thorough, 0=Custom.\n";
+        std::cout << "      --maxDepth: Maximum number of words per solution (required if preset=0).\n";
+        std::cout << "      --minWordLength: Minimum word length (required if preset=0).\n";
+        std::cout << "      --minUniqueLetters: Minimum unique letters per word (required if preset=0).\n";
+        std::cout << "      --pruneRedundantPaths: 0 or 1 to enable/disable pruning redundant paths (required if preset=0).\n";
+        std::cout << "      --pruneDominatedClasses: 0 or 1 to enable/disable pruning dominated classes (required if preset=0).\n";
+        std::cout << "      --file: Specify the output file to save solutions (default: temp.txt).\n";
+        std::cout << "      --maxResults: Maximum number of results to display (default: 100).\n";
+        std::cout << "\n";
+
         std::cout << "  Spelling Bee:\n";
-        std::cout << "    " << argv[0] << " --mode spellingbee --letters <7letters>\n";
+        std::cout << "    " << argv[0] << " --mode spellingbee --letters <7letters> [--file <filename>]\n";
+        std::cout << "      --letters: Specify the 7 letters for the Spelling Bee puzzle.\n";
+        std::cout << "      --file: Specify the output file to save solutions (default: temp.txt).\n";
+        std::cout << "      --maxResults: Maximum number of results to display (default: 100).\n";
+        std::cout << "\n";
+
+        std::cout << "  Read Mode:\n";
+        std::cout << "    " << argv[0] << " --mode read [--file <filename>] [--start <startIndex>] [--end <endIndex>]\n";
+        std::cout << "      --file: Specify the input file to read solutions from (default: temp.txt).\n";
+        std::cout << "      --start: Starting index of results to display (default: 0).\n";
+        std::cout << "      --end: Ending index of results to display (default: all results).\n";
+        std::cout << "\n";
+
         std::cout << "  Help:\n";
         std::cout << "    " << argv[0] << " --help\n";
+        std::cout << "      Displays this help message with detailed information about arguments and options.\n";
         return 0;
     }
 
-    CmdArgs cmd = parseFlags(argc, argv);
     if (cmd.valid)
     {
+        // Ensure the directory for the specified file exists
+        std::filesystem::path filePath(cmd.file);
+        if (!filePath.parent_path().empty() && !std::filesystem::exists(filePath.parent_path()))
+        {
+            try
+            {
+                std::filesystem::create_directories(filePath.parent_path());
+            }
+            catch (const std::filesystem::filesystem_error &e)
+            {
+                std::cerr << "Error: Could not create directory for file: " << e.what() << "\n";
+                return 1;
+            }
+        }
+
         if (cmd.mode == "letterboxed")
         {
             LetterBoxed::Config config;
@@ -694,13 +742,14 @@ int main(int argc, char *argv[])
             for (const auto &word : allWordsVec)
                 totalLetterCount += word.wordString.size();
             std::vector<LetterBoxed::Solution> finalSolutions = LetterBoxed::runLetterBoxedSolver(config, allWordsVec, totalLetterCount);
-            std::ofstream tempFile("temp.txt");
+            std::ofstream tempFile(cmd.file);
             for (const auto &sol : finalSolutions)
             {
                 tempFile << sol.text << "\n";
             }
             tempFile.close();
-            std::cout << finalSolutions.size();
+            std::cout << finalSolutions.size() << "\n";
+            std::cout << cmd.file;
             return 0;
         }
         else if (cmd.mode == "spellingbee")
@@ -728,7 +777,7 @@ int main(int argc, char *argv[])
             for (char c : config.allLetters)
                 config.validLettersMap[static_cast<unsigned char>(c)] = true;
             std::vector<WordUtils::Word> solutions = SpellingBee::runSpellingBeeSolver(allWordsVec, config);
-            std::ofstream tempFile("temp.txt");
+            std::ofstream tempFile(cmd.file);
             for (const auto &w : solutions)
             {
                 tempFile << w.wordString << "\n";
@@ -739,11 +788,11 @@ int main(int argc, char *argv[])
         }
         else if (cmd.mode == "read")
         {
-            // Read and page through temp.txt
-            std::ifstream tempFile("temp.txt");
+            // Read and page through the specified file
+            std::ifstream tempFile(cmd.file);
             if (!tempFile.is_open())
             {
-                std::cout << "Could not open temp.txt\n";
+                std::cout << "Could not open " << cmd.file << "\n";
                 return 1;
             }
             std::vector<std::string> lines;
