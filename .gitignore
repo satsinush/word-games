@@ -2,3 +2,5 @@
 log.txt
 temp.txt
 results/
+.vscode/
+*.exe
