@@ -660,7 +660,6 @@ struct CmdArgs
     int minUniqueLetters = -1;
     int pruneRedundantPaths = -1;
     int pruneDominatedClasses = -1;
-    int maxResults = 100;
     int start = 0;                                     // for read mode
     int end = -1;                                      // for read mode
     std::string file = "results/temp.txt";             // default file for output/input (legacy)
@@ -707,10 +706,6 @@ CmdArgs parseFlags(int argc, char *argv[])
         else if (a == "--pruneDominatedClasses" && i + 1 < argc)
         {
             args.pruneDominatedClasses = std::stoi(argv[++i]);
-        }
-        else if (a == "--maxResults" && i + 1 < argc)
-        {
-            args.maxResults = std::stoi(argv[++i]);
         }
         else if (a == "--start" && i + 1 < argc)
         {
@@ -781,14 +776,12 @@ int main(int argc, char *argv[])
         std::cout << "      --pruneRedundantPaths: 0 or 1 to enable/disable pruning redundant paths (required if preset=0).\n";
         std::cout << "      --pruneDominatedClasses: 0 or 1 to enable/disable pruning dominated classes (required if preset=0).\n";
         std::cout << "      --file: Specify the output file to save solutions (default: temp.txt).\n";
-        std::cout << "      --maxResults: Maximum number of results to display (default: 100).\n";
         std::cout << "\n";
 
         std::cout << "  Spelling Bee:\n";
         std::cout << "    " << argv[0] << " --mode spellingbee --letters <7letters> [--file <filename>]\n";
         std::cout << "      --letters: Specify the 7 letters for the Spelling Bee puzzle.\n";
         std::cout << "      --file: Specify the output file to save solutions (default: temp.txt).\n";
-        std::cout << "      --maxResults: Maximum number of results to display (default: 100).\n";
         std::cout << "\n";
 
         std::cout << "  Wordle:\n";
@@ -799,7 +792,6 @@ int main(int argc, char *argv[])
         std::cout << "      --maxDepth: Search depth for entropy calculation (1-3, default: 1). Higher values are more accurate but slower.\n";
         std::cout << "      --possibleFile: Output file for possible solution words (default: results/possible.txt).\n";
         std::cout << "      --guessesFile: Output file for all guesses with entropy/probability (default: results/guesses.txt).\n";
-        std::cout << "      --maxResults: Maximum number of results to display (default: 100).\n";
         std::cout << "\n";
 
         std::cout << "  Read Mode:\n";
