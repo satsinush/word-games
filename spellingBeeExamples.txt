@@ -1,1 +1,1 @@
-nhmkace
+--mode spellingbee --letters nhmkace

@@ -7,10 +7,12 @@
 #include <sstream>
 #include <filesystem>
 #include <fstream>
+#include <iomanip>
 
 #include "utils.hpp"
 #include "letterBoxed.hpp"
 #include "spellingBee.hpp"
+#include "wordle.hpp"
 
 // --- Letter Boxed UI and Game Loop ---
 void drawLetterBoxedPuzzle(const std::array<char, 12> &letters)
@@ -478,6 +480,175 @@ void runSpellingBeeGame(const std::vector<WordUtils::Word> &allWordsVec, bool lo
     }
 }
 
+// --- Wordle UI and Game Loop ---
+void runWordleGame(const std::vector<WordUtils::Word> &allWordsVec, bool logData = false)
+{
+    ProfilerUtils::Profiler profiler;
+    std::vector<Wordle::Feedback> feedbackHistory;
+
+    while (true)
+    {
+        std::cout << "\n=== WORDLE SOLVER ===\n";
+        std::cout << "Enter your guesses and their feedback patterns.\n";
+        std::cout << "Format: WORD 01201 (0=grey, 1=yellow, 2=green)\n";
+        std::cout << "Enter 'solve' to get best guesses, 'clear' to start over, 'q' to quit\n\n";
+
+        if (!feedbackHistory.empty())
+        {
+            std::cout << "Current feedback history:\n";
+            for (const auto &fb : feedbackHistory)
+            {
+                std::cout << "  " << fb.word << " ";
+                for (int i = 0; i < 5; ++i)
+                {
+                    std::cout << fb.getColor(i);
+                }
+                std::cout << "\n";
+            }
+            std::cout << "\n";
+        }
+
+        while (true)
+        {
+            std::cout << "Enter guess (or command): ";
+            std::string input;
+            std::getline(std::cin, input);
+            input = WordUtils::trimToLower(input);
+
+            if (input.empty())
+                continue;
+
+            if (input == "q")
+                return;
+
+            if (input == "clear")
+            {
+                feedbackHistory.clear();
+                std::cout << "Feedback history cleared.\n\n";
+                break;
+            }
+
+            if (input == "solve")
+            {
+                std::cout << "Calculating best guesses...\n";
+
+                // Ask for maxDepth configuration
+                std::cout << "Enter search depth (1-3, default 1): ";
+                std::string depthInput;
+                std::getline(std::cin, depthInput);
+                int maxDepth = 1;
+                if (!depthInput.empty())
+                {
+                    try
+                    {
+                        maxDepth = std::stoi(depthInput);
+                        if (maxDepth < 1 || maxDepth > 3)
+                        {
+                            std::cout << "Invalid depth, using default of 1.\n";
+                            maxDepth = 1;
+                        }
+                    }
+                    catch (...)
+                    {
+                        std::cout << "Invalid input, using default of 1.\n";
+                        maxDepth = 1;
+                    }
+                }
+
+                profiler.start();
+
+                Wordle::Config config;
+                config.maxDepth = maxDepth;
+
+                Wordle::Result result =
+                    Wordle::runWordleSolverWithEntropy(allWordsVec, feedbackHistory, config);
+
+                profiler.end();
+                if (logData)
+                    profiler.logProfilerData();
+
+                std::cout << "\nPossible remaining words: " << result.totalPossibleWords << "\n";
+
+                if (result.sortedGuesses.empty())
+                {
+                    std::cout << "No valid words found!\n";
+                }
+                else
+                {
+                    std::cout << "\nBest guesses (sorted by information value):\n";
+
+                    // Create header with entropy columns
+                    std::cout << "Word\t\t";
+                    for (int i = 0; i < config.maxDepth; i++)
+                    {
+                        std::cout << "E" << (i + 1) << "\t";
+                    }
+                    std::cout << "Probability\n";
+
+                    std::cout << "----\t\t";
+                    for (int i = 0; i < config.maxDepth; i++)
+                    {
+                        std::cout << "-------\t";
+                    }
+                    std::cout << "-----------\n";
+
+                    int displayCount = std::min(20, static_cast<int>(result.sortedGuesses.size()));
+                    for (int i = 0; i < displayCount; ++i)
+                    {
+                        const auto &guess = result.sortedGuesses[i];
+                        std::cout << guess.word.wordString << "\t\t";
+
+                        // Display all entropy levels
+                        for (int j = 0; j < config.maxDepth && j < guess.entropyList.size(); j++)
+                        {
+                            std::cout << std::fixed << std::setprecision(3) << guess.entropyList[j] << "\t";
+                        }
+
+                        std::cout << std::fixed << std::setprecision(4) << guess.probability << "\n";
+                    }
+
+                    if (result.totalPossibleWords <= 20)
+                    {
+                        std::cout << "\nAll remaining possibilities:\n";
+                        // Show the first few possibilities (which are the actual possible words when maxDepth=0)
+                        Wordle::Config possibleConfig;
+                        possibleConfig.maxDepth = 0;
+                        Wordle::Result possibleResult =
+                            Wordle::runWordleSolverWithEntropy(allWordsVec, feedbackHistory, possibleConfig);
+
+                        for (const auto &guess : possibleResult.sortedGuesses)
+                        {
+                            std::cout << guess.word.wordString << " ";
+                        }
+                        std::cout << "\n";
+                    }
+                }
+
+                std::cout << "\nSolver completed in " << profiler.getTotalTime() << " seconds.\n\n";
+                continue;
+            }
+
+            // Try to parse as feedback
+            try
+            {
+                Wordle::Feedback fb = Wordle::parseFeedback(input);
+                feedbackHistory.push_back(fb);
+                std::cout << "Added: " << fb.word << " ";
+                for (int i = 0; i < 5; ++i)
+                {
+                    std::cout << fb.getColor(i);
+                }
+                std::cout << "\n\n";
+            }
+            catch (const std::exception &e)
+            {
+                std::cout << "Invalid format. Use: WORD 01201 (5 letters, 5 digits 0-2)\n";
+                std::cout << "Error: " << e.what() << "\n\n";
+            }
+        }
+    }
+}
+
 // --- Helper: Parse flags from argv ---
 struct CmdArgs
 {
@@ -490,9 +661,11 @@ struct CmdArgs
     int pruneRedundantPaths = -1;
     int pruneDominatedClasses = -1;
     int maxResults = 100;
-    int start = 0;                         // for read mode
-    int end = -1;                          // for read mode
-    std::string file = "results/temp.txt"; // default file for output/input
+    int start = 0;                                     // for read mode
+    int end = -1;                                      // for read mode
+    std::string file = "results/temp.txt";             // default file for output/input (legacy)
+    std::string possibleFile = "results/possible.txt"; // file for possible words
+    std::string guessesFile = "results/guesses.txt";   // file for guesses with entropy
     bool valid = false;
 };
 
@@ -551,6 +724,14 @@ CmdArgs parseFlags(int argc, char *argv[])
         {
             args.file = argv[++i];
         }
+        else if (a == "--possibleFile" && i + 1 < argc)
+        {
+            args.possibleFile = argv[++i];
+        }
+        else if (a == "--guessesFile" && i + 1 < argc)
+        {
+            args.guessesFile = argv[++i];
+        }
     }
     args.valid = true;
     if (args.mode.empty() && args.letters.empty())
@@ -586,6 +767,7 @@ int main(int argc, char *argv[])
         std::cout << "  --mode <mode>: Specify the mode of operation. Options are:\n";
         std::cout << "      letterboxed: Solve the Letter Boxed puzzle.\n";
         std::cout << "      spellingbee: Solve the Spelling Bee puzzle.\n";
+        std::cout << "      wordle: Solve Wordle puzzles with entropy-based suggestions.\n";
         std::cout << "      read: Read and display results from a file.\n";
         std::cout << "\n";
 
@@ -606,6 +788,17 @@ int main(int argc, char *argv[])
         std::cout << "    " << argv[0] << " --mode spellingbee --letters <7letters> [--file <filename>]\n";
         std::cout << "      --letters: Specify the 7 letters for the Spelling Bee puzzle.\n";
         std::cout << "      --file: Specify the output file to save solutions (default: temp.txt).\n";
+        std::cout << "      --maxResults: Maximum number of results to display (default: 100).\n";
+        std::cout << "\n";
+
+        std::cout << "  Wordle:\n";
+        std::cout << "    " << argv[0] << " --mode wordle --guesses \"STEAL 01201\" \"CRANE 00120\" [--maxDepth <depth>] [--possibleFile <filename>] [--guessesFile <filename>]\n";
+        std::cout << "      --guesses: Specify guess/feedback pairs. Format: \"WORD 01201\" where:\n";
+        std::cout << "                 0=grey (letter not in word), 1=yellow (letter in word, wrong position),\n";
+        std::cout << "                 2=green (letter in word, correct position)\n";
+        std::cout << "      --maxDepth: Search depth for entropy calculation (1-3, default: 1). Higher values are more accurate but slower.\n";
+        std::cout << "      --possibleFile: Output file for possible solution words (default: results/possible.txt).\n";
+        std::cout << "      --guessesFile: Output file for all guesses with entropy/probability (default: results/guesses.txt).\n";
         std::cout << "      --maxResults: Maximum number of results to display (default: 100).\n";
         std::cout << "\n";
 
@@ -787,6 +980,80 @@ int main(int argc, char *argv[])
             std::cout << cmd.file;
             return 0;
         }
+        else if (cmd.mode == "wordle")
+        {
+            // Example usage:
+            // --mode wordle --guesses "STEAL 01201" "CRANE 00120" ...
+            std::vector<Wordle::Feedback> feedbacks;
+            for (int i = 1; i < argc; ++i)
+            {
+                if (std::string(argv[i]) == "--guesses")
+                {
+                    for (int j = i + 1; j < argc && argv[j][0] != '-'; ++j)
+                    {
+                        try
+                        {
+                            feedbacks.push_back(Wordle::parseFeedback(argv[j]));
+                        }
+                        catch (...)
+                        {
+                            std::cout << "Invalid guess/feedback: " << argv[j] << "\n";
+                            return 1;
+                        }
+                        i = j;
+                    }
+                }
+            }
+
+            ProfilerUtils::Profiler profiler;
+            // Get possible words and best guesses with entropy
+            Wordle::Config config;
+            config.maxDepth = (cmd.maxDepth != -1) ? cmd.maxDepth : 1; // Use command line depth or default to 1
+            profiler.start();
+            Wordle::Result result =
+                Wordle::runWordleSolverWithEntropy(allWordsVec, feedbacks, config);
+            profiler.end();
+            profiler.logProfilerData();
+
+            // Use the specific file arguments
+            std::string possibleWordsFile = cmd.possibleFile;
+            std::string guessesFile = cmd.guessesFile;
+
+            // Write possible words to first file
+            std::ofstream possibleFile(possibleWordsFile);
+            for (const auto &guess : result.sortedGuesses)
+            {
+                if (guess.probability > 0)
+                {
+                    possibleFile << guess.word.wordString << "\n";
+                }
+            }
+            possibleFile.close();
+
+            // Write all guesses with entropy and probability to second file
+            std::ofstream guessFile(guessesFile);
+            for (const auto &guess : result.sortedGuesses)
+            {
+                guessFile << guess.word.wordString << " ";
+                guessFile << std::fixed << std::setprecision(4) << guess.probability << " ";
+
+                // Write all entropy levels
+                for (int j = 0; j < config.maxDepth && j < guess.entropyList.size(); j++)
+                {
+                    guessFile << std::fixed << std::setprecision(3) << guess.entropyList[j] << " ";
+                }
+
+                guessFile << "\n";
+            }
+            guessFile.close();
+
+            // Display summary to console
+            std::cout << result.totalPossibleWords << "\n";
+            std::cout << result.sortedGuesses.size() << "\n";
+            std::cout << possibleWordsFile << "\n";
+            std::cout << guessesFile << "\n";
+            return 0;
+        }
         else if (cmd.mode == "read")
         {
             // Read and page through the specified file
@@ -818,7 +1085,7 @@ int main(int argc, char *argv[])
         }
         else
         {
-            std::cout << "Unknown mode. Use --mode letterboxed, --mode spellingbee, or --mode read.\n";
+            std::cout << "Unknown mode. Use --mode letterboxed, --mode spellingbee, --mode wordle, or --mode read.\n";
             return 1;
         }
     }
@@ -828,6 +1095,7 @@ int main(int argc, char *argv[])
         std::cout << "\nSelect game mode:\n";
         std::cout << "  1: Letter Boxed\n";
         std::cout << "  2: Spelling Bee\n";
+        std::cout << "  3: Wordle\n";
         std::cout << "  q: Quit\n";
         std::cout << "Enter choice: ";
         std::string input;
@@ -841,6 +1109,8 @@ int main(int argc, char *argv[])
             runLetterBoxedGame(allWordsVec, logData);
         else if (input == "2")
             runSpellingBeeGame(allWordsVec, logData);
+        else if (input == "3")
+            runWordleGame(allWordsVec, logData);
         else
             std::cout << "Invalid choice. Try again.\n";
     }

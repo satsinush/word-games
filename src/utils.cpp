@@ -308,6 +308,7 @@ namespace WordUtils
                     in.read(reinterpret_cast<char *>(&allWordsVec[i].uniqueLetters), sizeof(allWordsVec[i].uniqueLetters));
                     in.read(reinterpret_cast<char *>(&allWordsVec[i].order), sizeof(allWordsVec[i].order));
                     in.read(reinterpret_cast<char *>(&allWordsVec[i].count), sizeof(allWordsVec[i].count));
+                    in.read(reinterpret_cast<char *>(&allWordsVec[i].letterCount), sizeof(allWordsVec[i].letterCount));
                     if (!in)
                         throw std::runtime_error("Read error");
                 }
@@ -360,7 +361,15 @@ namespace WordUtils
                         }
 
                         int uniqueLetters = std::set<char>(word.begin(), word.end()).size();
-                        auto result = allWordsSet.insert({word, order, 1, uniqueLetters});
+
+                        // Calculate letter count array
+                        std::array<uint8_t, 26> letterCount = {0};
+                        for (char c : word)
+                        {
+                            letterCount[c - 'a']++;
+                        }
+
+                        auto result = allWordsSet.insert({word, order, 1, uniqueLetters, letterCount});
                         if (!result.second)
                         {
                             auto it = result.first;
@@ -388,6 +397,7 @@ namespace WordUtils
                 out.write(reinterpret_cast<const char *>(&w.uniqueLetters), sizeof(w.uniqueLetters));
                 out.write(reinterpret_cast<const char *>(&w.order), sizeof(w.order));
                 out.write(reinterpret_cast<const char *>(&w.count), sizeof(w.count));
+                out.write(reinterpret_cast<const char *>(&w.letterCount), sizeof(w.letterCount));
             }
             out.close();
         }

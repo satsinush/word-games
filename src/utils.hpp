@@ -2,6 +2,8 @@
 #include <string>
 #include <map>
 #include <vector>
+#include <array>
+#include <cstdint>
 
 namespace ProfilerUtils
 {
@@ -75,6 +77,7 @@ namespace WordUtils
         int order;
         int count;
         int uniqueLetters;
+        std::array<uint8_t, 26> letterCount; // Count of each letter a-z
         bool operator<(const Word &other) const { return wordString < other.wordString; }
     };
 
