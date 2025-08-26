@@ -620,9 +620,15 @@ void runWordleGame(const std::vector<WordUtils::Word> &allWordsVec, bool logData
                         Wordle::Result possibleResult =
                             Wordle::runWordleSolverWithEntropy(allWordsVec, feedbackHistory, possibleConfig);
 
+                        std::vector<std::string> possibleWords;
                         for (const auto &guess : possibleResult.sortedGuesses)
                         {
-                            std::cout << guess.word.wordString << " ";
+                            possibleWords.push_back(guess.word.wordString);
+                        }
+                        std::sort(possibleWords.begin(), possibleWords.end());
+                        for (const auto &word : possibleWords)
+                        {
+                            std::cout << word << " ";
                         }
                         std::cout << "\n";
                     }
@@ -823,9 +829,15 @@ void runMastermindGame(bool logData = false)
                     possibleConfig.maxDepth = 0;
                     Mastermind::Result possibleResult = Mastermind::runMastermindSolverWithEntropy(allPatterns, guessHistory, possibleConfig);
 
+                    std::vector<std::string> possiblePatterns;
                     for (const auto &guess : possibleResult.sortedGuesses)
                     {
-                        std::cout << guess.pattern.toString() << " ";
+                        possiblePatterns.push_back(guess.pattern.toString());
+                    }
+                    std::sort(possiblePatterns.begin(), possiblePatterns.end());
+                    for (const auto &pattern : possiblePatterns)
+                    {
+                        std::cout << pattern << " ";
                     }
                     std::cout << "\n";
                 }
@@ -1009,10 +1021,6 @@ CmdArgs parseFlags(int argc, char *argv[])
         {
             args.allowDuplicates = (std::stoi(argv[++i]) != 0);
         }
-        else if (a == "--guess" && i + 1 < argc)
-        {
-            args.guesses.push_back(argv[++i]);
-        }
     }
     args.valid = true;
     if (args.mode.empty() && args.letters.empty())
@@ -1083,10 +1091,10 @@ int main(int argc, char *argv[])
         std::cout << "\n";
 
         std::cout << "  Mastermind:\n";
-        std::cout << "    " << argv[0] << " --mode mastermind --guess \"1 2 3 4|2 2\" [--numPegs <pegs>] [--numColors <colors>] [--allowDuplicates <0|1>] [--maxDepth <depth>] [--possibleFile <filename>] [--guessesFile <filename>]\n";
-        std::cout << "      --guess: Specify guess/feedback pairs. Format: \"1 2 3 4|2 2\" where:\n";
-        std::cout << "               Pattern: sequence of color numbers separated by spaces\n";
-        std::cout << "               Feedback: <correct_position> <correct_color> (e.g., \"2 2\" = 2 correct position, 2 correct color)\n";
+        std::cout << "    " << argv[0] << " --mode mastermind --guesses \"1 2 3 4|2 2\" [--numPegs <pegs>] [--numColors <colors>] [--allowDuplicates <0|1>] [--maxDepth <depth>] [--possibleFile <filename>] [--guessesFile <filename>]\n";
+        std::cout << "      --guesses: Specify guess/feedback pairs. Format: \"1 2 3 4|2 2\" where:\n";
+        std::cout << "                 Pattern: sequence of color numbers separated by spaces\n";
+        std::cout << "                 Feedback: <correct_position> <correct_color> (e.g., \"2 2\" = 2 correct position, 2 correct color)\n";
         std::cout << "      --numPegs: Number of pegs in the pattern (default: 4)\n";
         std::cout << "      --numColors: Number of available colors (default: 6)\n";
         std::cout << "      --allowDuplicates: 0 or 1 to disable/enable duplicate colors in patterns (default: 1)\n";
@@ -1284,16 +1292,7 @@ int main(int argc, char *argv[])
                 {
                     for (int j = i + 1; j < argc && argv[j][0] != '-'; ++j)
                     {
-                        try
-                        {
-                            feedbacks.push_back(Wordle::parseFeedback(argv[j]));
-                        }
-                        catch (...)
-                        {
-                            std::cout << "Invalid guess/feedback: " << argv[j] << "\n";
-                            return 1;
-                        }
-                        i = j;
+                        feedbacks.push_back(Wordle::parseFeedback(argv[j]));
                     }
                 }
             }
@@ -1314,14 +1313,20 @@ int main(int argc, char *argv[])
             std::string possibleWordsFile = cmd.possibleFile;
             std::string guessesFile = cmd.guessesFile;
 
-            // Write possible words to first file
+            // Write possible words to first file (sorted alphabetically)
             std::ofstream possibleFile(possibleWordsFile);
+            std::vector<std::string> possibleWords;
             for (const auto &guess : result.sortedGuesses)
             {
                 if (guess.probability > 0)
                 {
-                    possibleFile << guess.word.wordString << "\n";
+                    possibleWords.push_back(guess.word.wordString);
                 }
+            }
+            std::sort(possibleWords.begin(), possibleWords.end());
+            for (const auto &word : possibleWords)
+            {
+                possibleFile << word << "\n";
             }
             possibleFile.close();
 
@@ -1387,18 +1392,27 @@ int main(int argc, char *argv[])
             std::string possiblePatternsFile = cmd.possibleFile;
             std::string guessesFile = cmd.guessesFile;
 
-            // Write possible patterns to first file
+            // Write possible patterns to first file (sorted alphabetically)
             std::ofstream possibleFile(possiblePatternsFile);
+            std::vector<std::string> possiblePatterns;
             for (const auto &guess : result.sortedGuesses)
             {
                 if (guess.probability > 0)
                 {
+                    std::string patternStr;
                     for (uint8_t color : guess.pattern.colors)
                     {
-                        possibleFile << (int)color << " ";
+                        if (!patternStr.empty())
+                            patternStr += " ";
+                        patternStr += std::to_string((int)color);
                     }
-                    possibleFile << "\n";
+                    possiblePatterns.push_back(patternStr);
                 }
+            }
+            std::sort(possiblePatterns.begin(), possiblePatterns.end());
+            for (const auto &pattern : possiblePatterns)
+            {
+                possibleFile << pattern << "\n";
             }
             possibleFile.close();
 
