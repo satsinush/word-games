@@ -3,6 +3,7 @@
 #include <vector>
 #include <array>
 #include <bitset>
+#include <cmath>
 
 #include "utils.hpp"
 
@@ -11,6 +12,7 @@ namespace Wordle
     struct Config
     {
         int maxDepth = 1; // How many moves ahead to calculate entropy
+        bool excludeUncommonWords = false;
     };
 
     struct Feedback
@@ -68,10 +70,28 @@ namespace Wordle
 
         bool operator<(const WordGuess &other) const
         {
-            // Sort by entropy (higher is better), then by probability (higher is better)
-            if (entropy != other.entropy)
-                return entropy > other.entropy;
-            return probability > other.probability;
+            // Compare entropy levels from highest depth to lowest (E3, E2, E1)
+            // We want higher entropy values to come first (better guesses)
+            int maxLevels = std::max(entropyList.size(), other.entropyList.size());
+
+            // Use small tolerance for floating point comparison
+            const double tolerance = 1e-9;
+
+            for (int i = maxLevels - 1; i >= 0; i--)
+            {
+                double thisEntropy = (i < entropyList.size()) ? entropyList[i] : 0.0;
+                double otherEntropy = (i < other.entropyList.size()) ? other.entropyList[i] : 0.0;
+
+                if (std::abs(thisEntropy - otherEntropy) > tolerance)
+                    return thisEntropy > otherEntropy; // Sort in descending order (higher entropy first)
+            }
+
+            // If all entropy levels are equal, prefer higher probability
+            if (std::abs(probability - other.probability) > tolerance)
+                return probability > other.probability; // Sort in descending order (higher probability first)
+
+            // If both entropy and probability are equal, sort by word for consistency
+            return word.wordString < other.word.wordString;
         }
     };
 

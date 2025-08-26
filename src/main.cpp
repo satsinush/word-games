@@ -13,6 +13,7 @@
 #include "letterBoxed.hpp"
 #include "spellingBee.hpp"
 #include "wordle.hpp"
+#include "mastermind.hpp"
 
 // --- Letter Boxed UI and Game Loop ---
 void drawLetterBoxedPuzzle(const std::array<char, 12> &letters)
@@ -596,15 +597,18 @@ void runWordleGame(const std::vector<WordUtils::Word> &allWordsVec, bool logData
                     for (int i = 0; i < displayCount; ++i)
                     {
                         const auto &guess = result.sortedGuesses[i];
-                        std::cout << guess.word.wordString << "\t\t";
+                        std::cout << guess.word.wordString << ",";
+
+                        // Display probability
+                        std::cout << std::fixed << std::setprecision(4) << guess.probability;
 
                         // Display all entropy levels
                         for (int j = 0; j < config.maxDepth && j < guess.entropyList.size(); j++)
                         {
-                            std::cout << std::fixed << std::setprecision(3) << guess.entropyList[j] << "\t";
+                            std::cout << "," << std::fixed << std::setprecision(3) << guess.entropyList[j];
                         }
 
-                        std::cout << std::fixed << std::setprecision(4) << guess.probability << "\n";
+                        std::cout << "\n";
                     }
 
                     if (result.totalPossibleWords <= 20)
@@ -649,6 +653,262 @@ void runWordleGame(const std::vector<WordUtils::Word> &allWordsVec, bool logData
     }
 }
 
+void runMastermindGame(bool logData = false)
+{
+    ProfilerUtils::Profiler profiler;
+    std::vector<Mastermind::Feedback> guessHistory;
+
+    // Get configuration
+    Mastermind::Config config;
+    std::cout << "=== Mastermind Solver ===\n";
+    std::cout << "Enter number of pegs (default 4): ";
+    std::string input;
+    std::getline(std::cin, input);
+    if (!input.empty())
+    {
+        try
+        {
+            config.numPegs = std::stoi(input);
+            if (config.numPegs < 1 || config.numPegs > 20)
+            {
+                std::cout << "Invalid number of pegs, using default of 4.\n";
+                config.numPegs = 4;
+            }
+        }
+        catch (...)
+        {
+            std::cout << "Invalid input, using default of 4.\n";
+        }
+    }
+
+    std::cout << "Enter number of colors (default 6): ";
+    std::getline(std::cin, input);
+    if (!input.empty())
+    {
+        try
+        {
+            config.numColors = std::stoi(input);
+            if (config.numColors < 1 || config.numColors > 20)
+            {
+                std::cout << "Invalid number of colors, using default of 6.\n";
+                config.numColors = 6;
+            }
+        }
+        catch (...)
+        {
+            std::cout << "Invalid input, using default of 6.\n";
+        }
+    }
+
+    std::cout << "Allow duplicate colors? (y/n, default y): ";
+    std::getline(std::cin, input);
+    if (!input.empty() && (input[0] == 'n' || input[0] == 'N'))
+    {
+        config.allowDuplicates = false;
+    }
+
+    // Generate all possible patterns
+    std::vector<Mastermind::Pattern> allPatterns = Mastermind::generateAllPatterns(config);
+    std::cout << "Generated " << allPatterns.size() << " possible patterns.\n\n";
+
+    while (true)
+    {
+        std::cout << "Current guess history:\n";
+        for (size_t i = 0; i < guessHistory.size(); ++i)
+        {
+            std::cout << (i + 1) << ". " << guessHistory[i].guess.toString()
+                      << " -> " << static_cast<int>(guessHistory[i].correctPosition)
+                      << " " << static_cast<int>(guessHistory[i].correctColor) << "\n";
+        }
+
+        std::cout << "\nCommands:\n";
+        std::cout << "  'solve' - Calculate best next guess\n";
+        std::cout << "  'clear' - Clear guess history\n";
+        std::cout << "  'q' - Quit\n";
+        std::cout << "  Or enter: 'PATTERN|FEEDBACK' (e.g., '1 2 3 4|2 1' for pattern [1,2,3,4] with 2 correct positions, 1 correct color)\n";
+        std::cout << "\nEnter command: ";
+
+        std::getline(std::cin, input);
+
+        if (input == "q")
+            return;
+
+        if (input == "clear")
+        {
+            guessHistory.clear();
+            std::cout << "Guess history cleared.\n\n";
+            continue;
+        }
+
+        if (input == "solve")
+        {
+            std::cout << "Calculating best guesses...\n";
+
+            // Ask for maxDepth configuration
+            std::cout << "Enter search depth (1-3, default 1): ";
+            std::string depthInput;
+            std::getline(std::cin, depthInput);
+            int maxDepth = 1;
+            if (!depthInput.empty())
+            {
+                try
+                {
+                    maxDepth = std::stoi(depthInput);
+                    if (maxDepth < 1 || maxDepth > 3)
+                    {
+                        std::cout << "Invalid depth, using default of 1.\n";
+                        maxDepth = 1;
+                    }
+                }
+                catch (...)
+                {
+                    std::cout << "Invalid input, using default of 1.\n";
+                    maxDepth = 1;
+                }
+            }
+
+            config.maxDepth = maxDepth;
+            profiler.start();
+
+            Mastermind::Result result = Mastermind::runMastermindSolverWithEntropy(allPatterns, guessHistory, config);
+
+            profiler.end();
+
+            if (result.sortedGuesses.empty())
+            {
+                std::cout << "No valid patterns found!\n";
+            }
+            else
+            {
+                std::cout << "\nBest guesses (sorted by information value):\n";
+
+                // Create header with entropy columns
+                std::cout << "Pattern\t\t\t";
+                for (int i = 0; i < config.maxDepth; i++)
+                {
+                    std::cout << "E" << (i + 1) << "\t";
+                }
+                std::cout << "Probability\n";
+
+                std::cout << "-------\t\t\t";
+                for (int i = 0; i < config.maxDepth; i++)
+                {
+                    std::cout << "-------\t";
+                }
+                std::cout << "-----------\n";
+
+                int displayCount = std::min(20, static_cast<int>(result.sortedGuesses.size()));
+                for (int i = 0; i < displayCount; ++i)
+                {
+                    const auto &guess = result.sortedGuesses[i];
+                    std::cout << guess.pattern.toString() << ",";
+
+                    // Display probability
+                    std::cout << std::fixed << std::setprecision(4) << guess.probability;
+
+                    // Display all entropy levels
+                    for (int j = 0; j < config.maxDepth && j < guess.entropyList.size(); j++)
+                    {
+                        std::cout << "," << std::fixed << std::setprecision(3) << guess.entropyList[j];
+                    }
+
+                    std::cout << "\n";
+                }
+
+                if (result.totalPossiblePatterns <= 20)
+                {
+                    std::cout << "\nAll remaining possibilities:\n";
+                    // Show just the possible patterns
+                    Mastermind::Config possibleConfig = config;
+                    possibleConfig.maxDepth = 0;
+                    Mastermind::Result possibleResult = Mastermind::runMastermindSolverWithEntropy(allPatterns, guessHistory, possibleConfig);
+
+                    for (const auto &guess : possibleResult.sortedGuesses)
+                    {
+                        std::cout << guess.pattern.toString() << " ";
+                    }
+                    std::cout << "\n";
+                }
+            }
+
+            std::cout << "\nSolver completed in " << profiler.getTotalTime() << " seconds.\n\n";
+            continue;
+        }
+
+        // Try to parse as pattern and feedback
+        try
+        {
+            // Split input by pipe separator
+            size_t pipePos = input.find('|');
+            if (pipePos == std::string::npos)
+            {
+                throw std::runtime_error("Missing pipe separator '|' between pattern and feedback");
+            }
+
+            std::string patternStr = input.substr(0, pipePos);
+            std::string feedbackStr = input.substr(pipePos + 1);
+
+            // Parse pattern colors
+            std::istringstream patternIss(patternStr);
+            std::vector<uint8_t> colors;
+            std::string token;
+            while (patternIss >> token)
+            {
+                int color = std::stoi(token);
+                if (color < 0 || color >= config.numColors)
+                {
+                    throw std::runtime_error("Color " + std::to_string(color) + " out of range (0-" + std::to_string(config.numColors - 1) + ")");
+                }
+                colors.push_back(static_cast<uint8_t>(color));
+            }
+
+            if (colors.size() != config.numPegs)
+            {
+                throw std::runtime_error("Expected " + std::to_string(config.numPegs) + " colors, got " + std::to_string(colors.size()));
+            }
+
+            // Parse feedback
+            std::istringstream feedbackIss(feedbackStr);
+            int correctPos, correctCol;
+            if (!(feedbackIss >> correctPos >> correctCol))
+            {
+                throw std::runtime_error("Expected 2 feedback numbers (correct position, correct color)");
+            }
+
+            if (correctPos < 0 || correctPos > config.numPegs || correctCol < 0 || correctCol > config.numPegs)
+            {
+                throw std::runtime_error("Feedback values out of range");
+            }
+
+            Mastermind::Pattern pattern(colors);
+            Mastermind::Feedback feedback;
+            feedback.guess = pattern;
+            feedback.correctPosition = static_cast<uint8_t>(correctPos);
+            feedback.correctColor = static_cast<uint8_t>(correctCol);
+
+            guessHistory.push_back(feedback);
+            std::cout << "Added: " << pattern.toString() << " -> "
+                      << static_cast<int>(feedback.correctPosition) << " "
+                      << static_cast<int>(feedback.correctColor) << "\n\n";
+        }
+        catch (const std::exception &e)
+        {
+            std::cout << "Invalid format. Use: 'pattern|feedback' where:\n";
+            std::cout << "  pattern: " << config.numPegs << " colors separated by spaces\n";
+            std::cout << "  feedback: 2 numbers (correct position, correct color)\n";
+            std::cout << "Example for " << config.numPegs << " pegs: '";
+            for (int i = 0; i < config.numPegs; i++)
+            {
+                if (i > 0)
+                    std::cout << " ";
+                std::cout << (i % config.numColors);
+            }
+            std::cout << "|2 1' (pattern with 2 correct positions, 1 correct color)\n";
+            std::cout << "Error: " << e.what() << "\n\n";
+        }
+    }
+}
+
 // --- Helper: Parse flags from argv ---
 struct CmdArgs
 {
@@ -660,11 +920,17 @@ struct CmdArgs
     int minUniqueLetters = -1;
     int pruneRedundantPaths = -1;
     int pruneDominatedClasses = -1;
+    int excludeUncommonWords = -1;
     int start = 0;                                     // for read mode
     int end = -1;                                      // for read mode
     std::string file = "results/temp.txt";             // default file for output/input (legacy)
     std::string possibleFile = "results/possible.txt"; // file for possible words
     std::string guessesFile = "results/guesses.txt";   // file for guesses with entropy
+    // Mastermind-specific
+    int numPegs = 4;                  // number of pegs in mastermind
+    int numColors = 6;                // number of colors in mastermind
+    bool allowDuplicates = true;      // allow duplicate colors in mastermind
+    std::vector<std::string> guesses; // mastermind/wordle guesses
     bool valid = false;
 };
 
@@ -707,6 +973,10 @@ CmdArgs parseFlags(int argc, char *argv[])
         {
             args.pruneDominatedClasses = std::stoi(argv[++i]);
         }
+        else if (a == "--excludeUncommonWords" && i + 1 < argc)
+        {
+            args.excludeUncommonWords = std::stoi(argv[++i]);
+        }
         else if (a == "--start" && i + 1 < argc)
         {
             args.start = std::stoi(argv[++i]);
@@ -726,6 +996,22 @@ CmdArgs parseFlags(int argc, char *argv[])
         else if (a == "--guessesFile" && i + 1 < argc)
         {
             args.guessesFile = argv[++i];
+        }
+        else if (a == "--numPegs" && i + 1 < argc)
+        {
+            args.numPegs = std::stoi(argv[++i]);
+        }
+        else if (a == "--numColors" && i + 1 < argc)
+        {
+            args.numColors = std::stoi(argv[++i]);
+        }
+        else if (a == "--allowDuplicates" && i + 1 < argc)
+        {
+            args.allowDuplicates = (std::stoi(argv[++i]) != 0);
+        }
+        else if (a == "--guess" && i + 1 < argc)
+        {
+            args.guesses.push_back(argv[++i]);
         }
     }
     args.valid = true;
@@ -763,6 +1049,7 @@ int main(int argc, char *argv[])
         std::cout << "      letterboxed: Solve the Letter Boxed puzzle.\n";
         std::cout << "      spellingbee: Solve the Spelling Bee puzzle.\n";
         std::cout << "      wordle: Solve Wordle puzzles with entropy-based suggestions.\n";
+        std::cout << "      mastermind: Solve Mastermind puzzles with entropy-based suggestions.\n";
         std::cout << "      read: Read and display results from a file.\n";
         std::cout << "\n";
 
@@ -785,13 +1072,27 @@ int main(int argc, char *argv[])
         std::cout << "\n";
 
         std::cout << "  Wordle:\n";
-        std::cout << "    " << argv[0] << " --mode wordle --guesses \"STEAL 01201\" \"CRANE 00120\" [--maxDepth <depth>] [--possibleFile <filename>] [--guessesFile <filename>]\n";
+        std::cout << "    " << argv[0] << " --mode wordle --guesses \"STEAL 01201\" \"CRANE 00120\" [--maxDepth <depth>] [--possibleFile <filename>] [--guessesFile <filename>] [--excludeUncommonWords <0|1>]\n";
         std::cout << "      --guesses: Specify guess/feedback pairs. Format: \"WORD 01201\" where:\n";
         std::cout << "                 0=grey (letter not in word), 1=yellow (letter in word, wrong position),\n";
         std::cout << "                 2=green (letter in word, correct position)\n";
-        std::cout << "      --maxDepth: Search depth for entropy calculation (1-3, default: 1). Higher values are more accurate but slower.\n";
+        std::cout << "      --maxDepth: Search depth for entropy calculation (0-2, default: 0). Higher values are more accurate but slower.\n";
         std::cout << "      --possibleFile: Output file for possible solution words (default: results/possible.txt).\n";
         std::cout << "      --guessesFile: Output file for all guesses with entropy/probability (default: results/guesses.txt).\n";
+        std::cout << "      --excludeUncommonWords: 0 or 1 to enable/disable excluding uncommon words (default: 0).\n";
+        std::cout << "\n";
+
+        std::cout << "  Mastermind:\n";
+        std::cout << "    " << argv[0] << " --mode mastermind --guess \"1 2 3 4|2 2\" [--numPegs <pegs>] [--numColors <colors>] [--allowDuplicates <0|1>] [--maxDepth <depth>] [--possibleFile <filename>] [--guessesFile <filename>]\n";
+        std::cout << "      --guess: Specify guess/feedback pairs. Format: \"1 2 3 4|2 2\" where:\n";
+        std::cout << "               Pattern: sequence of color numbers separated by spaces\n";
+        std::cout << "               Feedback: <correct_position> <correct_color> (e.g., \"2 2\" = 2 correct position, 2 correct color)\n";
+        std::cout << "      --numPegs: Number of pegs in the pattern (default: 4)\n";
+        std::cout << "      --numColors: Number of available colors (default: 6)\n";
+        std::cout << "      --allowDuplicates: 0 or 1 to disable/enable duplicate colors in patterns (default: 1)\n";
+        std::cout << "      --maxDepth: Search depth for entropy calculation (1-3, default: 1)\n";
+        std::cout << "      --possibleFile: Output file for possible solution patterns (default: results/possible.txt)\n";
+        std::cout << "      --guessesFile: Output file for all guesses with entropy/probability (default: results/guesses.txt)\n";
         std::cout << "\n";
 
         std::cout << "  Read Mode:\n";
@@ -1001,6 +1302,8 @@ int main(int argc, char *argv[])
             // Get possible words and best guesses with entropy
             Wordle::Config config;
             config.maxDepth = (cmd.maxDepth != -1) ? cmd.maxDepth : 1; // Use command line depth or default to 1
+            config.excludeUncommonWords = (cmd.excludeUncommonWords == 1) ? true : false;
+
             profiler.start();
             Wordle::Result result =
                 Wordle::runWordleSolverWithEntropy(allWordsVec, feedbacks, config);
@@ -1026,13 +1329,13 @@ int main(int argc, char *argv[])
             std::ofstream guessFile(guessesFile);
             for (const auto &guess : result.sortedGuesses)
             {
-                guessFile << guess.word.wordString << " ";
-                guessFile << std::fixed << std::setprecision(4) << guess.probability << " ";
+                guessFile << guess.word.wordString << ",";
+                guessFile << std::fixed << std::setprecision(4) << guess.probability;
 
                 // Write all entropy levels
                 for (int j = 0; j < config.maxDepth && j < guess.entropyList.size(); j++)
                 {
-                    guessFile << std::fixed << std::setprecision(3) << guess.entropyList[j] << " ";
+                    guessFile << "," << std::fixed << std::setprecision(3) << guess.entropyList[j];
                 }
 
                 guessFile << "\n";
@@ -1043,6 +1346,87 @@ int main(int argc, char *argv[])
             std::cout << result.totalPossibleWords << "\n";
             std::cout << result.sortedGuesses.size() << "\n";
             std::cout << possibleWordsFile << "\n";
+            std::cout << guessesFile << "\n";
+            return 0;
+        }
+        else if (cmd.mode == "mastermind")
+        {
+            // Parse mastermind feedback guesses
+            std::vector<Mastermind::Feedback> feedbacks;
+            for (const std::string &guessStr : cmd.guesses)
+            {
+                try
+                {
+                    feedbacks.push_back(Mastermind::parseFeedback(guessStr, cmd.numPegs));
+                }
+                catch (...)
+                {
+                    std::cout << "Invalid mastermind guess/feedback: " << guessStr << "\n";
+                    return 1;
+                }
+            }
+
+            ProfilerUtils::Profiler profiler;
+            // Get possible patterns and best guesses with entropy
+            Mastermind::Config config;
+            config.numPegs = cmd.numPegs;
+            config.numColors = cmd.numColors;
+            config.allowDuplicates = cmd.allowDuplicates;
+            config.maxDepth = (cmd.maxDepth != -1) ? cmd.maxDepth : 0;
+
+            // Generate all possible patterns
+            std::vector<Mastermind::Pattern> allPatterns = Mastermind::generateAllPatterns(config);
+
+            profiler.start();
+            Mastermind::Result result =
+                Mastermind::runMastermindSolverWithEntropy(allPatterns, feedbacks, config);
+            profiler.end();
+            profiler.logProfilerData();
+
+            // Use the specific file arguments
+            std::string possiblePatternsFile = cmd.possibleFile;
+            std::string guessesFile = cmd.guessesFile;
+
+            // Write possible patterns to first file
+            std::ofstream possibleFile(possiblePatternsFile);
+            for (const auto &guess : result.sortedGuesses)
+            {
+                if (guess.probability > 0)
+                {
+                    for (uint8_t color : guess.pattern.colors)
+                    {
+                        possibleFile << (int)color << " ";
+                    }
+                    possibleFile << "\n";
+                }
+            }
+            possibleFile.close();
+
+            // Write all guesses with entropy and probability to second file
+            std::ofstream guessFile(guessesFile);
+            for (const auto &guess : result.sortedGuesses)
+            {
+                for (uint8_t color : guess.pattern.colors)
+                {
+                    guessFile << (int)color << " ";
+                }
+                guessFile << ",";
+                guessFile << std::fixed << std::setprecision(4) << guess.probability;
+
+                // Write all entropy levels
+                for (int j = 0; j < config.maxDepth && j < guess.entropyList.size(); j++)
+                {
+                    guessFile << "," << std::fixed << std::setprecision(3) << guess.entropyList[j];
+                }
+
+                guessFile << "\n";
+            }
+            guessFile.close();
+
+            // Display summary to console
+            std::cout << result.totalPossiblePatterns << "\n";
+            std::cout << result.sortedGuesses.size() << "\n";
+            std::cout << possiblePatternsFile << "\n";
             std::cout << guessesFile << "\n";
             return 0;
         }
@@ -1088,6 +1472,7 @@ int main(int argc, char *argv[])
         std::cout << "  1: Letter Boxed\n";
         std::cout << "  2: Spelling Bee\n";
         std::cout << "  3: Wordle\n";
+        std::cout << "  4: Mastermind\n";
         std::cout << "  q: Quit\n";
         std::cout << "Enter choice: ";
         std::string input;
@@ -1103,6 +1488,8 @@ int main(int argc, char *argv[])
             runSpellingBeeGame(allWordsVec, logData);
         else if (input == "3")
             runWordleGame(allWordsVec, logData);
+        else if (input == "4")
+            runMastermindGame(logData);
         else
             std::cout << "Invalid choice. Try again.\n";
     }

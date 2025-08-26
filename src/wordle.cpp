@@ -317,17 +317,18 @@ namespace Wordle
         const Config &config)
     {
         // Filter words to only 5-letter words
-        std::vector<WordUtils::Word> fiveLetterWords;
+        std::vector<WordUtils::Word> availableWords;
         for (const auto &word : allWords)
         {
-            if (word.wordString.size() == 5)
-                fiveLetterWords.push_back(word);
+            bool exclude = config.excludeUncommonWords && (word.order >= 2);
+            if (word.wordString.size() == 5 && !exclude)
+                availableWords.push_back(word);
         }
 
         Result result;
 
         // First filter words based on existing feedback
-        std::vector<WordUtils::Word> possibleWords = filterWords(fiveLetterWords, feedbacks);
+        std::vector<WordUtils::Word> possibleWords = filterWords(availableWords, feedbacks);
         result.totalPossibleWords = possibleWords.size();
 
         std::vector<WordGuess> allGuesses;
@@ -346,24 +347,10 @@ namespace Wordle
         else
         {
             // Calculate best guesses with entropy for all 5-letter words
-            allGuesses = calculateBestGuesses(fiveLetterWords, possibleWords, feedbacks, config);
+            allGuesses = calculateBestGuesses(availableWords, possibleWords, feedbacks, config);
         }
 
-        std::sort(allGuesses.begin(), allGuesses.end(), [](const WordGuess &a, const WordGuess &b)
-                  {
-            // Prefer common words first
-            if(a.word.order < b.word.order)
-                return true;
-            if(a.word.order > b.word.order)
-                return false;
-            // Compare entropy levels from last to first (highest depth first)
-            for (int i = std::min(a.entropyList.size(), b.entropyList.size()) - 1; i >= 0; i--)
-            {
-                if (a.entropyList[i] != b.entropyList[i])
-                    return a.entropyList[i] > b.entropyList[i];
-            }
-            // If all entropy levels are equal, prefer higher probability
-            return a.probability > b.probability; });
+        std::sort(allGuesses.begin(), allGuesses.end());
 
         result.sortedGuesses = allGuesses;
         return result;

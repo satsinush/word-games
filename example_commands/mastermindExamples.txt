@@ -1,0 +1,1 @@
+--mode mastermind --guess "1 1 2 2|1 2" --numPegs 4 --numColors 4 --allowDuplicates 1 --maxDepth 1
