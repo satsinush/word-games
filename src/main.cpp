@@ -939,10 +939,9 @@ struct CmdArgs
     std::string possibleFile = "results/possible.txt"; // file for possible words
     std::string guessesFile = "results/guesses.txt";   // file for guesses with entropy
     // Mastermind-specific
-    int numPegs = 4;                  // number of pegs in mastermind
-    int numColors = 6;                // number of colors in mastermind
-    bool allowDuplicates = true;      // allow duplicate colors in mastermind
-    std::vector<std::string> guesses; // mastermind/wordle guesses
+    int numPegs = 4;             // number of pegs in mastermind
+    int numColors = 6;           // number of colors in mastermind
+    bool allowDuplicates = true; // allow duplicate colors in mastermind
     bool valid = false;
 };
 
@@ -1358,16 +1357,14 @@ int main(int argc, char *argv[])
         {
             // Parse mastermind feedback guesses
             std::vector<Mastermind::Feedback> feedbacks;
-            for (const std::string &guessStr : cmd.guesses)
+            for (int i = 1; i < argc; ++i)
             {
-                try
+                if (std::string(argv[i]) == "--guesses")
                 {
-                    feedbacks.push_back(Mastermind::parseFeedback(guessStr, cmd.numPegs));
-                }
-                catch (...)
-                {
-                    std::cout << "Invalid mastermind guess/feedback: " << guessStr << "\n";
-                    return 1;
+                    for (int j = i + 1; j < argc && argv[j][0] != '-'; ++j)
+                    {
+                        feedbacks.push_back(Mastermind::parseFeedback(argv[j], cmd.numPegs));
+                    }
                 }
             }
 
