@@ -1,0 +1,6 @@
+- Create proposal
+- Create a Makefile
+- Split up main.cpp
+- Create folders for different game solvers
+- Add user input functions to utils.cpp for better parsing and error handling
+- Add function descriptions and inline comments for confusing lines of code
