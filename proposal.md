@@ -10,22 +10,24 @@ There are many games that use words and puzzles as a part of a challenge. For in
 
 ### Objective
 This project will be based off of a prior project that I did in my own time, which was creating a basic solver for Wordle and similar games.
-The goal of this project is to use C++ to create hyper-optimized solvers of common word and puzzel games such as Wordle, Letter Boxed, and Mastermind.
-I will use C++ for it's high performace and improve upon prior work that I've done to further optimize the algorithms used with additional knowledge I have learned.
+The goal of the program is to use C++ to create hyper-optimized solvers of common word and puzzel games such as Wordle, Letter Boxed, and Mastermind.
+I will use C++ for it's high performace and improve upon prior work that I've done to further optimize the algorithms used with additional knowledge I have learned. Currently the program is relatively unorganized and doesn't use typical C++ standards so I want to improve that. I also want to introduce a graphical interface to use the program.
+I also want to utilize word frequency data to get better results for the word games.
 
 ## Design
-The design of this application will use different classes for the solving algorithms for each game, as well as a a CLI interface for uses to use the program. A GUI framework could also be implemented for an easier user experience.
+The design of this application will use different classes for the solving algorithms for each game, as well as a a CLI and GUI for users to use the program. It will consist of a main function to run the actual program and several other classes and files for each specific game, as well as an additional file for the GUI.
 
 ### Diagram
 ![Puzzle game solver design diagram](./diagram.png)
 
 ### Key Features
-- Wordle Solver
-- Letter Boxed Solver
-- Spelling Bee Solver
-- Mastermind Solver
+- Puzzle Solvers
+    - Wordle Solver
+    - Letter Boxed Solver
+    - Spelling Bee Solver
+    - Mastermind Solver
 - Command line and interactive execution methods
-- Possible GUI for user interaction
+- Graphical user interface for user interaction
 
 ### Tools/Libraries
 Several standard C++ libraries will need to be used for common data structures and file operations. Some libraries include `<string>`, `<vector>`, `<algorithm>`, and `<set>`. If moving forward with a GUI, additional libraries and frameworks like Qt will need to be used.

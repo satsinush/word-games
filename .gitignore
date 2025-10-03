@@ -4,3 +4,4 @@ temp.txt
 results/
 .vscode/
 *.exe
+ngram_freq.csv
