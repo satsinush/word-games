@@ -187,7 +187,7 @@ namespace ProfilerUtils
             catch (...)
             {
                 this->currentProfile->functionList.push_back(functionName);
-                this->currentProfile->childProfileMap[functionName] = *new functionProfile(functionName, currentProfile);
+                this->currentProfile->childProfileMap.emplace(functionName, functionProfile(functionName, currentProfile));
                 this->currentProfile->childProfileMap.at(functionName).update(t, currentProfile);
             }
         }
@@ -344,7 +344,7 @@ namespace WordUtils
                 return allWordsVec;
             }
 
-            constexpr size_t MAX_WORDS = 2000000;
+            constexpr size_t MAX_WORDS = 500002;
             size_t wordCount = 0;
 
             while (std::getline(file, line) && wordCount < MAX_WORDS)
