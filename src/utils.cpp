@@ -288,9 +288,10 @@ namespace WordUtils
     std::vector<Word> loadWords()
     {
         std::filesystem::path data_dir = std::filesystem::current_path() / "data";
-        std::filesystem::path word_lists_dir = std::filesystem::current_path() / "word_lists";
+        std::filesystem::path word_lists_dir = std::filesystem::current_path() / "word_analysis" / "word_lists";
         std::vector<Word> allWordsVec;
         std::ifstream in(data_dir / "words.bin", std::ios::binary);
+
         bool loadedFromBin = false;
         if (in)
         {
@@ -386,6 +387,11 @@ namespace WordUtils
             allWordsVec.assign(allWordsSet.begin(), allWordsSet.end());
 
             // Save to binary for next time
+            if (!std::filesystem::exists(data_dir))
+            {
+                std::filesystem::create_directories(data_dir);
+            }
+
             std::ofstream out(data_dir / "words.bin", std::ios::binary);
             size_t n = allWordsVec.size();
             out.write(reinterpret_cast<const char *>(&n), sizeof(n));

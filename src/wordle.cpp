@@ -252,7 +252,7 @@ namespace Wordle
                     {
                         // Recursively calculate best guess for deeper levels
                         Config nextConfig = config;
-                        nextConfig.maxDepth = config.maxDepth - 1;
+                        nextConfig.maxDepth = config.maxDepth > 0 ? config.maxDepth - 1 : 0;
 
                         std::vector<WordGuess> nextBestGuesses = calculateBestGuesses(
                             fiveLetterWords, filteredWords, tempFeedbacks, nextConfig, recursionLevel + 1);
@@ -260,7 +260,7 @@ namespace Wordle
                         if (!nextBestGuesses.empty())
                         {
                             const WordGuess &bestNextGuess = nextBestGuesses[0];
-                            for (int i = 0; i < config.maxDepth - 1 && i < bestNextGuess.entropyList.size(); i++)
+                            for (size_t i = 0; i + 1 < config.maxDepth && i < bestNextGuess.entropyList.size(); i++)
                             {
                                 double additionalEntropy = -bits(possibleWords.size()) +
                                                            (bits(filteredWords.size()) + bestNextGuess.entropyList[i]);
@@ -286,10 +286,11 @@ namespace Wordle
         std::sort(guesses.begin(), guesses.end(), [](const WordGuess &a, const WordGuess &b)
                   {
             // Compare entropy levels from last to first (highest depth first)
-            for (int i = std::min(a.entropyList.size(), b.entropyList.size()) - 1; i >= 0; i--)
+            size_t n = std::min(a.entropyList.size(), b.entropyList.size());
+            while (n-- > 0)
             {
-                if (a.entropyList[i] != b.entropyList[i])
-                    return a.entropyList[i] > b.entropyList[i];
+                if (a.entropyList[n] != b.entropyList[n])
+                    return a.entropyList[n] > b.entropyList[n];
             }
             // If all entropy levels are equal, prefer higher probability
             return a.probability > b.probability; });

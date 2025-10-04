@@ -5,3 +5,5 @@ results/
 .vscode/
 *.exe
 ngram_freq.csv
+build/
+data/

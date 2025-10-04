@@ -11,7 +11,7 @@ namespace Wordle
 {
     struct Config
     {
-        int maxDepth = 1; // How many moves ahead to calculate entropy
+        unsigned int maxDepth = 1; // How many moves ahead to calculate entropy
         bool excludeUncommonWords = false;
     };
 
@@ -77,10 +77,11 @@ namespace Wordle
             // Use small tolerance for floating point comparison
             const double tolerance = 1e-9;
 
-            for (int i = maxLevels - 1; i >= 0; i--)
+            size_t n = maxLevels;
+            while (n-- > 0)
             {
-                double thisEntropy = (i < entropyList.size()) ? entropyList[i] : 0.0;
-                double otherEntropy = (i < other.entropyList.size()) ? other.entropyList[i] : 0.0;
+                double thisEntropy = (n < entropyList.size()) ? entropyList[n] : 0.0;
+                double otherEntropy = (n < other.entropyList.size()) ? other.entropyList[n] : 0.0;
 
                 if (std::abs(thisEntropy - otherEntropy) > tolerance)
                     return thisEntropy > otherEntropy; // Sort in descending order (higher entropy first)
