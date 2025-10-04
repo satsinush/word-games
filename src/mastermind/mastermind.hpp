@@ -6,16 +6,16 @@
 #include <unordered_map>
 #include <cmath>
 
-#include "utils.hpp"
+#include "../utils/utils.hpp"
 
 namespace Mastermind
 {
     struct Config
     {
-        int numPegs = 4;             // Number of pegs in the pattern
-        int numColors = 6;           // Total number of available colors (0 to numColors-1)
+        unsigned int numPegs = 4;    // Number of pegs in the pattern
+        unsigned int numColors = 6;  // Total number of available colors (0 to numColors-1)
         bool allowDuplicates = true; // Whether duplicate colors are allowed
-        int maxDepth = 0;            // How many moves ahead to calculate entropy
+        unsigned int maxDepth = 0;   // How many moves ahead to calculate entropy
     };
 
     struct Pattern
@@ -85,15 +85,16 @@ namespace Mastermind
         {
             // Compare entropy levels from highest depth to lowest (E3, E2, E1)
             // We want higher entropy values to come first (better guesses)
-            int maxLevels = std::max(entropyList.size(), other.entropyList.size());
+            size_t maxLevels = std::max(entropyList.size(), other.entropyList.size());
 
             // Use small tolerance for floating point comparison
             const double tolerance = 1e-9;
 
-            for (int i = maxLevels - 1; i >= 0; i--)
+            size_t n = maxLevels;
+            while (n-- > 0)
             {
-                double thisEntropy = (i < entropyList.size()) ? entropyList[i] : 0.0;
-                double otherEntropy = (i < other.entropyList.size()) ? other.entropyList[i] : 0.0;
+                double thisEntropy = (n < entropyList.size()) ? entropyList[n] : 0.0;
+                double otherEntropy = (n < other.entropyList.size()) ? other.entropyList[n] : 0.0;
 
                 if (std::abs(thisEntropy - otherEntropy) > tolerance)
                     return thisEntropy > otherEntropy; // Sort in descending order (higher entropy first)
@@ -115,7 +116,7 @@ namespace Mastermind
     };
 
     // Parse feedback string like "2 1" (2 correct position, 1 correct color)
-    Feedback parseFeedback(const std::string &input, int numPegs);
+    Feedback parseFeedback(const std::string &input, unsigned int numPegs);
 
     // Check if a pattern matches feedback constraints
     bool matchesFeedback(const Pattern &candidate, const Feedback &fb);

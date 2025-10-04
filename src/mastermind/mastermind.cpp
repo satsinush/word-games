@@ -11,12 +11,12 @@
 #include <functional>
 #include <sstream>
 #include <sstream>
-#include "utils.hpp"
+
 #include "mastermind.hpp"
 
 namespace Mastermind
 {
-    Feedback parseFeedback(const std::string &input, int numPegs)
+    Feedback parseFeedback(const std::string &input, unsigned int numPegs)
     {
         // Split input by pipe separator
         size_t pipePos = input.find('|');
@@ -55,7 +55,7 @@ namespace Mastermind
             throw std::runtime_error("Invalid feedback format. Expected: 'correctPosition correctColor' (e.g., '2 1')");
         }
 
-        if (correctPos < 0 || correctPos > numPegs || correctCol < 0 || correctCol > numPegs)
+        if (correctPos < 0 || correctPos > static_cast<int>(numPegs) || correctCol < 0 || correctCol > static_cast<int>(numPegs))
         {
             throw std::runtime_error("Feedback values must be between 0 and number of pegs");
         }
@@ -166,8 +166,7 @@ namespace Mastermind
 
     // Calculate entropy (information value) of a guess
     double calculateEntropy(const std::vector<Pattern> &possiblePatterns,
-                            const Pattern &guess,
-                            const Config &config)
+                            const Pattern &guess)
     {
         if (possiblePatterns.empty())
             return 0.0;
@@ -204,7 +203,7 @@ namespace Mastermind
             // Generate all possible combinations with repetition
             std::vector<uint8_t> current(config.numPegs, 0);
 
-            std::function<void(int)> generate = [&](int pos)
+            std::function<void(unsigned int)> generate = [&](unsigned int pos)
             {
                 if (pos == config.numPegs)
                 {
@@ -212,7 +211,7 @@ namespace Mastermind
                     return;
                 }
 
-                for (int color = 0; color < config.numColors; ++color)
+                for (unsigned int color = 0; color < config.numColors; ++color)
                 {
                     current[pos] = static_cast<uint8_t>(color);
                     generate(pos + 1);
@@ -231,7 +230,7 @@ namespace Mastermind
             }
 
             std::vector<uint8_t> colors(config.numColors);
-            for (int i = 0; i < config.numColors; ++i)
+            for (unsigned int i = 0; i < config.numColors; ++i)
             {
                 colors[i] = static_cast<uint8_t>(i);
             }
@@ -239,7 +238,7 @@ namespace Mastermind
             std::vector<uint8_t> current(config.numPegs);
             std::vector<bool> used(config.numColors, false);
 
-            std::function<void(int)> generate = [&](int pos)
+            std::function<void(unsigned int)> generate = [&](unsigned int pos)
             {
                 if (pos == config.numPegs)
                 {
@@ -247,7 +246,7 @@ namespace Mastermind
                     return;
                 }
 
-                for (int i = 0; i < config.numColors; ++i)
+                for (unsigned int i = 0; i < config.numColors; ++i)
                 {
                     if (!used[i])
                     {
@@ -354,7 +353,7 @@ namespace Mastermind
                             {
                                 const PatternGuess &bestNextGuess = nextBestGuesses[0];
                                 // Add weighted entropy from next levels (like mastermind)
-                                for (int i = 0; i < config.maxDepth - 1 && i < bestNextGuess.entropyList.size(); i++)
+                                for (unsigned int i = 0; i < config.maxDepth - 1 && i < bestNextGuess.entropyList.size(); i++)
                                 {
                                     double additionalEntropy = -bits(possiblePatterns.size()) +
                                                                (bits(filteredPatterns.size()) + bestNextGuess.entropyList[i]);

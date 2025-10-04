@@ -9,11 +9,11 @@
 #include <fstream>
 #include <iomanip>
 
-#include "utils.hpp"
-#include "letterBoxed.hpp"
-#include "spellingBee.hpp"
-#include "wordle.hpp"
-#include "mastermind.hpp"
+#include "utils/utils.hpp"
+#include "letterBoxed/letterBoxed.hpp"
+#include "spellingBee/spellingBee.hpp"
+#include "wordle/wordle.hpp"
+#include "mastermind/mastermind.hpp"
 
 // --- Letter Boxed UI and Game Loop ---
 void drawLetterBoxedPuzzle(const std::array<char, 12> &letters)
@@ -580,14 +580,14 @@ void runWordleGame(const std::vector<WordUtils::Word> &allWordsVec, bool logData
 
                     // Create header with entropy columns
                     std::cout << "Word\t\t";
-                    for (int i = 0; i < config.maxDepth; i++)
+                    for (unsigned int i = 0; i < config.maxDepth; i++)
                     {
                         std::cout << "E" << (i + 1) << "\t";
                     }
                     std::cout << "Probability\n";
 
                     std::cout << "----\t\t";
-                    for (int i = 0; i < config.maxDepth; i++)
+                    for (unsigned int i = 0; i < config.maxDepth; i++)
                     {
                         std::cout << "-------\t";
                     }
@@ -603,7 +603,7 @@ void runWordleGame(const std::vector<WordUtils::Word> &allWordsVec, bool logData
                         std::cout << std::fixed << std::setprecision(4) << guess.probability;
 
                         // Display all entropy levels
-                        for (int j = 0; j < config.maxDepth && j < guess.entropyList.size(); j++)
+                        for (unsigned int j = 0; j < config.maxDepth && j < guess.entropyList.size(); j++)
                         {
                             std::cout << "," << std::fixed << std::setprecision(3) << guess.entropyList[j];
                         }
@@ -790,14 +790,14 @@ void runMastermindGame(bool logData = false)
 
                 // Create header with entropy columns
                 std::cout << "Pattern\t\t\t";
-                for (int i = 0; i < config.maxDepth; i++)
+                for (unsigned int i = 0; i < config.maxDepth; i++)
                 {
                     std::cout << "E" << (i + 1) << "\t";
                 }
                 std::cout << "Probability\n";
 
                 std::cout << "-------\t\t\t";
-                for (int i = 0; i < config.maxDepth; i++)
+                for (unsigned int i = 0; i < config.maxDepth; i++)
                 {
                     std::cout << "-------\t";
                 }
@@ -813,7 +813,7 @@ void runMastermindGame(bool logData = false)
                     std::cout << std::fixed << std::setprecision(4) << guess.probability;
 
                     // Display all entropy levels
-                    for (int j = 0; j < config.maxDepth && j < guess.entropyList.size(); j++)
+                    for (unsigned int j = 0; j < config.maxDepth && j < guess.entropyList.size(); j++)
                     {
                         std::cout << "," << std::fixed << std::setprecision(3) << guess.entropyList[j];
                     }
@@ -827,7 +827,11 @@ void runMastermindGame(bool logData = false)
                     // Show just the possible patterns
                     Mastermind::Config possibleConfig = config;
                     possibleConfig.maxDepth = 0;
+                    profiler.start();
                     Mastermind::Result possibleResult = Mastermind::runMastermindSolverWithEntropy(allPatterns, guessHistory, possibleConfig);
+                    profiler.end();
+                    if (logData)
+                        profiler.logProfilerData();
 
                     std::vector<std::string> possiblePatterns;
                     for (const auto &guess : possibleResult.sortedGuesses)
@@ -867,7 +871,7 @@ void runMastermindGame(bool logData = false)
             while (patternIss >> token)
             {
                 int color = std::stoi(token);
-                if (color < 0 || color >= config.numColors)
+                if (color < 0 || color >= static_cast<int>(config.numColors))
                 {
                     throw std::runtime_error("Color " + std::to_string(color) + " out of range (0-" + std::to_string(config.numColors - 1) + ")");
                 }
@@ -887,7 +891,8 @@ void runMastermindGame(bool logData = false)
                 throw std::runtime_error("Expected 2 feedback numbers (correct position, correct color)");
             }
 
-            if (correctPos < 0 || correctPos > config.numPegs || correctCol < 0 || correctCol > config.numPegs)
+            if (correctPos > static_cast<int>(config.numPegs) || correctCol > static_cast<int>(config.numPegs) ||
+                correctPos < 0 || correctCol < 0 || (correctPos + correctCol) > static_cast<int>(config.numPegs))
             {
                 throw std::runtime_error("Feedback values out of range");
             }
@@ -909,7 +914,7 @@ void runMastermindGame(bool logData = false)
             std::cout << "  pattern: " << config.numPegs << " colors separated by spaces\n";
             std::cout << "  feedback: 2 numbers (correct position, correct color)\n";
             std::cout << "Example for " << config.numPegs << " pegs: '";
-            for (int i = 0; i < config.numPegs; i++)
+            for (unsigned int i = 0; i < config.numPegs; i++)
             {
                 if (i > 0)
                     std::cout << " ";
@@ -939,8 +944,8 @@ struct CmdArgs
     std::string possibleFile = "results/possible.txt"; // file for possible words
     std::string guessesFile = "results/guesses.txt";   // file for guesses with entropy
     // Mastermind-specific
-    int numPegs = 4;             // number of pegs in mastermind
-    int numColors = 6;           // number of colors in mastermind
+    unsigned int numPegs = 4;    // number of pegs in mastermind
+    unsigned int numColors = 6;  // number of colors in mastermind
     bool allowDuplicates = true; // allow duplicate colors in mastermind
     bool valid = false;
 };
@@ -948,7 +953,6 @@ struct CmdArgs
 CmdArgs parseFlags(int argc, char *argv[])
 {
     CmdArgs args;
-    int customFlagCount = 0;
     for (int i = 1; i < argc; ++i)
     {
         std::string a = argv[i];
@@ -1337,7 +1341,7 @@ int main(int argc, char *argv[])
                 guessFile << std::fixed << std::setprecision(4) << guess.probability;
 
                 // Write all entropy levels
-                for (int j = 0; j < config.maxDepth && j < guess.entropyList.size(); j++)
+                for (unsigned int j = 0; j < config.maxDepth && j < guess.entropyList.size(); j++)
                 {
                     guessFile << "," << std::fixed << std::setprecision(3) << guess.entropyList[j];
                 }
@@ -1425,7 +1429,7 @@ int main(int argc, char *argv[])
                 guessFile << std::fixed << std::setprecision(4) << guess.probability;
 
                 // Write all entropy levels
-                for (int j = 0; j < config.maxDepth && j < guess.entropyList.size(); j++)
+                for (unsigned int j = 0; j < config.maxDepth && j < guess.entropyList.size(); j++)
                 {
                     guessFile << "," << std::fixed << std::setprecision(3) << guess.entropyList[j];
                 }

@@ -8,7 +8,7 @@
 #include <map>
 #include <unordered_map>
 #include <unordered_set>
-#include "utils.hpp"
+
 #include "wordle.hpp"
 
 namespace Wordle
@@ -321,7 +321,7 @@ namespace Wordle
         std::vector<WordUtils::Word> availableWords;
         for (const auto &word : allWords)
         {
-            bool exclude = config.excludeUncommonWords && (word.order >= 2);
+            bool exclude = config.excludeUncommonWords && (!word.is_scrabble);
             if (word.wordString.size() == 5 && !exclude)
                 availableWords.push_back(word);
         }

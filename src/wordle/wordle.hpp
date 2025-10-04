@@ -5,7 +5,7 @@
 #include <bitset>
 #include <cmath>
 
-#include "utils.hpp"
+#include "../utils/utils.hpp"
 
 namespace Wordle
 {
