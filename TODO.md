@@ -1,6 +1,7 @@
 - Create proposal
-- Create a Makefile
-- Split up main.cpp
-- Create folders for different game solvers
+- Split up user input in main.cpp
 - Add user input functions to utils.cpp for better parsing and error handling
 - Add function descriptions and inline comments for confusing lines of code
+- User better profiling program and remove or make new file for custom profiling functions
+- Make unit tests?
+- Create GUI
