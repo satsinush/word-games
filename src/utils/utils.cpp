@@ -118,24 +118,27 @@ namespace ProfilerUtils
     }
 
     // --- functionProfile ---
-    functionProfile::functionProfile() {}
+    FunctionProfile::FunctionProfile() {}
 
-    functionProfile::functionProfile(const std::string &name, functionProfile *parent)
+    FunctionProfile::FunctionProfile(const std::string &name, FunctionProfile *parent)
     {
         this->functionName = name;
         this->parent = parent;
-        this->childProfileMap = std::map<std::string, functionProfile>();
+        this->childProfileMap = std::map<std::string, FunctionProfile>();
         this->functionList = std::vector<std::string>();
         this->startTime = 0;
         this->count = 0;
         this->totalTime = 0;
+        this->recursionDepth = 0;
     }
 
-    void functionProfile::update(double time, functionProfile *&p)
+    void FunctionProfile::update(double time, FunctionProfile *&p)
     {
+        // Legacy method - kept for backward compatibility
+        // The new stack-based profiler handles timing differently
         if (this->startTime == 0)
         {
-            this->startTime = getTime();
+            this->startTime = time;
             p = this;
         }
         else
@@ -171,68 +174,122 @@ namespace ProfilerUtils
 
     void Profiler::updateProfile(const std::string &functionName, bool start)
     {
-        double t = getTime();
+        double currentTime = getTime();
 
-        if (currentProfile->functionName == functionName && !start)
+        if (start)
         {
-            currentProfile->update(t, currentProfile);
+            // Check if this is a recursive call (same function as current)
+            // This optimization prevents creating duplicate child profiles for recursive functions
+            if (currentProfile->functionName == functionName)
+            {
+                // Recursive call - don't create new profile, just increment count
+                // This saves memory and improves performance for recursive algorithms
+                currentProfile->count++;
+                currentProfile->recursionDepth++;
+            }
+            else
+            {
+                // Normal function start - find or create child profile
+                FunctionProfile *targetProfile = nullptr;
+
+                // Try to find existing child profile
+                auto it = currentProfile->childProfileMap.find(functionName);
+                if (it != currentProfile->childProfileMap.end())
+                {
+                    targetProfile = &it->second;
+                }
+                else
+                {
+                    // Create new child profile
+                    currentProfile->functionList.push_back(functionName);
+                    // currentProfile->childProfileMap.emplace(functionName, FunctionProfile(functionName, currentProfile));
+                    // targetProfile = &currentProfile->childProfileMap.at(functionName);
+
+                    auto insertIt = currentProfile->childProfileMap.emplace_hint(
+                        it, functionName, FunctionProfile(functionName, currentProfile));
+                    targetProfile = &insertIt->second;
+                }
+
+                // Start timing for this function
+                targetProfile->startTime = currentTime;
+
+                // Move down the tree to the new current function
+                currentProfile = targetProfile;
+            }
         }
         else
         {
-            try
+            // Function end - check if we're ending the current function
+            if (currentProfile->functionName == functionName)
             {
-                functionProfile *p = &this->currentProfile->childProfileMap.at(functionName);
-                p->update(t, currentProfile);
-            }
-            catch (...)
-            {
-                this->currentProfile->functionList.push_back(functionName);
-                this->currentProfile->childProfileMap.emplace(functionName, functionProfile(functionName, currentProfile));
-                this->currentProfile->childProfileMap.at(functionName).update(t, currentProfile);
+                if (currentProfile->recursionDepth > 0)
+                {
+                    // Decrement recursion depth if applicable
+                    currentProfile->recursionDepth--;
+                }
+                else
+                {
+                    // Only update timing if this is the root call
+                    currentProfile->totalTime += currentTime - currentProfile->startTime;
+                    currentProfile->count++;
+                    currentProfile->startTime = 0;
+
+                    // Move back up the tree to the parent function
+                    currentProfile = currentProfile->parent;
+                }
             }
         }
+
         this->profilerUpdater->count++;
-        this->profilerUpdater->totalTime += getTime() - t;
+        this->profilerUpdater->totalTime += getTime() - currentTime;
     }
 
-    void Profiler::profileStart(const std::string &functionName, bool ignore)
+    void Profiler::profileStart(const std::string &functionName)
     {
-        if (!ignore)
-        {
-            updateProfile(functionName, true);
-        }
+        updateProfile(functionName, true);
     }
 
-    void Profiler::profileEnd(const std::string &functionName, bool ignore)
+    void Profiler::profileEnd(const std::string &functionName)
     {
-        if (!ignore)
-        {
-            updateProfile(functionName, false);
-        }
+        updateProfile(functionName, false);
     }
 
     void Profiler::start()
     {
         this->startTime = getTime();
-        this->main = functionProfile("Main", nullptr);
+        this->main = FunctionProfile("Main", nullptr);
 
         this->main.functionList.push_back("Profiler");
-        this->main.childProfileMap["Profiler"] = functionProfile("Profiler", &main);
+        this->main.childProfileMap["Profiler"] = FunctionProfile("Profiler", &main);
         this->profilerUpdater = &main.childProfileMap.at("Profiler");
 
-        this->currentProfile = &this->main;
+        this->currentProfile = &this->main; // Start at the main profile
+        this->running = true;
     }
 
     void Profiler::end()
     {
         this->endTime = getTime();
+
+        // Clean up any remaining functions by walking back up the tree
+        while (currentProfile != &main && currentProfile != nullptr)
+        {
+            if (currentProfile->startTime > 0)
+            {
+                currentProfile->totalTime += this->endTime - currentProfile->startTime;
+                currentProfile->count++;
+                currentProfile->startTime = 0;
+            }
+            currentProfile = currentProfile->parent;
+        }
+        this->running = false;
     }
 
-    void Profiler::logChildProfiles(functionProfile &profile, int depth)
+    void Profiler::logChildProfiles(FunctionProfile &profile, int depth)
     {
         for (std::string &s : profile.functionList)
         {
-            functionProfile &f = profile.childProfileMap.at(s);
+            FunctionProfile &f = profile.childProfileMap.at(s);
             std::string indent;
             for (int i = 0; i < depth; i++)
             {
@@ -267,6 +324,23 @@ namespace ProfilerUtils
     {
         return this->endTime - this->startTime;
     }
+
+    ProfileScope::ProfileScope(Profiler &profiler, const std::string &name)
+        : profiler(profiler), functionName(name)
+    {
+        if (!profiler.isRunning())
+            return;
+        profiler.profileStart(functionName);
+    }
+
+    ProfileScope::~ProfileScope()
+    {
+        if (!profiler.isRunning())
+            return;
+        profiler.profileEnd(functionName);
+    }
+
+    ProfilerUtils::Profiler g_profiler;
 } // namespace Utils
 
 namespace WordUtils

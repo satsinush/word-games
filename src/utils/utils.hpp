@@ -29,43 +29,65 @@ namespace ProfilerUtils
         int lastMessageSize;
     };
 
-    class functionProfile
+    class FunctionProfile
     {
     public:
         std::string functionName;
-        std::map<std::string, functionProfile> childProfileMap;
+        std::map<std::string, FunctionProfile> childProfileMap;
         std::vector<std::string> functionList;
-        functionProfile *parent;
+        FunctionProfile *parent;
         double startTime;
-        int count;
+        unsigned int count;
         double totalTime;
+        unsigned int recursionDepth;
 
-        functionProfile();
-        functionProfile(const std::string &name, functionProfile *parent);
-        void update(double time, functionProfile *&p);
+        FunctionProfile();
+        FunctionProfile(const std::string &name, FunctionProfile *parent);
+        void update(double time, FunctionProfile *&p);
     };
 
     class Profiler
     {
     public:
-        functionProfile *profilerUpdater;
-        functionProfile main;
-        functionProfile *currentProfile;
+        FunctionProfile *profilerUpdater;
+        FunctionProfile main;
+        FunctionProfile *currentProfile; // Current function being profiled (top of call tree)
         std::string logDirectory;
         double startTime;
         double endTime;
+        bool running = false;
 
         Profiler();
         void log(const std::string &message);
         void updateProfile(const std::string &functionName, bool start);
-        void profileStart(const std::string &functionName, bool ignore = false);
-        void profileEnd(const std::string &functionName, bool ignore = false);
+        void profileStart(const std::string &functionName);
+        void profileEnd(const std::string &functionName);
         void start();
         void end();
-        void logChildProfiles(functionProfile &profile, int depth);
+        void logChildProfiles(FunctionProfile &profile, int depth);
         void logProfilerData();
         double getTotalTime();
+        double isRunning() { return running; }
     };
+
+    class ProfileScope
+    {
+    public:
+        ProfileScope(Profiler &profiler, const std::string &name);
+
+        ~ProfileScope();
+
+        // Prevent copying and moving to ensure RAII integrity
+        ProfileScope(const ProfileScope &) = delete;
+        ProfileScope &operator=(const ProfileScope &) = delete;
+
+    private:
+        Profiler &profiler;
+        std::string functionName;
+        bool ignored;
+    };
+
+    extern ProfilerUtils::Profiler g_profiler;
 
 } // namespace Utils
 

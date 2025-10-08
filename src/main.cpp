@@ -291,9 +291,8 @@ bool parseSpellingBeeArgs(int argc, char *argv[], SpellingBee::Config &config)
     return true;
 }
 
-void runLetterBoxedGame(const std::vector<WordUtils::Word> &wordVec, bool logData = false)
+void runLetterBoxedGame(const std::vector<WordUtils::Word> &wordVec)
 {
-    ProfilerUtils::Profiler profiler;
     int totalLetterCount = 0;
     for (const auto &word : wordVec)
         totalLetterCount += word.wordString.size();
@@ -309,11 +308,7 @@ void runLetterBoxedGame(const std::vector<WordUtils::Word> &wordVec, bool logDat
         std::cout << "  Prune dominated classes: " << (config.pruneDominatedClasses ? "true" : "false") << "\n\n";
 
         std::cout << "Running solver...\n";
-        profiler.start();
         std::vector<LetterBoxed::Solution> finalSolutions = LetterBoxed::runLetterBoxedSolver(config, wordVec, totalLetterCount);
-        profiler.end();
-        if (logData)
-            profiler.logProfilerData();
 
         int printLimit = 100;
         auto printSolutions = [&](int limit)
@@ -331,7 +326,7 @@ void runLetterBoxedGame(const std::vector<WordUtils::Word> &wordVec, bool logDat
                 std::cout << sol.text << "\n";
                 lastNumWords = sol.wordCount;
             }
-            std::cout << "\nFound " + std::to_string(finalSolutions.size()) + " final solutions in " + std::to_string(profiler.getTotalTime()) + " seconds.\n";
+            std::cout << "\nFound " + std::to_string(finalSolutions.size()) + " final solutions.";
             if (limit < static_cast<int>(finalSolutions.size()))
                 std::cout << "Showing top " << toPrint << " of " << finalSolutions.size() << " solution(s).\n\n";
             else
@@ -433,18 +428,13 @@ SpellingBee::Config getSpellingBeeConfig()
     return config;
 }
 
-void runSpellingBeeGame(const std::vector<WordUtils::Word> &allWordsVec, bool logData = false)
+void runSpellingBeeGame(const std::vector<WordUtils::Word> &allWordsVec)
 {
-    ProfilerUtils::Profiler profiler;
     while (true)
     {
         SpellingBee::Config config = getSpellingBeeConfig();
         std::cout << "Running solver...\n";
-        profiler.start();
         std::vector<WordUtils::Word> solutions = SpellingBee::runSpellingBeeSolver(allWordsVec, config);
-        profiler.end();
-        if (logData)
-            profiler.logProfilerData();
 
         int lastUniqueLetters = 0;
         for (auto it = solutions.rbegin(); it != solutions.rend(); ++it)
@@ -462,7 +452,7 @@ void runSpellingBeeGame(const std::vector<WordUtils::Word> &allWordsVec, bool lo
         }
         if (solutions.size() > 0)
             std::cout << "\n";
-        std::cout << solutions.size() << " valid word(s) found in " << profiler.getTotalTime() << " seconds.\n";
+        std::cout << solutions.size() << " valid word(s) found.\n";
 
         while (true)
         {
@@ -482,9 +472,8 @@ void runSpellingBeeGame(const std::vector<WordUtils::Word> &allWordsVec, bool lo
 }
 
 // --- Wordle UI and Game Loop ---
-void runWordleGame(const std::vector<WordUtils::Word> &allWordsVec, bool logData = false)
+void runWordleGame(const std::vector<WordUtils::Word> &allWordsVec)
 {
-    ProfilerUtils::Profiler profiler;
     std::vector<Wordle::Feedback> feedbackHistory;
 
     while (true)
@@ -556,17 +545,11 @@ void runWordleGame(const std::vector<WordUtils::Word> &allWordsVec, bool logData
                     }
                 }
 
-                profiler.start();
-
                 Wordle::Config config;
                 config.maxDepth = maxDepth;
 
                 Wordle::Result result =
                     Wordle::runWordleSolverWithEntropy(allWordsVec, feedbackHistory, config);
-
-                profiler.end();
-                if (logData)
-                    profiler.logProfilerData();
 
                 std::cout << "\nPossible remaining words: " << result.totalPossibleWords << "\n";
 
@@ -634,7 +617,7 @@ void runWordleGame(const std::vector<WordUtils::Word> &allWordsVec, bool logData
                     }
                 }
 
-                std::cout << "\nSolver completed in " << profiler.getTotalTime() << " seconds.\n\n";
+                std::cout << "\nSolver completed.\n\n";
                 continue;
             }
 
@@ -659,9 +642,8 @@ void runWordleGame(const std::vector<WordUtils::Word> &allWordsVec, bool logData
     }
 }
 
-void runMastermindGame(bool logData = false)
+void runMastermindGame()
 {
-    ProfilerUtils::Profiler profiler;
     std::vector<Mastermind::Feedback> guessHistory;
 
     // Get configuration
@@ -774,11 +756,8 @@ void runMastermindGame(bool logData = false)
             }
 
             config.maxDepth = maxDepth;
-            profiler.start();
 
             Mastermind::Result result = Mastermind::runMastermindSolverWithEntropy(allPatterns, guessHistory, config);
-
-            profiler.end();
 
             if (result.sortedGuesses.empty())
             {
@@ -827,11 +806,7 @@ void runMastermindGame(bool logData = false)
                     // Show just the possible patterns
                     Mastermind::Config possibleConfig = config;
                     possibleConfig.maxDepth = 0;
-                    profiler.start();
                     Mastermind::Result possibleResult = Mastermind::runMastermindSolverWithEntropy(allPatterns, guessHistory, possibleConfig);
-                    profiler.end();
-                    if (logData)
-                        profiler.logProfilerData();
 
                     std::vector<std::string> possiblePatterns;
                     for (const auto &guess : possibleResult.sortedGuesses)
@@ -847,7 +822,7 @@ void runMastermindGame(bool logData = false)
                 }
             }
 
-            std::cout << "\nSolver completed in " << profiler.getTotalTime() << " seconds.\n\n";
+            std::cout << "\nSolver completed.\n\n";
             continue;
         }
 
@@ -1048,7 +1023,6 @@ CmdArgs parseFlags(int argc, char *argv[])
 int main(int argc, char *argv[])
 {
     std::vector<WordUtils::Word> allWordsVec = WordUtils::loadWords();
-    bool logData = false;
 
     CmdArgs cmd = parseFlags(argc, argv);
 
@@ -1238,7 +1212,14 @@ int main(int argc, char *argv[])
             int totalLetterCount = 0;
             for (const auto &word : allWordsVec)
                 totalLetterCount += word.wordString.size();
+
+            ProfilerUtils::g_profiler.start();
+
             std::vector<LetterBoxed::Solution> finalSolutions = LetterBoxed::runLetterBoxedSolver(config, allWordsVec, totalLetterCount);
+
+            ProfilerUtils::g_profiler.end();
+            ProfilerUtils::g_profiler.logProfilerData();
+
             std::ofstream tempFile(cmd.file);
             for (const auto &sol : finalSolutions)
             {
@@ -1300,17 +1281,13 @@ int main(int argc, char *argv[])
                 }
             }
 
-            ProfilerUtils::Profiler profiler;
             // Get possible words and best guesses with entropy
             Wordle::Config config;
             config.maxDepth = (cmd.maxDepth != -1) ? cmd.maxDepth : 1; // Use command line depth or default to 1
             config.excludeUncommonWords = (cmd.excludeUncommonWords == 1) ? true : false;
 
-            profiler.start();
             Wordle::Result result =
                 Wordle::runWordleSolverWithEntropy(allWordsVec, feedbacks, config);
-            profiler.end();
-            profiler.logProfilerData();
 
             // Use the specific file arguments
             std::string possibleWordsFile = cmd.possibleFile;
@@ -1372,7 +1349,6 @@ int main(int argc, char *argv[])
                 }
             }
 
-            ProfilerUtils::Profiler profiler;
             // Get possible patterns and best guesses with entropy
             Mastermind::Config config;
             config.numPegs = cmd.numPegs;
@@ -1383,11 +1359,8 @@ int main(int argc, char *argv[])
             // Generate all possible patterns
             std::vector<Mastermind::Pattern> allPatterns = Mastermind::generateAllPatterns(config);
 
-            profiler.start();
             Mastermind::Result result =
                 Mastermind::runMastermindSolverWithEntropy(allPatterns, feedbacks, config);
-            profiler.end();
-            profiler.logProfilerData();
 
             // Use the specific file arguments
             std::string possiblePatternsFile = cmd.possibleFile;
@@ -1498,15 +1471,16 @@ int main(int argc, char *argv[])
         if (input == "q")
             break;
         if (input == "1")
-            runLetterBoxedGame(allWordsVec, logData);
+            runLetterBoxedGame(allWordsVec);
         else if (input == "2")
-            runSpellingBeeGame(allWordsVec, logData);
+            runSpellingBeeGame(allWordsVec);
         else if (input == "3")
-            runWordleGame(allWordsVec, logData);
+            runWordleGame(allWordsVec);
         else if (input == "4")
-            runMastermindGame(logData);
+            runMastermindGame();
         else
             std::cout << "Invalid choice. Try again.\n";
     }
+
     return 0;
 }
