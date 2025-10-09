@@ -1,7 +1,4 @@
-- Create proposal
-- Split up user input in main.cpp
-- Add user input functions to utils.cpp for better parsing and error handling
+- Create presentation
 - Add function descriptions and inline comments for confusing lines of code
-- User better profiling program and remove or make new file for custom profiling functions
 - Make unit tests?
 - Create GUI
