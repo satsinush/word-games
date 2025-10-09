@@ -13,5 +13,5 @@ namespace SpellingBee
         std::array<bool, 256> validLettersMap = {false};
     };
 
-    std::vector<WordUtils::Word> runSpellingBeeSolver(const std::vector<WordUtils::Word> &words, const Config &config);
+    std::vector<Utils::Word> runSpellingBeeSolver(const std::vector<Utils::Word> &words, const Config &config);
 }

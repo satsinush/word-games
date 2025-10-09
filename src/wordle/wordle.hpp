@@ -63,7 +63,7 @@ namespace Wordle
 
     struct WordGuess
     {
-        WordUtils::Word word;
+        Utils::Word word;
         double entropy = 0.0;
         double probability = 0.0;
         std::vector<double> entropyList;
@@ -106,27 +106,27 @@ namespace Wordle
     Feedback parseFeedback(const std::string &input);
 
     // Check if a word matches feedback constraints
-    bool matchesFeedback(const WordUtils::Word &candidate, const Feedback &fb);
+    bool matchesFeedback(const Utils::Word &candidate, const Feedback &fb);
 
     // Generate feedback for a guess against a target word
-    Feedback generateFeedback(const WordUtils::Word &target, const std::string &guess);
+    Feedback generateFeedback(const Utils::Word &target, const std::string &guess);
 
     // Get all possible feedback patterns for a 5-letter word
     std::vector<Feedback> getAllPossibleFeedbacks();
 
     // Calculate entropy (information value) of a guess
-    double calculateEntropy(const std::vector<WordUtils::Word> &possibleWords,
-                            const WordUtils::Word &guess);
+    double calculateEntropy(const std::vector<Utils::Word> &possibleWords,
+                            const Utils::Word &guess);
 
     // Filter possible words given a list of guesses and feedbacks
-    std::vector<WordUtils::Word> filterWords(
-        const std::vector<WordUtils::Word> &words,
+    std::vector<Utils::Word> filterWords(
+        const std::vector<Utils::Word> &words,
         const std::vector<Feedback> &feedbacks);
 
     // Calculate best guesses sorted by information value with multi-depth entropy
     std::vector<WordGuess> calculateBestGuesses(
-        const std::vector<WordUtils::Word> &allWords,
-        const std::vector<WordUtils::Word> &possibleWords,
+        const std::vector<Utils::Word> &allWords,
+        const std::vector<Utils::Word> &possibleWords,
         const std::vector<Feedback> &feedbackHistory,
         const Config &config = Config{},
         int recursionLevel = 0);
@@ -134,7 +134,7 @@ namespace Wordle
     // Enhanced solver that returns best guesses ranked by entropy and possible word count
     // If config.maxDepth is 0, skips entropy calculation and just returns filtered words
     Result runWordleSolverWithEntropy(
-        const std::vector<WordUtils::Word> &allWords,
+        const std::vector<Utils::Word> &allWords,
         const std::vector<Feedback> &feedbacks,
         const Config &config = Config{});
 }

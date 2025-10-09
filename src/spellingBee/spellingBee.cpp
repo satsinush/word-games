@@ -15,7 +15,7 @@
 
 namespace SpellingBee
 {
-    bool isValidWord(WordUtils::Word &word, const Config &config)
+    bool isValidWord(Utils::Word &word, const Config &config)
     {
         if (word.wordString.size() <= 3)
             return false;
@@ -30,21 +30,21 @@ namespace SpellingBee
         return hasMiddleLetter;
     }
 
-    void filterWords(std::vector<WordUtils::Word> &words, const Config &config)
+    void filterWords(std::vector<Utils::Word> &words, const Config &config)
     {
         words.erase(
             std::remove_if(words.begin(), words.end(),
-                           [&](WordUtils::Word &word)
+                           [&](Utils::Word &word)
                            { return !isValidWord(word, config); }),
             words.end());
     }
 
-    std::vector<WordUtils::Word> runSpellingBeeSolver(const std::vector<WordUtils::Word> &words, const Config &config)
+    std::vector<Utils::Word> runSpellingBeeSolver(const std::vector<Utils::Word> &words, const Config &config)
     {
-        std::vector<WordUtils::Word> wordsCopy = words;
+        std::vector<Utils::Word> wordsCopy = words;
         filterWords(wordsCopy, config);
 
-        std::sort(wordsCopy.begin(), wordsCopy.end(), [](const WordUtils::Word &a, const WordUtils::Word &b)
+        std::sort(wordsCopy.begin(), wordsCopy.end(), [](const Utils::Word &a, const Utils::Word &b)
                   {
                       if (a.uniqueLetters != b.uniqueLetters)
                           return a.uniqueLetters > b.uniqueLetters;

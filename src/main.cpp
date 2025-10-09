@@ -97,7 +97,7 @@ LetterBoxed::Config getLetterBoxedConfig()
             std::cout << prompt << " (default: " << def << "): ";
             std::string input;
             std::getline(std::cin, input);
-            input = WordUtils::trimToLower(input);
+            input = Utils::trimToLower(input);
             if (input.empty())
                 return def;
             try
@@ -127,7 +127,7 @@ LetterBoxed::Config getLetterBoxedConfig()
             std::cout << prompt << " (default: " << def << "): ";
             std::string input;
             std::getline(std::cin, input);
-            input = WordUtils::trimToLower(input);
+            input = Utils::trimToLower(input);
             if (input.empty())
                 return def != 0;
             if (input == "0" || input == "n" || input == "no" || input == "f" || input == "false")
@@ -291,7 +291,7 @@ bool parseSpellingBeeArgs(int argc, char *argv[], SpellingBee::Config &config)
     return true;
 }
 
-void runLetterBoxedGame(const std::vector<WordUtils::Word> &wordVec)
+void runLetterBoxedGame(const std::vector<Utils::Word> &wordVec)
 {
     int totalLetterCount = 0;
     for (const auto &word : wordVec)
@@ -340,7 +340,7 @@ void runLetterBoxedGame(const std::vector<WordUtils::Word> &wordVec)
             std::cout << "Enter 'q' to quit, 'r' to restart, or 'a' to show all.\n\n";
             std::string input;
             std::getline(std::cin, input);
-            input = WordUtils::trimToLower(input);
+            input = Utils::trimToLower(input);
             if (!input.empty())
             {
                 if (input == "q")
@@ -428,13 +428,13 @@ SpellingBee::Config getSpellingBeeConfig()
     return config;
 }
 
-void runSpellingBeeGame(const std::vector<WordUtils::Word> &allWordsVec)
+void runSpellingBeeGame(const std::vector<Utils::Word> &allWordsVec)
 {
     while (true)
     {
         SpellingBee::Config config = getSpellingBeeConfig();
         std::cout << "Running solver...\n";
-        std::vector<WordUtils::Word> solutions = SpellingBee::runSpellingBeeSolver(allWordsVec, config);
+        std::vector<Utils::Word> solutions = SpellingBee::runSpellingBeeSolver(allWordsVec, config);
 
         int lastUniqueLetters = 0;
         for (auto it = solutions.rbegin(); it != solutions.rend(); ++it)
@@ -459,7 +459,7 @@ void runSpellingBeeGame(const std::vector<WordUtils::Word> &allWordsVec)
             std::cout << "Enter 'q' to quit, 'r' to restart.\n\n";
             std::string input;
             std::getline(std::cin, input);
-            input = WordUtils::trimToLower(input);
+            input = Utils::trimToLower(input);
             if (!input.empty())
             {
                 if (input == "q")
@@ -472,7 +472,7 @@ void runSpellingBeeGame(const std::vector<WordUtils::Word> &allWordsVec)
 }
 
 // --- Wordle UI and Game Loop ---
-void runWordleGame(const std::vector<WordUtils::Word> &allWordsVec)
+void runWordleGame(const std::vector<Utils::Word> &allWordsVec)
 {
     std::vector<Wordle::Feedback> feedbackHistory;
 
@@ -503,7 +503,7 @@ void runWordleGame(const std::vector<WordUtils::Word> &allWordsVec)
             std::cout << "Enter guess (or command): ";
             std::string input;
             std::getline(std::cin, input);
-            input = WordUtils::trimToLower(input);
+            input = Utils::trimToLower(input);
 
             if (input.empty())
                 continue;
@@ -1022,7 +1022,7 @@ CmdArgs parseFlags(int argc, char *argv[])
 // --- Combined Main Loop ---
 int main(int argc, char *argv[])
 {
-    std::vector<WordUtils::Word> allWordsVec = WordUtils::loadWords();
+    std::vector<Utils::Word> allWordsVec = Utils::loadWords();
 
     CmdArgs cmd = parseFlags(argc, argv);
 
@@ -1213,12 +1213,12 @@ int main(int argc, char *argv[])
             for (const auto &word : allWordsVec)
                 totalLetterCount += word.wordString.size();
 
-            ProfilerUtils::g_profiler.start();
+            Utils::g_profiler.start();
 
             std::vector<LetterBoxed::Solution> finalSolutions = LetterBoxed::runLetterBoxedSolver(config, allWordsVec, totalLetterCount);
 
-            ProfilerUtils::g_profiler.end();
-            ProfilerUtils::g_profiler.logProfilerData();
+            Utils::g_profiler.stop();
+            Utils::g_profiler.logProfilerData();
 
             std::ofstream tempFile(cmd.file);
             for (const auto &sol : finalSolutions)
@@ -1254,7 +1254,7 @@ int main(int argc, char *argv[])
             }
             for (char c : config.allLetters)
                 config.validLettersMap[static_cast<unsigned char>(c)] = true;
-            std::vector<WordUtils::Word> solutions = SpellingBee::runSpellingBeeSolver(allWordsVec, config);
+            std::vector<Utils::Word> solutions = SpellingBee::runSpellingBeeSolver(allWordsVec, config);
             std::ofstream tempFile(cmd.file);
             for (const auto &w : solutions)
             {
@@ -1465,7 +1465,7 @@ int main(int argc, char *argv[])
         std::cout << "Enter choice: ";
         std::string input;
         std::getline(std::cin, input);
-        input = WordUtils::trimToLower(input);
+        input = Utils::trimToLower(input);
         if (input.empty())
             continue;
         if (input == "q")

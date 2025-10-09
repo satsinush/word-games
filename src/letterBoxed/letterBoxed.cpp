@@ -92,7 +92,7 @@ namespace LetterBoxed
 
     // Recursive helper for generating all valid WordPath objects for a given string word.
     void findWordPathsRecursive(
-        const WordUtils::Word &wordObj,
+        const Utils::Word &wordObj,
         const Config &config,
         std::vector<WordPath> &results,
         std::vector<int> &currentPathGlobalIndexes,
@@ -100,7 +100,7 @@ namespace LetterBoxed
         unsigned int depth,
         std::vector<int> &allPathIndices)
     {
-        ProfilerUtils::ProfileScope scope(ProfilerUtils::g_profiler, __func__);
+        Utils::ProfileScope scope(Utils::g_profiler, __func__);
         if (depth == wordObj.wordString.length())
         {
             int offset = static_cast<int>(allPathIndices.size());
@@ -129,10 +129,10 @@ namespace LetterBoxed
     // Update WordPath to include order (already in header, just use here)
 
     // Update filterWords to take vector<Word> and propagate order to WordPath
-    void filterWords(std::vector<WordPath> &allValidWordPaths, const std::vector<WordUtils::Word> &allDictionaryWords, const Config &config, std::vector<int> &allPathIndices)
+    void filterWords(std::vector<WordPath> &allValidWordPaths, const std::vector<Utils::Word> &allDictionaryWords, const Config &config, std::vector<int> &allPathIndices)
     {
-        ProfilerUtils::ProfileScope scope(ProfilerUtils::g_profiler, __func__);
-        for (const WordUtils::Word &wordObj : allDictionaryWords)
+        Utils::ProfileScope scope(Utils::g_profiler, __func__);
+        for (const Utils::Word &wordObj : allDictionaryWords)
         {
             const std::string &word = wordObj.wordString;
             std::bitset<12> uniqueChars;
@@ -173,7 +173,7 @@ namespace LetterBoxed
         const Config &config,
         const std::vector<int> &allPathIndices)
     {
-        ProfilerUtils::ProfileScope scope(ProfilerUtils::g_profiler, __func__);
+        Utils::ProfileScope scope(Utils::g_profiler, __func__);
         // Base case: We have selected one word for each class in the path.
         if (depth == classPath.size())
         {
@@ -217,7 +217,7 @@ namespace LetterBoxed
         const Config &config,
         std::vector<std::vector<const EquivalenceClass *>> &classSolutions)
     {
-        ProfilerUtils::ProfileScope scope(ProfilerUtils::g_profiler, __func__);
+        Utils::ProfileScope scope(Utils::g_profiler, __func__);
         if (currentDepth >= config.maxDepth)
         {
             return;
@@ -260,7 +260,7 @@ namespace LetterBoxed
     // --- Prune dominated equivalence classes: remove classes that are strictly dominated by another
     void pruneDominatedClasses(std::vector<EquivalenceClass> &allEqClasses)
     {
-        ProfilerUtils::ProfileScope scope(ProfilerUtils::g_profiler, __func__);
+        Utils::ProfileScope scope(Utils::g_profiler, __func__);
         // Use unordered_map with combined key for faster grouping
         std::unordered_map<long long, std::vector<size_t>> groups;
         for (size_t i = 0; i < allEqClasses.size(); ++i)
@@ -313,10 +313,10 @@ namespace LetterBoxed
 
     std::vector<Solution> runLetterBoxedSolver(
         const Config &config,
-        const std::vector<WordUtils::Word> &words,
+        const std::vector<Utils::Word> &words,
         int totalLetterCount)
     {
-        ProfilerUtils::ProfileScope scope(ProfilerUtils::g_profiler, __func__);
+        Utils::ProfileScope scope(Utils::g_profiler, __func__);
 
         // Create a vector to hold all character indices for all valid word paths.
         std::vector<int> allPathIndices;
@@ -383,6 +383,9 @@ namespace LetterBoxed
         // Find all solutions by recursively exploring equivalence classes.
         std::vector<std::vector<const EquivalenceClass *>> classSolutions;
         // classSolutions.reserve(allEqClasses.size() / 10); // Skip reserving, class solutions can vary widely in size
+        size_t numClasses = static_cast<int>(allEqClasses.size());
+        size_t processedClasses = 0;
+        Utils::g_process.start();
         for (const auto &startClass : allEqClasses)
         {
             if (startClass.key.usedChars.count() == config.uniquePuzzleLetters.count())
@@ -392,7 +395,10 @@ namespace LetterBoxed
             std::bitset<12> covered = startClass.key.usedChars;
             std::vector<const EquivalenceClass *> currentClassPath = {&startClass};
             findClassSolutionsRecursive(&startClass, currentClassPath, covered, 1, allEqClasses, classIndexers, config, classSolutions);
+            processedClasses++;
+            Utils::g_process.update(static_cast<double>(processedClasses) / numClasses, 0.5);
         }
+        Utils::g_process.stop();
 
         std::vector<Solution> finalSolutions;
         finalSolutions.reserve(classSolutions.size() * 2); // Reserve space for final solutions

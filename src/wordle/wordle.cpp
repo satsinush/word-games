@@ -25,7 +25,7 @@ namespace Wordle
         colors = input.substr(space + 1, 5);
         if (word.size() != 5 || colors.size() != 5)
             throw std::runtime_error("Word or colors wrong length");
-        fb.word = WordUtils::trimToLower(word);
+        fb.word = Utils::trimToLower(word);
         for (int i = 0; i < 5; ++i)
         {
             if (colors[i] < '0' || colors[i] > '2')
@@ -42,7 +42,7 @@ namespace Wordle
     }
 
     // Helper: Check if a word matches all feedback constraints
-    bool matchesFeedback(const WordUtils::Word &candidate, const Feedback &fb)
+    bool matchesFeedback(const Utils::Word &candidate, const Feedback &fb)
     {
         const std::string &guess = fb.word;
         // Use pre-calculated letter count from candidate word
@@ -93,7 +93,7 @@ namespace Wordle
     }
 
     // Generate feedback for a guess against a target word
-    Feedback generateFeedback(const WordUtils::Word &target, const std::string &guess)
+    Feedback generateFeedback(const Utils::Word &target, const std::string &guess)
     {
         Feedback fb;
         fb.word = guess;
@@ -141,8 +141,8 @@ namespace Wordle
     }
 
     // Calculate entropy (information value) of a guess
-    double calculateEntropy(const std::vector<WordUtils::Word> &possibleWords,
-                            const WordUtils::Word &guess)
+    double calculateEntropy(const std::vector<Utils::Word> &possibleWords,
+                            const Utils::Word &guess)
     {
         if (possibleWords.empty())
             return 0.0;
@@ -169,11 +169,11 @@ namespace Wordle
         return entropy;
     }
 
-    std::vector<WordUtils::Word> filterWords(
-        const std::vector<WordUtils::Word> &words,
+    std::vector<Utils::Word> filterWords(
+        const std::vector<Utils::Word> &words,
         const std::vector<Feedback> &feedbacks)
     {
-        std::vector<WordUtils::Word> filtered;
+        std::vector<Utils::Word> filtered;
         for (const auto &w : words)
         {
             bool ok = true;
@@ -193,8 +193,8 @@ namespace Wordle
 
     // Calculate best guesses sorted by information value with multi-depth entropy
     std::vector<WordGuess> calculateBestGuesses(
-        const std::vector<WordUtils::Word> &fiveLetterWords,
-        const std::vector<WordUtils::Word> &possibleWords,
+        const std::vector<Utils::Word> &fiveLetterWords,
+        const std::vector<Utils::Word> &possibleWords,
         const std::vector<Feedback> &feedbackHistory,
         const Config &config,
         int recursionLevel)
@@ -246,7 +246,7 @@ namespace Wordle
 
                     std::vector<Feedback> tempFeedbacks = feedbackHistory;
                     tempFeedbacks.push_back(dummyFeedback);
-                    std::vector<WordUtils::Word> filteredWords = filterWords(fiveLetterWords, tempFeedbacks);
+                    std::vector<Utils::Word> filteredWords = filterWords(fiveLetterWords, tempFeedbacks);
 
                     if (!filteredWords.empty())
                     {
@@ -304,8 +304,8 @@ namespace Wordle
         return guesses;
     }
 
-    std::vector<WordUtils::Word> runWordleSolver(
-        const std::vector<WordUtils::Word> &words,
+    std::vector<Utils::Word> runWordleSolver(
+        const std::vector<Utils::Word> &words,
         const std::vector<Feedback> &feedbacks)
     {
         return filterWords(words, feedbacks);
@@ -313,12 +313,12 @@ namespace Wordle
 
     // Enhanced solver that returns best guesses ranked by entropy and possible word count
     Result runWordleSolverWithEntropy(
-        const std::vector<WordUtils::Word> &allWords,
+        const std::vector<Utils::Word> &allWords,
         const std::vector<Feedback> &feedbacks,
         const Config &config)
     {
         // Filter words to only 5-letter words
-        std::vector<WordUtils::Word> availableWords;
+        std::vector<Utils::Word> availableWords;
         for (const auto &word : allWords)
         {
             bool exclude = config.excludeUncommonWords && (!word.is_scrabble);
@@ -329,7 +329,7 @@ namespace Wordle
         Result result;
 
         // First filter words based on existing feedback
-        std::vector<WordUtils::Word> possibleWords = filterWords(availableWords, feedbacks);
+        std::vector<Utils::Word> possibleWords = filterWords(availableWords, feedbacks);
         result.totalPossibleWords = possibleWords.size();
 
         std::vector<WordGuess> allGuesses;

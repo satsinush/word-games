@@ -1,0 +1,31 @@
+#pragma once
+#include <string>
+#include <vector>
+#include <array>
+
+namespace Utils
+{
+    // Represents a word with its properties
+    struct Word
+    {
+        // The word string in lowercase
+        std::string wordString;
+        // The score associated with the word
+        double score;
+        // Whether the word is valid in Scrabble
+        bool is_scrabble;
+        // Number of unique letters in the word
+        int uniqueLetters;
+        // Count of each letter a-z
+        std::array<uint8_t, 26> letterCount;
+        // Comparison operator for sorting words alphabetically
+        bool operator<(const Word &other) const { return wordString < other.wordString; }
+    };
+
+    // Trims whitespace and converts a string to lowercase
+    std::string trimToLower(const std::string &str);
+
+    // Loads words from words.bin if available, otherwise from word_scores.csv and saves to words.bin.
+    std::vector<Word> loadWords();
+
+} // namespace Utils

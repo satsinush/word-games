@@ -69,6 +69,6 @@ namespace LetterBoxed
 
     std::vector<Solution> runLetterBoxedSolver(
         const Config &config,
-        const std::vector<WordUtils::Word> &words,
+        const std::vector<Utils::Word> &words,
         int totalLetterCount);
 }

@@ -11,17 +11,19 @@
 #include <set>
 #include <sstream>
 
-#include "utils.hpp"
+#include "profilerUtils.hpp"
 
-namespace ProfilerUtils
+namespace Utils
 {
-    constexpr double NANO_TO_SEC = 1.0 / 1000000000;
-    constexpr int SEC_TO_NANO = 1000000000;
+    Profiler g_profiler;
+    Process g_process;
 
     // returns time in nanoseconds
     int64_t getTime()
     {
-        return (std::chrono::duration_cast<std::chrono::nanoseconds>((std::chrono::system_clock::now()).time_since_epoch()).count());
+        return std::chrono::duration_cast<std::chrono::nanoseconds>(
+                   std::chrono::system_clock::now().time_since_epoch())
+            .count();
     }
 
     std::string getDatetime(int plusSeconds)
@@ -66,6 +68,11 @@ namespace ProfilerUtils
         lastPrint = this->startTime;
     }
 
+    void Process::stop()
+    {
+        clearLine();
+    }
+
     std::string Process::formatSeconds(int64_t totalNano)
     {
 
@@ -103,8 +110,9 @@ namespace ProfilerUtils
         return (((getTime() - startTime) / (progress - 0)) * (1 - progress));
     }
 
-    void Process::update(double progress, int delay)
+    void Process::update(double progress, double delay)
     {
+        Utils::ProfileScope scope(Utils::g_profiler, "[PROCESS UPDATE]");
         if (progress <= 0)
         {
             progress = 0;
@@ -119,9 +127,6 @@ namespace ProfilerUtils
         }
     }
 
-    // --- functionProfile ---
-    FunctionProfile::FunctionProfile() {}
-
     FunctionProfile::FunctionProfile(const std::string &name, FunctionProfile *parent)
     {
         this->functionName = name;
@@ -135,8 +140,19 @@ namespace ProfilerUtils
         this->maxRecursionDepth = 0;
     }
 
+    void FunctionProfile::reset()
+    {
+        this->childProfileMap.clear();
+        this->childList.clear();
+        this->startTime = 0;
+        this->count = 0;
+        this->totalTime = 0;
+        this->recursionDepth = 0;
+        this->maxRecursionDepth = 0;
+    }
+
     // --- Profiler ---
-    Profiler::Profiler()
+    Profiler::Profiler() : main("[MAIN]", nullptr)
     {
         this->start();
     }
@@ -204,7 +220,7 @@ namespace ProfilerUtils
         this->profilerUpdater->totalTime += getTime() - currentTime;
     }
 
-    void Profiler::profileEnd(const std::string &functionName)
+    void Profiler::profileStop(const std::string &functionName)
     {
         int64_t currentTime = getTime();
         // Function end - check if we're ending the current function
@@ -234,7 +250,7 @@ namespace ProfilerUtils
     void Profiler::start()
     {
         this->startTime = getTime();
-        this->main = FunctionProfile("[MAIN]", nullptr);
+        this->main.reset();
 
         auto [insertIt, success] = this->main.childProfileMap.emplace(
             "[PROFILER]", FunctionProfile("[PROFILER]", &main));
@@ -245,7 +261,7 @@ namespace ProfilerUtils
         this->running = true;
     }
 
-    void Profiler::end()
+    void Profiler::stop()
     {
         this->endTime = getTime();
 
@@ -352,164 +368,6 @@ namespace ProfilerUtils
     {
         if (!profiler.isRunning())
             return;
-        profiler.profileEnd(functionName);
+        profiler.profileStop(functionName);
     }
-
-    ProfilerUtils::Profiler g_profiler;
 } // namespace Utils
-
-namespace WordUtils
-{
-    std::string trimToLower(const std::string &str)
-    {
-        std::string trimmed = str;
-        trimmed.erase(trimmed.begin(), std::find_if(trimmed.begin(), trimmed.end(), [](unsigned char ch)
-                                                    { return !std::isspace(ch); }));
-        trimmed.erase(std::find_if(trimmed.rbegin(), trimmed.rend(), [](unsigned char ch)
-                                   { return !std::isspace(ch); })
-                          .base(),
-                      trimmed.end());
-        std::transform(trimmed.begin(), trimmed.end(), trimmed.begin(), ::tolower);
-        return trimmed;
-    }
-
-    // Loads words from words.bin if available, otherwise from word_scores.csv (first 300,000 words) and saves to words.bin.
-    std::vector<Word> loadWords()
-    {
-        std::filesystem::path data_dir = std::filesystem::current_path() / "data";
-        std::filesystem::path csv_file = data_dir / "word_scores.csv";
-        std::filesystem::path bin_file = data_dir / "words.bin";
-        std::vector<Word> allWordsVec;
-
-        // Try to load from binary file first
-        std::ifstream in(bin_file, std::ios::binary);
-        bool loadedFromBin = false;
-        if (in)
-        {
-            try
-            {
-                size_t n;
-                in.read(reinterpret_cast<char *>(&n), sizeof(n));
-                allWordsVec.resize(n);
-                for (size_t i = 0; i < n; ++i)
-                {
-                    size_t len;
-                    in.read(reinterpret_cast<char *>(&len), sizeof(len));
-                    allWordsVec[i].wordString.resize(len);
-                    in.read(&allWordsVec[i].wordString[0], len);
-                    in.read(reinterpret_cast<char *>(&allWordsVec[i].score), sizeof(allWordsVec[i].score));
-                    in.read(reinterpret_cast<char *>(&allWordsVec[i].is_scrabble), sizeof(allWordsVec[i].is_scrabble));
-                    in.read(reinterpret_cast<char *>(&allWordsVec[i].uniqueLetters), sizeof(allWordsVec[i].uniqueLetters));
-                    in.read(reinterpret_cast<char *>(&allWordsVec[i].letterCount), sizeof(allWordsVec[i].letterCount));
-                    if (!in)
-                        throw std::runtime_error("Read error");
-                }
-                loadedFromBin = true;
-                in.close();
-            }
-            catch (...)
-            {
-                in.close();
-                allWordsVec.clear();
-            }
-        }
-
-        // If binary loading failed, load from CSV
-        if (!loadedFromBin)
-        {
-            std::ifstream file(csv_file);
-            if (!file.is_open())
-            {
-                std::cerr << "Error: Could not open word_scores.csv. Please ensure it's in the 'data' directory.\n";
-                return allWordsVec;
-            }
-
-            std::string line;
-            // Skip header line
-            if (!std::getline(file, line))
-            {
-                std::cerr << "Error: Empty CSV file.\n";
-                file.close();
-                return allWordsVec;
-            }
-
-            constexpr size_t MAX_WORDS = 500002;
-            size_t wordCount = 0;
-
-            while (std::getline(file, line) && wordCount < MAX_WORDS)
-            {
-                if (line.empty())
-                    continue;
-
-                // Parse CSV line: word,is_scrabble,final_score
-                std::istringstream ss(line);
-                std::string word, is_scrabble_str, score_str;
-
-                if (std::getline(ss, word, ',') &&
-                    std::getline(ss, is_scrabble_str, ',') &&
-                    std::getline(ss, score_str))
-                {
-                    // Clean and validate word
-                    word = trimToLower(word);
-                    if (word.empty() || std::any_of(word.begin(), word.end(), [](unsigned char c)
-                                                    { return !std::isalpha(c); }))
-                    {
-                        continue;
-                    }
-
-                    // Parse is_scrabble and score
-                    bool is_scrabble = (is_scrabble_str == "1");
-                    double score;
-                    try
-                    {
-                        score = std::stod(score_str);
-                    }
-                    catch (...)
-                    {
-                        continue; // Skip invalid score entries
-                    }
-
-                    // Calculate unique letters count
-                    int uniqueLetters = std::set<char>(word.begin(), word.end()).size();
-
-                    // Calculate letter count array
-                    std::array<uint8_t, 26> letterCount = {0};
-                    for (char c : word)
-                    {
-                        letterCount[c - 'a']++;
-                    }
-
-                    allWordsVec.push_back({word, score, is_scrabble, uniqueLetters, letterCount});
-                    wordCount++;
-                }
-            }
-            file.close();
-
-            // Save to binary for next time
-            if (!std::filesystem::exists(data_dir))
-            {
-                std::filesystem::create_directories(data_dir);
-            }
-
-            std::ofstream out(bin_file, std::ios::binary);
-            if (out)
-            {
-                size_t n = allWordsVec.size();
-                out.write(reinterpret_cast<const char *>(&n), sizeof(n));
-                for (const auto &w : allWordsVec)
-                {
-                    size_t len = w.wordString.size();
-                    out.write(reinterpret_cast<const char *>(&len), sizeof(len));
-                    out.write(w.wordString.data(), len);
-                    out.write(reinterpret_cast<const char *>(&w.score), sizeof(w.score));
-                    out.write(reinterpret_cast<const char *>(&w.is_scrabble), sizeof(w.is_scrabble));
-                    out.write(reinterpret_cast<const char *>(&w.uniqueLetters), sizeof(w.uniqueLetters));
-                    out.write(reinterpret_cast<const char *>(&w.letterCount), sizeof(w.letterCount));
-                }
-                out.close();
-            }
-        }
-
-        return allWordsVec;
-    }
-} // namespace WordUtils
