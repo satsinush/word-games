@@ -16,11 +16,12 @@
 namespace ProfilerUtils
 {
     constexpr double NANO_TO_SEC = 1.0 / 1000000000;
+    constexpr int SEC_TO_NANO = 1000000000;
 
-    // returns time in seconds
-    double getTime()
+    // returns time in nanoseconds
+    int64_t getTime()
     {
-        return (std::chrono::duration_cast<std::chrono::nanoseconds>((std::chrono::system_clock::now()).time_since_epoch()).count() * NANO_TO_SEC);
+        return (std::chrono::duration_cast<std::chrono::nanoseconds>((std::chrono::system_clock::now()).time_since_epoch()).count());
     }
 
     std::string getDatetime(int plusSeconds)
@@ -47,7 +48,7 @@ namespace ProfilerUtils
 
     void Process::printUpdate(std::string message)
     {
-        double time = getTime();
+        int64_t time = getTime();
         lastPrint = time;
         clearLine();
         std::cout << message;
@@ -65,18 +66,19 @@ namespace ProfilerUtils
         lastPrint = this->startTime;
     }
 
-    std::string Process::formatSeconds(double totalSeconds)
+    std::string Process::formatSeconds(int64_t totalNano)
     {
-        int numSeconds = (int)totalSeconds;
-        double decimal = totalSeconds - numSeconds;
-        int days = numSeconds / 86400;
-        numSeconds = numSeconds % 86400;
 
-        int hours = numSeconds / 3600;
-        numSeconds = numSeconds % 3600;
+        int days = totalNano / 86400000000000;
+        totalNano = totalNano % 86400000000000;
 
-        int minutes = numSeconds / 60;
-        numSeconds = numSeconds % 60;
+        int hours = totalNano / 3600000000000;
+        totalNano = totalNano % 3600000000000;
+
+        int minutes = totalNano / 60000000000;
+        totalNano = totalNano % 60000000000;
+
+        double seconds = totalNano / 1000000000.0;
 
         std::string s = "";
         if (days > 0)
@@ -91,24 +93,24 @@ namespace ProfilerUtils
         {
             s.append(std::format("{}m ", minutes));
         }
-        s.append(std::format("{:.0f}s ", numSeconds + decimal));
+        s.append(std::format("{:.0f}s ", seconds));
 
         return (s);
     }
 
-    double Process::getTimeRemaining(double progress)
+    int64_t Process::getTimeRemaining(double progress)
     {
         return (((getTime() - startTime) / (progress - 0)) * (1 - progress));
     }
 
-    void Process::update(double progress, double delay)
+    void Process::update(double progress, int delay)
     {
         if (progress <= 0)
         {
             progress = 0;
         }
-        double time = getTime();
-        if (time - lastPrint > delay)
+        int64_t time = getTime();
+        if (time - lastPrint > (delay * SEC_TO_NANO))
         {
             printUpdate(std::format("Progress: {:.2f}% Time remaining: {}",
                                     progress * 100,
@@ -124,30 +126,13 @@ namespace ProfilerUtils
     {
         this->functionName = name;
         this->parent = parent;
-        this->childProfileMap = std::map<std::string, FunctionProfile>();
-        this->functionList = std::vector<std::string>();
+        this->childProfileMap = std::unordered_map<std::string, FunctionProfile>();
+        this->childList = std::vector<FunctionProfile *>();
         this->startTime = 0;
         this->count = 0;
         this->totalTime = 0;
         this->recursionDepth = 0;
-    }
-
-    void FunctionProfile::update(double time, FunctionProfile *&p)
-    {
-        // Legacy method - kept for backward compatibility
-        // The new stack-based profiler handles timing differently
-        if (this->startTime == 0)
-        {
-            this->startTime = time;
-            p = this;
-        }
-        else
-        {
-            this->totalTime += time - this->startTime;
-            this->count = this->count + 1;
-            this->startTime = 0;
-            p = this->parent;
-        }
+        this->maxRecursionDepth = 0;
     }
 
     // --- Profiler ---
@@ -172,96 +157,89 @@ namespace ProfilerUtils
         logFile.close();
     }
 
-    void Profiler::updateProfile(const std::string &functionName, bool start)
+    void Profiler::profileStart(const std::string &functionName)
     {
-        double currentTime = getTime();
-
-        if (start)
+        int64_t currentTime = getTime();
+        // Check if this is a recursive call (same function as current)
+        // This optimization prevents creating duplicate child profiles for recursive functions
+        if (currentProfile->functionName == functionName)
         {
-            // Check if this is a recursive call (same function as current)
-            // This optimization prevents creating duplicate child profiles for recursive functions
-            if (currentProfile->functionName == functionName)
+            // Recursive call - don't create new profile, just increment count
+            // This saves memory and improves performance for recursive algorithms
+            currentProfile->count++;
+            currentProfile->recursionDepth++;
+            if (currentProfile->recursionDepth > currentProfile->maxRecursionDepth)
             {
-                // Recursive call - don't create new profile, just increment count
-                // This saves memory and improves performance for recursive algorithms
-                currentProfile->count++;
-                currentProfile->recursionDepth++;
-            }
-            else
-            {
-                // Normal function start - find or create child profile
-                FunctionProfile *targetProfile = nullptr;
-
-                // Try to find existing child profile
-                auto it = currentProfile->childProfileMap.find(functionName);
-                if (it != currentProfile->childProfileMap.end())
-                {
-                    targetProfile = &it->second;
-                }
-                else
-                {
-                    // Create new child profile
-                    currentProfile->functionList.push_back(functionName);
-                    // currentProfile->childProfileMap.emplace(functionName, FunctionProfile(functionName, currentProfile));
-                    // targetProfile = &currentProfile->childProfileMap.at(functionName);
-
-                    auto insertIt = currentProfile->childProfileMap.emplace_hint(
-                        it, functionName, FunctionProfile(functionName, currentProfile));
-                    targetProfile = &insertIt->second;
-                }
-
-                // Start timing for this function
-                targetProfile->startTime = currentTime;
-
-                // Move down the tree to the new current function
-                currentProfile = targetProfile;
+                currentProfile->maxRecursionDepth = currentProfile->recursionDepth;
             }
         }
         else
         {
-            // Function end - check if we're ending the current function
-            if (currentProfile->functionName == functionName)
+            // Normal function start - find or create child profile
+            FunctionProfile *targetProfile = nullptr;
+
+            // Try to find existing child profile
+            auto it = currentProfile->childProfileMap.find(functionName);
+            if (it != currentProfile->childProfileMap.end())
             {
-                if (currentProfile->recursionDepth > 0)
-                {
-                    // Decrement recursion depth if applicable
-                    currentProfile->recursionDepth--;
-                }
-                else
-                {
-                    // Only update timing if this is the root call
-                    currentProfile->totalTime += currentTime - currentProfile->startTime;
-                    currentProfile->count++;
-                    currentProfile->startTime = 0;
-
-                    // Move back up the tree to the parent function
-                    currentProfile = currentProfile->parent;
-                }
+                targetProfile = &it->second;
             }
-        }
+            else
+            {
+                // Create new child profile
+                auto insertIt = currentProfile->childProfileMap.emplace_hint(
+                    it, functionName, FunctionProfile(functionName, currentProfile));
+                targetProfile = &insertIt->second;
 
+                currentProfile->childList.push_back(&insertIt->second);
+            }
+
+            // Start timing for this function
+            targetProfile->startTime = currentTime;
+
+            // Move down the tree to the new current function
+            currentProfile = targetProfile;
+        }
         this->profilerUpdater->count++;
         this->profilerUpdater->totalTime += getTime() - currentTime;
     }
 
-    void Profiler::profileStart(const std::string &functionName)
-    {
-        updateProfile(functionName, true);
-    }
-
     void Profiler::profileEnd(const std::string &functionName)
     {
-        updateProfile(functionName, false);
+        int64_t currentTime = getTime();
+        // Function end - check if we're ending the current function
+        if (currentProfile->functionName == functionName)
+        {
+            if (currentProfile->recursionDepth > 0)
+            {
+                // Decrement recursion depth if applicable
+                currentProfile->recursionDepth--;
+            }
+            else
+            {
+                // Only update timing if this is the root call
+                currentProfile->count++;
+                // Use getTime() here to avoid small timing errors
+                currentProfile->totalTime += getTime() - currentProfile->startTime;
+                currentProfile->startTime = 0;
+
+                // Move back up the tree to the parent function
+                currentProfile = currentProfile->parent;
+            }
+        }
+        this->profilerUpdater->count++;
+        this->profilerUpdater->totalTime += getTime() - currentTime;
     }
 
     void Profiler::start()
     {
         this->startTime = getTime();
-        this->main = FunctionProfile("Main", nullptr);
+        this->main = FunctionProfile("[MAIN]", nullptr);
 
-        this->main.functionList.push_back("Profiler");
-        this->main.childProfileMap["Profiler"] = FunctionProfile("Profiler", &main);
-        this->profilerUpdater = &main.childProfileMap.at("Profiler");
+        auto [insertIt, success] = this->main.childProfileMap.emplace(
+            "[PROFILER]", FunctionProfile("[PROFILER]", &main));
+        this->profilerUpdater = &insertIt->second;
+        this->main.childList.push_back(this->profilerUpdater);
 
         this->currentProfile = &this->main; // Start at the main profile
         this->running = true;
@@ -285,42 +263,79 @@ namespace ProfilerUtils
         this->running = false;
     }
 
-    void Profiler::logChildProfiles(FunctionProfile &profile, int depth)
+    void Profiler::logProfile(FunctionProfile &profile, int64_t totalTime, int depth, bool corner)
     {
-        for (std::string &s : profile.functionList)
+        FunctionProfile *parent_ptr = profile.parent;
+        if (parent_ptr == nullptr)
         {
-            FunctionProfile &f = profile.childProfileMap.at(s);
-            std::string indent;
-            for (int i = 0; i < depth; i++)
-            {
-                indent.append("     ");
-            }
-            double average = (f.count == 0) ? 0 : (f.totalTime / f.count);
-            log(
-                indent +
-                f.functionName + ": " +
-                std::to_string(average * 1000) + "ms, " +
-                std::to_string(f.count) + ", " +
-                std::to_string(f.totalTime) + "s, " +
-                std::to_string(int(round((f.totalTime / profile.totalTime) * 100))) + "%");
-            logChildProfiles(f, depth + 1);
+            parent_ptr = &profile; // Avoid null dereference for root
+        }
+        FunctionProfile &parent = *parent_ptr;
+
+        uint32_t indentNumChars = depth * 4;
+        std::string indent = "";
+        if (depth > 0)
+        {
+            indent = std::string((depth - 1) * 4, ' ');
+            if (corner)
+                indent += "  └─";
+            else
+                indent += "  ├─";
+        }
+
+        double average = (profile.count == 0) ? 0.0 : (static_cast<double>(profile.totalTime) / profile.count);
+        double averageMs = average * NANO_TO_SEC * 1000.0;
+        double totalSec = profile.totalTime * NANO_TO_SEC;
+        double relativePercent = (parent.totalTime == 0) ? 0.0 : (100.0 * static_cast<double>(profile.totalTime) / parent.totalTime);
+        double totalPercent = (totalTime == 0) ? 0.0 : (100.0 * static_cast<double>(profile.totalTime) / totalTime);
+
+        uint32_t nameFieldWidth = 40;
+        uint32_t nameStrWidth = nameFieldWidth - indentNumChars;
+
+        std::string nameStr = profile.functionName;
+        if (nameStr.size() > nameStrWidth)
+            nameStr = nameStr.substr(0, nameStrWidth - 3) + "...";
+
+        std::string nameField = indent + nameStr + std::string(nameStrWidth - nameStr.size(), ' ');
+
+        // subsequent columns: each width 10
+        log(std::format("{} {:>15.6f} {:>10} {:>10} {:>10.4f} {:>9.2f}% {:>9.2f}%",
+                        nameField,
+                        averageMs,
+                        profile.count,
+                        profile.maxRecursionDepth + 1, // +1 to count the initial call
+                        totalSec,
+                        relativePercent,
+                        totalPercent));
+
+        uint32_t numChild = profile.childList.size();
+        for (uint32_t i = 0; i < numChild; i++)
+        {
+            FunctionProfile &child = *profile.childList[i];
+            corner = (i == numChild - 1) || !child.childProfileMap.empty();
+            logProfile(child, totalTime, depth + 1, corner);
         }
     }
 
     void Profiler::logProfilerData()
     {
-        double totalRunTime = (this->endTime) - (this->startTime);
-        log("Total Run time: " + std::to_string(totalRunTime) + "s");
+        int64_t totalRunTime = (this->endTime) - (this->startTime);
         this->main.totalTime = totalRunTime;
-        if (main.childProfileMap.size() > 0)
-        {
-            log("Profiler Data: Average time, Count, Total time, Percent");
-            logChildProfiles(main, 1);
-        }
+        this->main.count = 1;
+
+        log(std::format("{:<40} {:>15} {:>10} {:>10} {:>10} {:>10} {:>10}",
+                        "FUNCTION",
+                        "AVG (ms)",
+                        "COUNT",
+                        "DEPTH",
+                        "TOTAL (s)",
+                        "% PARENT",
+                        "% TOTAL"));
+        logProfile(main, totalRunTime);
         log("");
     }
 
-    double Profiler::getTotalTime()
+    int64_t Profiler::getTotalTime()
     {
         return this->endTime - this->startTime;
     }
