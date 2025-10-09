@@ -48,18 +48,10 @@ namespace LetterBoxed
 
     // --- Helper Functions ---
 
-    // Helper to reconstruct a word string from a WordPath and PuzzleData.
-    std::string reconstructWordString(const WordPath *wp, const Config &config, const std::vector<int> &allPathIndices)
-    {
-        std::string s;
-        for (int i = 0; i < wp->indicesLength; ++i)
-            s += config.allLetters[allPathIndices[wp->indicesOffset + i]];
-        return s;
-    }
-
     // Helper to reconstruct a string from a path of WordPath pointers.
     std::string reconstructPrintString(const std::vector<const WordPath *> &wordPathPtrs, const Config &config, const std::vector<int> &allPathIndices)
     {
+        Utils::ProfileScope scope(Utils::g_profiler, __func__);
         if (wordPathPtrs.empty())
         {
             return "";
@@ -383,9 +375,6 @@ namespace LetterBoxed
         // Find all solutions by recursively exploring equivalence classes.
         std::vector<std::vector<const EquivalenceClass *>> classSolutions;
         // classSolutions.reserve(allEqClasses.size() / 10); // Skip reserving, class solutions can vary widely in size
-        size_t numClasses = static_cast<int>(allEqClasses.size());
-        size_t processedClasses = 0;
-        Utils::g_process.start();
         for (const auto &startClass : allEqClasses)
         {
             if (startClass.key.usedChars.count() == config.uniquePuzzleLetters.count())
@@ -395,10 +384,7 @@ namespace LetterBoxed
             std::bitset<12> covered = startClass.key.usedChars;
             std::vector<const EquivalenceClass *> currentClassPath = {&startClass};
             findClassSolutionsRecursive(&startClass, currentClassPath, covered, 1, allEqClasses, classIndexers, config, classSolutions);
-            processedClasses++;
-            Utils::g_process.update(static_cast<double>(processedClasses) / numClasses, 0.5);
         }
-        Utils::g_process.stop();
 
         std::vector<Solution> finalSolutions;
         finalSolutions.reserve(classSolutions.size() * 2); // Reserve space for final solutions

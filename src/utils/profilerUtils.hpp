@@ -44,6 +44,40 @@ namespace Utils
     class FunctionProfile
     {
     public:
+        FunctionProfile(const std::string &name, FunctionProfile *parent);
+
+        // Public API
+        void reset();
+
+        // Get name of the function being profiled
+        const std::string &getName() const { return functionName; }
+        // Get total time spent in this function (including all calls)
+        int64_t getTotalTime() const { return totalTime; }
+        // Get number of times this function was called
+        unsigned int getCount() const { return count; }
+        // Get maximum recursion depth reached for this function
+        unsigned int getMaxRecursionDepth() const { return maxRecursionDepth; }
+        // Get current recursion depth for this function
+        unsigned int getRecursionDepth() const { return recursionDepth; }
+        // Get the parent function profile (nullptr for root)
+        FunctionProfile *getParent() const { return parent; }
+        // Get the list of child function profiles
+        const std::vector<FunctionProfile *> &getChildren() const { return childList; }
+        // Get the start time of the current invocation in nanoseconds
+        int64_t getStartTime() const { return startTime; }
+
+        // Add one to the count of times this function was called
+        void incrementCount() { count++; }
+        // Add time (in nanoseconds) to the total time spent in this function
+        void addToTotalTime(int64_t time) { totalTime += time; }
+
+        // Internal methods (should only be called by Profiler)
+        void profileStart(int64_t now);
+        void profileStop(int64_t now);
+        FunctionProfile *getOrCreateChild(const std::string &name);
+        void setTotalTime(int64_t time) { totalTime = time; }
+
+    private:
         // The name of the function being profiled
         std::string functionName;
         // Map of child function profiles for quick lookup
@@ -62,11 +96,6 @@ namespace Utils
         unsigned int recursionDepth;
         // Maximum recursion depth reached for this function
         unsigned int maxRecursionDepth;
-
-        FunctionProfile(const std::string &name, FunctionProfile *parent);
-
-        // Reset the profile data (for reuse)
-        void reset();
     };
 
     /*
@@ -75,6 +104,25 @@ namespace Utils
     class Profiler
     {
     public:
+        Profiler();
+
+        // Public API
+        void start();
+        void stop();
+        void log(const std::string &message);
+        void profileStart(const std::string &functionName);
+        void profileStop(const std::string &functionName);
+        void logProfilerData();
+        int64_t getTotalTime() const;
+        bool isRunning() const { return running; }
+
+        // Read-only access to main profile
+        const FunctionProfile &getMainProfile() const { return main; }
+
+    private:
+        // Log a specific function profile and its children recursively
+        void logProfile(FunctionProfile &profile, int64_t totalTime, int depth = 0, bool corner = false);
+
         // Pointer to the special "[PROFILER]" function profile for overhead tracking
         FunctionProfile *profilerUpdater;
         // The root function profile representing the whole process
@@ -89,26 +137,6 @@ namespace Utils
         int64_t endTime;
         // Whether the profiler is currently running
         bool running = false;
-
-        Profiler();
-        // Log a message to the profiler log
-        void log(const std::string &message);
-        // Record the start of a function call
-        void profileStart(const std::string &functionName);
-        // Record the end of a function call
-        void profileStop(const std::string &functionName);
-        // Start the profiler
-        void start();
-        // Stop the profiler
-        void stop();
-        // Log a summary of profiling data
-        void logProfilerData();
-        // Log a specific function profile and its children recursively
-        void logProfile(FunctionProfile &profile, int64_t totalTime, int depth = 0, bool corner = false);
-        // Get the total time of the profiling session in nanoseconds
-        int64_t getTotalTime();
-        // Check if the profiler is currently running
-        bool isRunning() { return running; }
     };
 
     /*

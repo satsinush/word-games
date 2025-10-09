@@ -70,6 +70,7 @@ namespace Mastermind
     // Helper: Check if a pattern matches feedback constraints
     bool matchesFeedback(const Pattern &candidate, const Feedback &fb)
     {
+        Utils::ProfileScope scope(Utils::g_profiler, __func__);
         const Pattern &guess = fb.guess;
         if (candidate.colors.size() != guess.colors.size())
             return false;
@@ -116,6 +117,7 @@ namespace Mastermind
     // Generate feedback for a guess against a target pattern
     Feedback generateFeedback(const Pattern &target, const Pattern &guess)
     {
+        Utils::ProfileScope scope(Utils::g_profiler, __func__);
         Feedback fb;
         fb.guess = guess; // Store the guess in the feedback
 
@@ -168,6 +170,7 @@ namespace Mastermind
     double calculateEntropy(const std::vector<Pattern> &possiblePatterns,
                             const Pattern &guess)
     {
+        Utils::ProfileScope scope(Utils::g_profiler, __func__);
         if (possiblePatterns.empty())
             return 0.0;
 
@@ -196,6 +199,7 @@ namespace Mastermind
     // Generate all possible patterns for the given configuration
     std::vector<Pattern> generateAllPatterns(const Config &config)
     {
+        Utils::ProfileScope scope(Utils::g_profiler, __func__);
         std::vector<Pattern> patterns;
 
         if (config.allowDuplicates)
@@ -268,6 +272,7 @@ namespace Mastermind
         const std::vector<Pattern> &patterns,
         const std::vector<Feedback> &guessHistory)
     {
+        Utils::ProfileScope scope(Utils::g_profiler, __func__);
         std::vector<Pattern> filtered;
         for (const auto &pattern : patterns)
         {
@@ -294,6 +299,7 @@ namespace Mastermind
         const Config &config,
         int recursionLevel)
     {
+        Utils::ProfileScope scope(Utils::g_profiler, __func__);
         std::vector<PatternGuess> guesses;
 
         // Create a set for fast O(1) lookups.
@@ -394,6 +400,7 @@ namespace Mastermind
         const std::vector<Feedback> &guessHistory,
         const Config &config)
     {
+        Utils::ProfileScope scope(Utils::g_profiler, __func__);
         Result result;
 
         // First filter patterns based on existing feedback

@@ -2,3 +2,4 @@
 - Add function descriptions and inline comments for confusing lines of code
 - Make unit tests?
 - Create GUI
+- Create an entropy solver wrapper for wordle and mastermind

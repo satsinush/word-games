@@ -243,7 +243,10 @@ int main(int argc, char *argv[])
 
         try
         {
+            Utils::g_profiler.start();
             game->runHeadless(args);
+            Utils::g_profiler.stop();
+            Utils::g_profiler.logProfilerData();
         }
         catch (const std::exception &e)
         {

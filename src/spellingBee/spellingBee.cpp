@@ -17,6 +17,7 @@ namespace SpellingBee
 {
     bool isValidWord(Utils::Word &word, const Config &config)
     {
+        Utils::ProfileScope scope(Utils::g_profiler, __func__);
         if (word.wordString.size() <= 3)
             return false;
 
@@ -32,6 +33,7 @@ namespace SpellingBee
 
     void filterWords(std::vector<Utils::Word> &words, const Config &config)
     {
+        Utils::ProfileScope scope(Utils::g_profiler, __func__);
         words.erase(
             std::remove_if(words.begin(), words.end(),
                            [&](Utils::Word &word)
@@ -41,6 +43,7 @@ namespace SpellingBee
 
     std::vector<Utils::Word> runSpellingBeeSolver(const std::vector<Utils::Word> &words, const Config &config)
     {
+        Utils::ProfileScope scope(Utils::g_profiler, __func__);
         std::vector<Utils::Word> wordsCopy = words;
         filterWords(wordsCopy, config);
 

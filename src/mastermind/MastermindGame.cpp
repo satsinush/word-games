@@ -132,24 +132,23 @@ namespace Game
             return guessHistory; // Return empty if no guesses provided
         }
 
-        // Parse feedback strings
+        // Parse multiple feedback strings in format: "1 1 2 2|1 2;0 0 0 4|1 2"
         std::istringstream iss(it->second);
         std::string guessStr;
 
-        while (std::getline(iss, guessStr, '"'))
+        // Parse each guess separated by semicolons
+        while (std::getline(iss, guessStr, ';'))
         {
-            guessStr = Utils::trimToLower(guessStr);
-            if (guessStr.empty())
+            std::string trimmed = Utils::trimToLower(guessStr);
+            if (trimmed.empty() || trimmed.find('|') == std::string::npos)
                 continue;
-            if (guessStr.find('|') == std::string::npos)
-                continue; // Skip if no pipe found
 
             try
             {
                 // Split by pipe
-                size_t pipePos = guessStr.find('|');
-                std::string patternStr = guessStr.substr(0, pipePos);
-                std::string feedbackStr = guessStr.substr(pipePos + 1);
+                size_t pipePos = trimmed.find('|');
+                std::string patternStr = trimmed.substr(0, pipePos);
+                std::string feedbackStr = trimmed.substr(pipePos + 1);
 
                 // Parse pattern
                 std::istringstream patternIss(patternStr);

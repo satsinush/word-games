@@ -44,6 +44,7 @@ namespace Wordle
     // Helper: Check if a word matches all feedback constraints
     bool matchesFeedback(const Utils::Word &candidate, const Feedback &fb)
     {
+        Utils::ProfileScope scope(Utils::g_profiler, __func__);
         const std::string &guess = fb.word;
         // Use pre-calculated letter count from candidate word
         std::array<uint8_t, 26> candidateLetterCount = candidate.letterCount;
@@ -95,6 +96,7 @@ namespace Wordle
     // Generate feedback for a guess against a target word
     Feedback generateFeedback(const Utils::Word &target, const std::string &guess)
     {
+        Utils::ProfileScope scope(Utils::g_profiler, __func__);
         Feedback fb;
         fb.word = guess;
 
@@ -144,6 +146,7 @@ namespace Wordle
     double calculateEntropy(const std::vector<Utils::Word> &possibleWords,
                             const Utils::Word &guess)
     {
+        Utils::ProfileScope scope(Utils::g_profiler, __func__);
         if (possibleWords.empty())
             return 0.0;
 
@@ -173,6 +176,7 @@ namespace Wordle
         const std::vector<Utils::Word> &words,
         const std::vector<Feedback> &feedbacks)
     {
+        Utils::ProfileScope scope(Utils::g_profiler, __func__);
         std::vector<Utils::Word> filtered;
         for (const auto &w : words)
         {
@@ -199,6 +203,7 @@ namespace Wordle
         const Config &config,
         int recursionLevel)
     {
+        Utils::ProfileScope scope(Utils::g_profiler, __func__);
         std::vector<WordGuess> guesses;
 
         // Create a set for fast O(1) lookups.
@@ -317,6 +322,7 @@ namespace Wordle
         const std::vector<Feedback> &feedbacks,
         const Config &config)
     {
+        Utils::ProfileScope scope(Utils::g_profiler, __func__);
         // Filter words to only 5-letter words
         std::vector<Utils::Word> availableWords;
         for (const auto &word : allWords)

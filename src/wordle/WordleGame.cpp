@@ -87,22 +87,20 @@ namespace Game
             return feedbackHistory; // Return empty if no guesses provided
         }
 
-        // Parse multiple feedback strings (they should be space-separated)
-        // This is a simplified implementation - in practice you'd want better parsing
+        // Parse multiple feedback strings in format: "STEAL 20100;CRANE 01002"
         std::istringstream iss(it->second);
         std::string guessStr;
 
-        while (std::getline(iss, guessStr, '"'))
+        // Parse each guess separated by semicolons
+        while (std::getline(iss, guessStr, ';'))
         {
-            guessStr = Utils::trimToLower(guessStr);
-            if (guessStr.empty())
+            std::string trimmed = Utils::trimToLower(guessStr);
+            if (trimmed.empty() || trimmed.find(' ') == std::string::npos)
                 continue;
-            if (guessStr.find(' ') == std::string::npos)
-                continue; // Skip if no space found
 
             try
             {
-                Wordle::Feedback fb = Wordle::parseFeedback(guessStr);
+                Wordle::Feedback fb = Wordle::parseFeedback(trimmed);
                 feedbackHistory.push_back(fb);
             }
             catch (const std::exception &e)
