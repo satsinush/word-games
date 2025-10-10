@@ -400,6 +400,12 @@ namespace Wordle
             result.totalPossibleWords = totalPossible;
             return result;
         }
+
+        size_t getCandidateHash(const Utils::Word &candidate) const override
+        {
+            // Use standard string hash for the word string
+            return std::hash<std::string>{}(candidate.wordString);
+        }
     };
 
     Result runWordleSolverWithGenericEntropy(

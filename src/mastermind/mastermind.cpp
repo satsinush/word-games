@@ -466,6 +466,18 @@ namespace Mastermind
             result.totalPossiblePatterns = totalPossible;
             return result;
         }
+
+        size_t getCandidateHash(const Pattern &candidate) const override
+        {
+            // Use polynomial rolling hash for the pattern colors
+            size_t hash = 0;
+            const size_t prime = 31;
+            for (const auto &color : candidate.colors)
+            {
+                hash = hash * prime + static_cast<size_t>(color);
+            }
+            return hash;
+        }
     };
 
     Result runMastermindSolverWithGenericEntropy(

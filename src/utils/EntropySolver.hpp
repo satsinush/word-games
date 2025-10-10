@@ -4,6 +4,8 @@
 #include <algorithm>
 #include <map>
 #include <cmath>
+#include <unordered_set>
+#include <functional>
 
 namespace Utils
 {
@@ -33,6 +35,9 @@ namespace Utils
         virtual TGuessType createGuess(const TCandidateType &candidate, double entropy, double probability, const std::vector<double> &entropyList) const = 0;
         virtual TResultType createResult(const std::vector<TGuessType> &guesses, int totalPossible) const = 0;
 
+        // Pure virtual methods for hash and equality (accessible to wrapper classes)
+        virtual size_t getCandidateHash(const TCandidateType &candidate) const = 0;
+
     public:
         /**
          * Main solver function that returns the final result type directly
@@ -44,6 +49,21 @@ namespace Utils
         {
             // Filter candidates based on feedback history
             std::vector<TCandidateType> possibleCandidates;
+
+            // Create hash and equality lambdas
+            auto hasher = [this](const TCandidateType &candidate) -> size_t
+            {
+                return this->getCandidateHash(candidate);
+            };
+            auto equality = [this](const TCandidateType &a, const TCandidateType &b) -> bool
+            {
+                return this->candidatesEqual(a, b);
+            };
+
+            // Create unordered_set with lambda-based hash and equality
+            std::unordered_set<TCandidateType, decltype(hasher), decltype(equality)> possibleCandidateSet(
+                0, hasher, equality);
+
             for (const auto &candidate : allCandidates)
             {
                 bool matches = true;
@@ -58,6 +78,7 @@ namespace Utils
                 if (matches)
                 {
                     possibleCandidates.push_back(candidate);
+                    possibleCandidateSet.insert(candidate);
                 }
             }
 
@@ -80,11 +101,8 @@ namespace Utils
             for (const auto &guessCandidate : allCandidates)
             {
                 // Calculate probability (how likely this candidate is to be the answer)
-                bool isPossible = std::find_if(possibleCandidates.begin(), possibleCandidates.end(),
-                                               [&](const TCandidateType &candidate)
-                                               {
-                                                   return candidatesEqual(candidate, guessCandidate);
-                                               }) != possibleCandidates.end();
+                // O(1) lookup in unordered_set with proper hash and equality
+                bool isPossible = possibleCandidateSet.find(guessCandidate) != possibleCandidateSet.end();
 
                 double probability = isPossible ? (possibleCandidates.empty() ? 0.0 : 1.0 / possibleCandidates.size()) : 0.0;
 
