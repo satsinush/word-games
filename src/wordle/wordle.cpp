@@ -378,11 +378,6 @@ namespace Wordle
             return Wordle::generateFeedback(target, guess.wordString);
         }
 
-        bool candidatesEqual(const Utils::Word &a, const Utils::Word &b) const override
-        {
-            return a.wordString == b.wordString;
-        }
-
         WordGuess createGuess(const Utils::Word &candidate, double entropy, double probability, const std::vector<double> &entropyList) const override
         {
             WordGuess guess;
@@ -399,12 +394,6 @@ namespace Wordle
             result.sortedGuesses = guesses;
             result.totalPossibleWords = totalPossible;
             return result;
-        }
-
-        size_t getCandidateHash(const Utils::Word &candidate) const override
-        {
-            // Use standard string hash for the word string
-            return std::hash<std::string>{}(candidate.wordString);
         }
     };
 

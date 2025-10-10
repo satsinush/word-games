@@ -32,3 +32,18 @@ namespace Utils
     std::vector<Word> loadWords();
 
 } // namespace Utils
+
+// Provide std::hash specialization for Utils::Word so it can be used as an
+// unordered_map/unordered_set key in generic code (like the EntropySolver).
+namespace std
+{
+    template <>
+    struct hash<Utils::Word>
+    {
+        size_t operator()(const Utils::Word &word) const noexcept
+        {
+            // Use the standard string hash for the wordString
+            return std::hash<std::string>{}(word.wordString);
+        }
+    };
+}

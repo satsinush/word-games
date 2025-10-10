@@ -2,9 +2,13 @@
 log.txt
 temp.txt
 results/
-.vscode/
+.vscode/*
+!.vscode/tasks.json
+!.vscode/launch.json
 .vs/
 *.exe
 ngram_freq.csv
 build/
 data/
+gmon.out
+profile_results.txt

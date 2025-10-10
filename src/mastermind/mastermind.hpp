@@ -158,3 +158,46 @@ namespace Mastermind
         const std::vector<Feedback> &guessHistory,
         const Config &config = Config{});
 }
+
+// Provide std::hash specializations for Mastermind types so they can be used as
+// unordered_map/unordered_set keys in generic code (like the EntropySolver).
+namespace std
+{
+    template <>
+    struct hash<Mastermind::Pattern>
+    {
+        size_t operator()(const Mastermind::Pattern &pattern) const noexcept
+        {
+            // Hash the colors vector using FNV-1a style mixing
+            uint64_t h = 1469598103934665603ULL;
+            for (uint8_t c : pattern.colors)
+            {
+                h ^= static_cast<uint64_t>(c);
+                h *= 1099511628211ULL;
+            }
+            return static_cast<size_t>(h);
+        }
+    };
+
+    template <>
+    struct hash<Mastermind::Feedback>
+    {
+        size_t operator()(const Mastermind::Feedback &fb) const noexcept
+        {
+            // Combine a few pieces: the guess colors, correctPosition and correctColor
+            // Use a simple but decent combiner (64-bit FNV-1a style mix + shift/xor mix)
+            uint64_t h = 1469598103934665603ULL;
+            for (uint8_t c : fb.guess.colors)
+            {
+                h ^= static_cast<uint64_t>(c);
+                h *= 1099511628211ULL;
+            }
+
+            // mix in correctPosition and correctColor
+            h ^= static_cast<uint64_t>(fb.correctPosition) + 0x9e3779b97f4a7c15ULL + (h << 6) + (h >> 2);
+            h ^= static_cast<uint64_t>(fb.correctColor) + 0x9e3779b97f4a7c15ULL + (h << 6) + (h >> 2);
+
+            return static_cast<size_t>(h);
+        }
+    };
+}

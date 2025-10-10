@@ -3,6 +3,7 @@
 #include <vector>
 #include <algorithm>
 #include <map>
+#include <unordered_map>
 #include <cmath>
 #include <unordered_set>
 #include <functional>
@@ -29,14 +30,10 @@ namespace Utils
         // Pure virtual methods to be implemented by derived classes
         virtual bool matchesFeedback(const TCandidateType &candidate, const TFeedbackType &feedback) const = 0;
         virtual TFeedbackType generateFeedback(const TCandidateType &target, const TCandidateType &guess) const = 0;
-        virtual bool candidatesEqual(const TCandidateType &a, const TCandidateType &b) const = 0;
 
         // Pure virtual methods for creating result objects directly
         virtual TGuessType createGuess(const TCandidateType &candidate, double entropy, double probability, const std::vector<double> &entropyList) const = 0;
         virtual TResultType createResult(const std::vector<TGuessType> &guesses, int totalPossible) const = 0;
-
-        // Pure virtual methods for hash and equality (accessible to wrapper classes)
-        virtual size_t getCandidateHash(const TCandidateType &candidate) const = 0;
 
     public:
         /**
@@ -50,19 +47,8 @@ namespace Utils
             // Filter candidates based on feedback history
             std::vector<TCandidateType> possibleCandidates;
 
-            // Create hash and equality lambdas
-            auto hasher = [this](const TCandidateType &candidate) -> size_t
-            {
-                return this->getCandidateHash(candidate);
-            };
-            auto equality = [this](const TCandidateType &a, const TCandidateType &b) -> bool
-            {
-                return this->candidatesEqual(a, b);
-            };
-
-            // Create unordered_set with lambda-based hash and equality
-            std::unordered_set<TCandidateType, decltype(hasher), decltype(equality)> possibleCandidateSet(
-                0, hasher, equality);
+            // Create unordered_set using std::hash and std::equal_to (default template specializations)
+            std::unordered_set<TCandidateType> possibleCandidateSet;
 
             for (const auto &candidate : allCandidates)
             {
@@ -136,7 +122,7 @@ namespace Utils
                 return entropyList;
 
             // Group possible candidates by feedback pattern
-            std::map<TFeedbackType, std::vector<TCandidateType>> feedbackGroups;
+            std::unordered_map<TFeedbackType, std::vector<TCandidateType>> feedbackGroups;
 
             for (const auto &target : possibleCandidates)
             {

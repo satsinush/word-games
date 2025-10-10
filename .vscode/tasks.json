@@ -1,0 +1,115 @@
+{
+    "version": "2.0.0",
+    "inputs": [
+        {
+            "id": "programArgs",
+            "type": "promptString",
+            "description": "Enter all command-line arguments",
+            "default": ""
+        }
+    ],
+    "tasks": [
+        {
+            "label": "Clean All",
+            "type": "shell",
+            // This command chains the clean task for each build type.
+            "command": "cmake --build build/release --target clean && cmake --build build/debug --target clean && cmake --build build/profile --target clean",
+            "problemMatcher": []
+        },
+        // --- RELEASE TASKS ---
+        {
+            "label": "Release: Clean",
+            "type": "shell",
+            "command": "cmake --build build/release --target clean",
+            "problemMatcher": []
+        },
+        {
+            "label": "Release: Configure",
+            "type": "shell",
+            "command": "cmake -S . -B build/release -D CMAKE_BUILD_TYPE=Release",
+            "problemMatcher": []
+        },
+        {
+            "label": "Release: Build",
+            "type": "shell",
+            "command": "cmake --build build/release",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": "$gcc"
+        },
+        {
+            "label": "Release: Run",
+            "type": "shell",
+            "command": "\"${workspaceFolder}/build/release/word-games.exe\" ${input:programArgs}",
+            "group": {
+                "kind": "test",
+                "isDefault": true
+            },
+            "problemMatcher": []
+        },
+        // --- DEBUG TASKS ---
+        {
+            "label": "Debug: Clean",
+            "type": "shell",
+            "command": "cmake --build build/debug --target clean",
+            "problemMatcher": []
+        },
+        {
+            "label": "Debug: Configure",
+            "type": "shell",
+            "command": "cmake -S . -B build/debug -D CMAKE_BUILD_TYPE=Debug",
+            "problemMatcher": []
+        },
+        {
+            "label": "Debug: Build",
+            "type": "shell",
+            "command": "cmake --build build/debug",
+            "group": "build",
+            "problemMatcher": "$gcc"
+        },
+        // --- PROFILE TASKS ---
+        {
+            "label": "Profile: Clean",
+            "type": "shell",
+            "command": "cmake --build build/profile --target clean",
+            "problemMatcher": []
+        },
+        {
+            "label": "Profile: Configure",
+            "type": "shell",
+            "command": "cmake -S . -B build/profile -D CMAKE_BUILD_TYPE=Profile",
+            "problemMatcher": []
+        },
+        {
+            "label": "Profile: Build",
+            "type": "shell",
+            "command": "cmake --build build/profile",
+            "group": "build",
+            "problemMatcher": "$gcc"
+        },
+        {
+            "label": "Profile: Run",
+            "type": "shell",
+            "command": "\"${workspaceFolder}/build/profile/word-games.exe\" ${input:programArgs}",
+            "problemMatcher": []
+        },
+        {
+            "label": "Profile: Analyze",
+            "type": "shell",
+            "command": "gprof \"${workspaceFolder}/build/profile/word-games.exe\" gmon.out > profile_results.txt",
+            "problemMatcher": []
+        },
+        {
+            "label": "Profile: Run and Analyze",
+            "dependsOrder": "sequence",
+            "dependsOn": [
+                "Profile: Run",
+                "Profile: Analyze"
+            ],
+            "group": "test",
+            "problemMatcher": []
+        }
+    ]
+}

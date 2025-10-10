@@ -444,11 +444,6 @@ namespace Mastermind
             return Mastermind::generateFeedback(target, guess);
         }
 
-        bool candidatesEqual(const Pattern &a, const Pattern &b) const override
-        {
-            return a == b;
-        }
-
         PatternGuess createGuess(const Pattern &candidate, double entropy, double probability, const std::vector<double> &entropyList) const override
         {
             PatternGuess guess;
@@ -465,18 +460,6 @@ namespace Mastermind
             result.sortedGuesses = guesses;
             result.totalPossiblePatterns = totalPossible;
             return result;
-        }
-
-        size_t getCandidateHash(const Pattern &candidate) const override
-        {
-            // Use polynomial rolling hash for the pattern colors
-            size_t hash = 0;
-            const size_t prime = 31;
-            for (const auto &color : candidate.colors)
-            {
-                hash = hash * prime + static_cast<size_t>(color);
-            }
-            return hash;
         }
     };
 

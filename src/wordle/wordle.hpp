@@ -145,3 +145,22 @@ namespace Wordle
         const std::vector<Feedback> &feedbacks,
         const Config &config = Config{});
 }
+
+// Provide std::hash specialization for Wordle::Feedback so it can be used as an
+// unordered_map/unordered_set key in generic code (like the EntropySolver).
+namespace std
+{
+    template <>
+    struct hash<Wordle::Feedback>
+    {
+        size_t operator()(const Wordle::Feedback &fb) const noexcept
+        {
+            // Combine hash of the word string and the bitset colors
+            size_t h1 = std::hash<std::string>{}(fb.word);
+            size_t h2 = std::hash<unsigned long>{}(fb.colors.to_ulong());
+
+            // Use a simple but effective hash combiner
+            return h1 ^ (h2 + 0x9e3779b9 + (h1 << 6) + (h1 >> 2));
+        }
+    };
+}
