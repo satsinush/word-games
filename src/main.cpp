@@ -43,8 +43,8 @@ void printUsage(const char *programName)
     std::cout << "\n";
 
     std::cout << "  Wordle:\n";
-    std::cout << "    " << programName << " --mode wordle --guesses \"STEAL 01201\" \"CRANE 00120\" [--maxDepth <depth>] [--possibleFile <filename>] [--guessesFile <filename>] [--excludeUncommonWords <0|1>]\n";
-    std::cout << "      --guesses: Specify guess/feedback pairs. Format: \"WORD 01201\" where:\n";
+    std::cout << "    " << programName << " --mode wordle [--guesses <guesses>] [--maxDepth <depth>] [--possibleFile <filename>] [--guessesFile <filename>] [--excludeUncommonWords <0|1>]\n";
+    std::cout << "      --guesses: Specify guess/feedback pairs. Format: \"STEAL 01201;CRANE 00120\" where:\n";
     std::cout << "                 0=grey (letter not in word), 1=yellow (letter in word, wrong position),\n";
     std::cout << "                 2=green (letter in word, correct position)\n";
     std::cout << "      --maxDepth: Search depth for entropy calculation (0-2, default: 0). Higher values are more accurate but slower.\n";
@@ -54,8 +54,8 @@ void printUsage(const char *programName)
     std::cout << "\n";
 
     std::cout << "  Mastermind:\n";
-    std::cout << "    " << programName << " --mode mastermind --guesses \"1 2 3 4|2 2\" [--numPegs <pegs>] [--numColors <colors>] [--allowDuplicates <0|1>] [--maxDepth <depth>] [--possibleFile <filename>] [--guessesFile <filename>]\n";
-    std::cout << "      --guesses: Specify guess/feedback pairs. Format: \"1 2 3 4|2 2\" where:\n";
+    std::cout << "    " << programName << " --mode mastermind [--guesses <guesses>] [--numPegs <pegs>] [--numColors <colors>] [--allowDuplicates <0|1>] [--maxDepth <depth>] [--possibleFile <filename>] [--guessesFile <filename>]\n";
+    std::cout << "      --guesses: Specify guess/feedback pairs. Format: \"1 1 2 2 3|1 2;3 4 5 6 7|1 2\" where:\n";
     std::cout << "                 Pattern: sequence of color numbers separated by spaces\n";
     std::cout << "                 Feedback: <correct_position> <correct_color> (e.g., \"2 2\" = 2 correct position, 2 correct color)\n";
     std::cout << "      --numPegs: Number of pegs in the pattern (default: 4)\n";
