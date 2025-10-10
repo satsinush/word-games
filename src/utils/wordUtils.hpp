@@ -21,6 +21,8 @@ namespace Utils
         std::array<uint8_t, 26> letterCount;
         // Comparison operator for sorting words alphabetically
         bool operator<(const Word &other) const { return wordString < other.wordString; }
+        // Equality operator for comparing words
+        bool operator==(const Word &other) const { return wordString == other.wordString; }
     };
 
     // Trims whitespace and converts a string to lowercase

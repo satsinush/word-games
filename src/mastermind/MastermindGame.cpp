@@ -316,7 +316,7 @@ namespace Game
                 config.maxDepth = Utils::Input::promptInt("Enter search depth (1-3)", 1, 1, 3);
 
                 std::cout << "Calculating best guesses...\n";
-                Mastermind::Result result = Mastermind::runMastermindSolverWithEntropy(allPatterns, guessHistory, config);
+                Mastermind::Result result = Mastermind::runMastermindSolverWithGenericEntropy(allPatterns, guessHistory, config);
 
                 printResults(result);
                 std::cout << "\nSolver completed.\n\n";
@@ -400,7 +400,7 @@ namespace Game
             // Generate all possible patterns
             std::vector<Mastermind::Pattern> allPatterns = Mastermind::generateAllPatterns(config);
 
-            Mastermind::Result result = Mastermind::runMastermindSolverWithEntropy(allPatterns, guessHistory, config);
+            Mastermind::Result result = Mastermind::runMastermindSolverWithGenericEntropy(allPatterns, guessHistory, config);
 
             std::string possibleFile = Utils::Input::getArgValue(args, "possibleFile", std::string("results/possible.txt"));
             std::string guessesFile = Utils::Input::getArgValue(args, "guessesFile", std::string("results/guesses.txt"));

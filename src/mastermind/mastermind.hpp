@@ -7,6 +7,7 @@
 #include <cmath>
 
 #include "../utils/utils.hpp"
+#include "../utils/EntropySolver.hpp"
 
 namespace Mastermind
 {
@@ -147,6 +148,12 @@ namespace Mastermind
 
     // Enhanced solver that returns best guesses ranked by entropy and possible pattern count
     Result runMastermindSolverWithEntropy(
+        const std::vector<Pattern> &allPatterns,
+        const std::vector<Feedback> &guessHistory,
+        const Config &config = Config{});
+
+    // Generic EntropySolver-based version (cleaner implementation)
+    Result runMastermindSolverWithGenericEntropy(
         const std::vector<Pattern> &allPatterns,
         const std::vector<Feedback> &guessHistory,
         const Config &config = Config{});

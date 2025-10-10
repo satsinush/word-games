@@ -10,6 +10,7 @@
 #include <unordered_set>
 
 #include "wordle.hpp"
+#include "../utils/EntropySolver.hpp"
 
 namespace Wordle
 {
@@ -361,5 +362,66 @@ namespace Wordle
 
         result.sortedGuesses = allGuesses;
         return result;
+    }
+
+    // Wordle-specific entropy solver implementation
+    class WordleEntropySolver : public Utils::AbstractEntropySolver<Utils::Word, Feedback, Config, WordGuess, Result>
+    {
+    protected:
+        bool matchesFeedback(const Utils::Word &candidate, const Feedback &feedback) const override
+        {
+            return Wordle::matchesFeedback(candidate, feedback);
+        }
+
+        Feedback generateFeedback(const Utils::Word &target, const Utils::Word &guess) const override
+        {
+            return Wordle::generateFeedback(target, guess.wordString);
+        }
+
+        bool candidatesEqual(const Utils::Word &a, const Utils::Word &b) const override
+        {
+            return a.wordString == b.wordString;
+        }
+
+        WordGuess createGuess(const Utils::Word &candidate, double entropy, double probability, const std::vector<double> &entropyList) const override
+        {
+            WordGuess guess;
+            guess.word = candidate;
+            guess.entropy = entropy;
+            guess.probability = probability;
+            guess.entropyList = entropyList;
+            return guess;
+        }
+
+        Result createResult(const std::vector<WordGuess> &guesses, int totalPossible) const override
+        {
+            Result result;
+            result.sortedGuesses = guesses;
+            result.totalPossibleWords = totalPossible;
+            return result;
+        }
+    };
+
+    Result runWordleSolverWithGenericEntropy(
+        const std::vector<Utils::Word> &allWords,
+        const std::vector<Feedback> &feedbacks,
+        const Config &config)
+    {
+        Utils::ProfileScope scope(Utils::g_profiler, __func__);
+
+        // Filter words to only 5-letter words
+        std::vector<Utils::Word> availableWords;
+        for (const auto &word : allWords)
+        {
+            bool exclude = config.excludeUncommonWords && (!word.is_scrabble);
+            if (word.wordString.length() == 5 && !exclude)
+            {
+                availableWords.push_back(word);
+            }
+        }
+
+        // Use the specialized Wordle entropy solver - returns Result directly!
+        WordleEntropySolver solver;
+        return solver.solve(availableWords, feedbacks, config);
     }
 }

@@ -6,6 +6,7 @@
 #include <cmath>
 
 #include "../utils/utils.hpp"
+#include "../utils/EntropySolver.hpp"
 
 namespace Wordle
 {
@@ -134,6 +135,12 @@ namespace Wordle
     // Enhanced solver that returns best guesses ranked by entropy and possible word count
     // If config.maxDepth is 0, skips entropy calculation and just returns filtered words
     Result runWordleSolverWithEntropy(
+        const std::vector<Utils::Word> &allWords,
+        const std::vector<Feedback> &feedbacks,
+        const Config &config = Config{});
+
+    // Generic EntropySolver-based version (cleaner implementation)
+    Result runWordleSolverWithGenericEntropy(
         const std::vector<Utils::Word> &allWords,
         const std::vector<Feedback> &feedbacks,
         const Config &config = Config{});

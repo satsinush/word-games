@@ -242,7 +242,7 @@ namespace Game
                     Wordle::Config config = getConfigFromUser();
 
                     std::cout << "Calculating best guesses...\n";
-                    Wordle::Result result = Wordle::runWordleSolverWithEntropy(wordVec, feedbackHistory, config);
+                    Wordle::Result result = Wordle::runWordleSolverWithGenericEntropy(wordVec, feedbackHistory, config);
 
                     printResults(result);
                     continue;
@@ -271,7 +271,7 @@ namespace Game
             Wordle::Config config = getConfigFromArgs(args);
             std::vector<Wordle::Feedback> feedbackHistory = getFeedbackFromArgs(args);
 
-            Wordle::Result result = Wordle::runWordleSolverWithEntropy(wordVec, feedbackHistory, config);
+            Wordle::Result result = Wordle::runWordleSolverWithGenericEntropy(wordVec, feedbackHistory, config);
 
             std::string possibleFile = Utils::Input::getArgValue(args, "possibleFile", std::string("results/possible.txt"));
             std::string guessesFile = Utils::Input::getArgValue(args, "guessesFile", std::string("results/guesses.txt"));

@@ -13,6 +13,7 @@
 #include <sstream>
 
 #include "mastermind.hpp"
+#include "../utils/EntropySolver.hpp"
 
 namespace Mastermind
 {
@@ -427,5 +428,56 @@ namespace Mastermind
         }
 
         return result;
+    }
+
+    // Mastermind-specific entropy solver implementation
+    class MastermindEntropySolver : public Utils::AbstractEntropySolver<Pattern, Feedback, Config, PatternGuess, Result>
+    {
+    protected:
+        bool matchesFeedback(const Pattern &candidate, const Feedback &feedback) const override
+        {
+            return Mastermind::matchesFeedback(candidate, feedback);
+        }
+
+        Feedback generateFeedback(const Pattern &target, const Pattern &guess) const override
+        {
+            return Mastermind::generateFeedback(target, guess);
+        }
+
+        bool candidatesEqual(const Pattern &a, const Pattern &b) const override
+        {
+            return a == b;
+        }
+
+        PatternGuess createGuess(const Pattern &candidate, double entropy, double probability, const std::vector<double> &entropyList) const override
+        {
+            PatternGuess guess;
+            guess.pattern = candidate;
+            guess.entropy = entropy;
+            guess.probability = probability;
+            guess.entropyList = entropyList;
+            return guess;
+        }
+
+        Result createResult(const std::vector<PatternGuess> &guesses, int totalPossible) const override
+        {
+            Result result;
+            result.sortedGuesses = guesses;
+            result.totalPossiblePatterns = totalPossible;
+            return result;
+        }
+    };
+
+    Result runMastermindSolverWithGenericEntropy(
+        const std::vector<Pattern> &allPatterns,
+        const std::vector<Feedback> &guessHistory,
+        const Config &config)
+    {
+        Utils::ProfileScope scope(Utils::g_profiler, __func__);
+
+        // Use the specialized Mastermind entropy solver
+        MastermindEntropySolver solver;
+        // Use the specialized Mastermind entropy solver - returns Result directly!
+        return solver.solve(allPatterns, guessHistory, config);
     }
 }
