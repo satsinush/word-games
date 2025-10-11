@@ -6,10 +6,6 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-# Define custom build type flags here, before any targets are created.
-set(CMAKE_CXX_FLAGS_PROFILE "-O3 -pg -g" CACHE STRING "Flags for Profile build" FORCE)
-set(CMAKE_EXE_LINKER_FLAGS_PROFILE "-pg" CACHE STRING "Linker flags for Profile build" FORCE)
-
 # Keep your recursive file search with the flag that makes it reliable
 file(GLOB_RECURSE SRCS CONFIGURE_DEPENDS
     "${CMAKE_SOURCE_DIR}/src/*.cpp"
