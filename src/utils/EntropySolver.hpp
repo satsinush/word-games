@@ -123,7 +123,7 @@ namespace Utils
 
             // Group possible candidates by feedback pattern
             std::unordered_map<TFeedbackType, std::vector<TCandidateType>> feedbackGroups;
-
+            feedbackGroups.reserve(possibleCandidates.size());
             for (const auto &target : possibleCandidates)
             {
                 TFeedbackType feedback = generateFeedback(target, guessCandidate);

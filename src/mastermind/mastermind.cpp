@@ -32,18 +32,19 @@ namespace Mastermind
         // Parse guess pattern
         std::istringstream patternIss(patternStr);
         Pattern guess;
-        guess.colors.clear();
+        guess.numPegs = 0;
         std::string token;
-        while (patternIss >> token)
+        while (patternIss >> token && guess.numPegs < MAX_PEGS)
         {
             if (token.length() != 1 || !std::isdigit(token[0]))
             {
                 throw std::runtime_error("Pattern must contain only single digit numbers");
             }
-            guess.colors.push_back(token[0] - '0');
+            guess.colors[guess.numPegs] = token[0] - '0';
+            guess.numPegs++;
         }
 
-        if (guess.colors.size() != numPegs)
+        if (guess.numPegs != numPegs)
         {
             throw std::runtime_error("Pattern must have exactly " + std::to_string(numPegs) + " colors");
         }
@@ -71,13 +72,13 @@ namespace Mastermind
     // Helper: Check if a pattern matches feedback constraints
     bool matchesFeedback(const Pattern &candidate, const Feedback &fb)
     {
-        Utils::ProfileScope scope(Utils::g_profiler, __func__);
         const Pattern &guess = fb.guess;
-        if (candidate.colors.size() != guess.colors.size())
+        if (candidate.numPegs != guess.numPegs)
             return false;
 
-        // Count color occurrences in candidate
-        std::map<uint8_t, int> candidateCount;
+        // Count color occurrences in candidate using vector for better cache performance
+        // uint8_t can only have values 0-255, so reserve 256 spots
+        std::array<int, 256> candidateCount = {};
         for (uint8_t color : candidate.colors)
         {
             candidateCount[color]++;
@@ -85,7 +86,7 @@ namespace Mastermind
 
         // Count correct positions and adjust counts
         int correctPositions = 0;
-        for (size_t i = 0; i < candidate.colors.size(); ++i)
+        for (size_t i = 0; i < candidate.numPegs; ++i)
         {
             if (candidate.colors[i] == guess.colors[i])
             {
@@ -99,7 +100,7 @@ namespace Mastermind
 
         // Count correct colors in wrong positions
         int correctColors = 0;
-        for (size_t i = 0; i < guess.colors.size(); ++i)
+        for (size_t i = 0; i < guess.numPegs; ++i)
         {
             // Skip positions that were already correct
             if (candidate.colors[i] == guess.colors[i])
@@ -118,22 +119,22 @@ namespace Mastermind
     // Generate feedback for a guess against a target pattern
     Feedback generateFeedback(const Pattern &target, const Pattern &guess)
     {
-        Utils::ProfileScope scope(Utils::g_profiler, __func__);
         Feedback fb;
         fb.guess = guess; // Store the guess in the feedback
 
-        if (target.colors.size() != guess.colors.size())
+        if (target.numPegs != guess.numPegs)
             return fb; // Invalid input
 
-        // Count color occurrences in target
-        std::map<uint8_t, int> targetCount;
-        for (uint8_t color : target.colors)
+        // Count color occurrences in target using vector for better cache performance
+        // uint8_t can only have values 0-255, so reserve 256 spots
+        std::array<int, 256> targetCount = {};
+        for (size_t i = 0; i < target.numPegs; ++i)
         {
-            targetCount[color]++;
+            targetCount[target.colors[i]]++;
         }
 
         // First pass: count correct positions
-        for (size_t i = 0; i < target.colors.size(); ++i)
+        for (size_t i = 0; i < target.numPegs; ++i)
         {
             if (target.colors[i] == guess.colors[i])
             {
@@ -143,7 +144,7 @@ namespace Mastermind
         }
 
         // Second pass: count correct colors in wrong positions
-        for (size_t i = 0; i < guess.colors.size(); ++i)
+        for (size_t i = 0; i < guess.numPegs; ++i)
         {
             // Skip positions that were already correct
             if (target.colors[i] == guess.colors[i])
@@ -171,7 +172,6 @@ namespace Mastermind
     double calculateEntropy(const std::vector<Pattern> &possiblePatterns,
                             const Pattern &guess)
     {
-        Utils::ProfileScope scope(Utils::g_profiler, __func__);
         if (possiblePatterns.empty())
             return 0.0;
 
@@ -200,25 +200,25 @@ namespace Mastermind
     // Generate all possible patterns for the given configuration
     std::vector<Pattern> generateAllPatterns(const Config &config)
     {
-        Utils::ProfileScope scope(Utils::g_profiler, __func__);
         std::vector<Pattern> patterns;
 
         if (config.allowDuplicates)
         {
             // Generate all possible combinations with repetition
-            std::vector<uint8_t> current(config.numPegs, 0);
+            Pattern current;
+            current.numPegs = config.numPegs;
 
             std::function<void(unsigned int)> generate = [&](unsigned int pos)
             {
                 if (pos == config.numPegs)
                 {
-                    patterns.emplace_back(current);
+                    patterns.push_back(current);
                     return;
                 }
 
                 for (unsigned int color = 0; color < config.numColors; ++color)
                 {
-                    current[pos] = static_cast<uint8_t>(color);
+                    current.colors[pos] = static_cast<uint8_t>(color);
                     generate(pos + 1);
                 }
             };
@@ -234,20 +234,21 @@ namespace Mastermind
                 return patterns;
             }
 
-            std::vector<uint8_t> colors(config.numColors);
+            std::array<uint8_t, 256> availableColors; // Support up to 256 colors
             for (unsigned int i = 0; i < config.numColors; ++i)
             {
-                colors[i] = static_cast<uint8_t>(i);
+                availableColors[i] = static_cast<uint8_t>(i);
             }
 
-            std::vector<uint8_t> current(config.numPegs);
+            Pattern current;
+            current.numPegs = config.numPegs;
             std::vector<bool> used(config.numColors, false);
 
             std::function<void(unsigned int)> generate = [&](unsigned int pos)
             {
                 if (pos == config.numPegs)
                 {
-                    patterns.emplace_back(current);
+                    patterns.push_back(current);
                     return;
                 }
 
@@ -256,7 +257,7 @@ namespace Mastermind
                     if (!used[i])
                     {
                         used[i] = true;
-                        current[pos] = static_cast<uint8_t>(i);
+                        current.colors[pos] = static_cast<uint8_t>(i);
                         generate(pos + 1);
                         used[i] = false;
                     }
@@ -273,7 +274,6 @@ namespace Mastermind
         const std::vector<Pattern> &patterns,
         const std::vector<Feedback> &guessHistory)
     {
-        Utils::ProfileScope scope(Utils::g_profiler, __func__);
         std::vector<Pattern> filtered;
         for (const auto &pattern : patterns)
         {
@@ -300,7 +300,6 @@ namespace Mastermind
         const Config &config,
         int recursionLevel)
     {
-        Utils::ProfileScope scope(Utils::g_profiler, __func__);
         std::vector<PatternGuess> guesses;
 
         // Create a set for fast O(1) lookups.
@@ -401,7 +400,6 @@ namespace Mastermind
         const std::vector<Feedback> &guessHistory,
         const Config &config)
     {
-        Utils::ProfileScope scope(Utils::g_profiler, __func__);
         Result result;
 
         // First filter patterns based on existing feedback
@@ -468,7 +466,6 @@ namespace Mastermind
         const std::vector<Feedback> &guessHistory,
         const Config &config)
     {
-        Utils::ProfileScope scope(Utils::g_profiler, __func__);
 
         // Use the specialized Mastermind entropy solver
         MastermindEntropySolver solver;

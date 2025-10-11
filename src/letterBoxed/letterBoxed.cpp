@@ -51,7 +51,6 @@ namespace LetterBoxed
     // Helper to reconstruct a string from a path of WordPath pointers.
     std::string reconstructPrintString(const std::vector<const WordPath *> &wordPathPtrs, const Config &config, const std::vector<int> &allPathIndices)
     {
-        Utils::ProfileScope scope(Utils::g_profiler, __func__);
         if (wordPathPtrs.empty())
         {
             return "";
@@ -92,7 +91,6 @@ namespace LetterBoxed
         unsigned int depth,
         std::vector<int> &allPathIndices)
     {
-        Utils::ProfileScope scope(Utils::g_profiler, __func__);
         if (depth == wordObj.wordString.length())
         {
             int offset = static_cast<int>(allPathIndices.size());
@@ -123,7 +121,6 @@ namespace LetterBoxed
     // Update filterWords to take vector<Word> and propagate order to WordPath
     void filterWords(std::vector<WordPath> &allValidWordPaths, const std::vector<Utils::Word> &allDictionaryWords, const Config &config, std::vector<int> &allPathIndices)
     {
-        Utils::ProfileScope scope(Utils::g_profiler, __func__);
         for (const Utils::Word &wordObj : allDictionaryWords)
         {
             const std::string &word = wordObj.wordString;
@@ -165,7 +162,6 @@ namespace LetterBoxed
         const Config &config,
         const std::vector<int> &allPathIndices)
     {
-        Utils::ProfileScope scope(Utils::g_profiler, __func__);
         // Base case: We have selected one word for each class in the path.
         if (depth == classPath.size())
         {
@@ -209,7 +205,6 @@ namespace LetterBoxed
         const Config &config,
         std::vector<std::vector<const EquivalenceClass *>> &classSolutions)
     {
-        Utils::ProfileScope scope(Utils::g_profiler, __func__);
         if (currentDepth >= config.maxDepth)
         {
             return;
@@ -252,7 +247,6 @@ namespace LetterBoxed
     // --- Prune dominated equivalence classes: remove classes that are strictly dominated by another
     void pruneDominatedClasses(std::vector<EquivalenceClass> &allEqClasses)
     {
-        Utils::ProfileScope scope(Utils::g_profiler, __func__);
         // Use unordered_map with combined key for faster grouping
         std::unordered_map<long long, std::vector<size_t>> groups;
         for (size_t i = 0; i < allEqClasses.size(); ++i)
@@ -308,8 +302,6 @@ namespace LetterBoxed
         const std::vector<Utils::Word> &words,
         int totalLetterCount)
     {
-        Utils::ProfileScope scope(Utils::g_profiler, __func__);
-
         // Create a vector to hold all character indices for all valid word paths.
         std::vector<int> allPathIndices;
         allPathIndices.reserve(totalLetterCount / 100); // Reserve space for indices

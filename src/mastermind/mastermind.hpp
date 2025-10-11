@@ -19,30 +19,51 @@ namespace Mastermind
         unsigned int maxDepth = 0;   // How many moves ahead to calculate entropy
     };
 
+    static constexpr size_t MAX_PEGS = 32; // Maximum number of pegs supported
+
     struct Pattern
     {
-        std::vector<uint8_t> colors; // Array of color values
-        int order = 0;               // For compatibility with Word structure
-        int count = 1;               // For compatibility with Word structure
+        std::array<uint8_t, MAX_PEGS> colors; // Array of color values
+        size_t numPegs = 4;                   // Actual number of pegs used
 
-        Pattern() = default;
-        Pattern(const std::vector<uint8_t> &c) : colors(c) {}
-        Pattern(int numPegs) : colors(numPegs, 0) {}
+        Pattern() { colors.fill(0); }
+        Pattern(const std::array<uint8_t, MAX_PEGS> &c, size_t pegCount) : numPegs(pegCount)
+        {
+            colors = c;
+        }
+        Pattern(int pegCount) : numPegs(pegCount)
+        {
+            colors.fill(0);
+        }
 
         bool operator<(const Pattern &other) const
         {
-            return colors < other.colors;
+            if (numPegs != other.numPegs)
+                return numPegs < other.numPegs;
+            for (size_t i = 0; i < numPegs; ++i)
+            {
+                if (colors[i] != other.colors[i])
+                    return colors[i] < other.colors[i];
+            }
+            return false;
         }
 
         bool operator==(const Pattern &other) const
         {
-            return colors == other.colors;
+            if (numPegs != other.numPegs)
+                return false;
+            for (size_t i = 0; i < numPegs; ++i)
+            {
+                if (colors[i] != other.colors[i])
+                    return false;
+            }
+            return true;
         }
 
         std::string toString() const
         {
             std::string result;
-            for (size_t i = 0; i < colors.size(); ++i)
+            for (size_t i = 0; i < numPegs; ++i)
             {
                 if (i > 0)
                     result += " ";
@@ -60,15 +81,15 @@ namespace Mastermind
 
         bool operator==(const Feedback &other) const
         {
-            return guess.colors == other.guess.colors &&
+            return guess == other.guess &&
                    correctPosition == other.correctPosition &&
                    correctColor == other.correctColor;
         }
 
         bool operator<(const Feedback &other) const
         {
-            if (guess.colors != other.guess.colors)
-                return guess.colors < other.guess.colors;
+            if (guess != other.guess)
+                return guess < other.guess;
             if (correctPosition != other.correctPosition)
                 return correctPosition < other.correctPosition;
             return correctColor < other.correctColor;
@@ -106,7 +127,7 @@ namespace Mastermind
                 return probability > other.probability; // Sort in descending order (higher probability first)
 
             // If both entropy and probability are equal, sort by pattern for consistency
-            return pattern.colors < other.pattern.colors;
+            return pattern < other.pattern;
         }
     };
 
@@ -168,11 +189,11 @@ namespace std
     {
         size_t operator()(const Mastermind::Pattern &pattern) const noexcept
         {
-            // Hash the colors vector using FNV-1a style mixing
+            // Hash the colors array using FNV-1a style mixing
             uint64_t h = 1469598103934665603ULL;
-            for (uint8_t c : pattern.colors)
+            for (size_t i = 0; i < pattern.numPegs; ++i)
             {
-                h ^= static_cast<uint64_t>(c);
+                h ^= static_cast<uint64_t>(pattern.colors[i]);
                 h *= 1099511628211ULL;
             }
             return static_cast<size_t>(h);
@@ -187,9 +208,9 @@ namespace std
             // Combine a few pieces: the guess colors, correctPosition and correctColor
             // Use a simple but decent combiner (64-bit FNV-1a style mix + shift/xor mix)
             uint64_t h = 1469598103934665603ULL;
-            for (uint8_t c : fb.guess.colors)
+            for (size_t i = 0; i < fb.guess.numPegs; ++i)
             {
-                h ^= static_cast<uint64_t>(c);
+                h ^= static_cast<uint64_t>(fb.guess.colors[i]);
                 h *= 1099511628211ULL;
             }
 

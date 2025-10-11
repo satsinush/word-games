@@ -64,21 +64,23 @@ namespace Game
                 std::string patternStr = input.substr(0, pipePos);
                 std::string feedbackStr = input.substr(pipePos + 1);
 
-                // Parse pattern colors
+                // Parse pattern colors directly into Pattern
                 std::istringstream patternIss(patternStr);
-                std::vector<uint8_t> colors;
+                Mastermind::Pattern pattern;
+                pattern.numPegs = 0;
                 std::string token;
-                while (patternIss >> token)
+                while (patternIss >> token && pattern.numPegs < Mastermind::MAX_PEGS)
                 {
                     int color = std::stoi(token);
                     if (color < 0 || color > static_cast<int>(config.numColors))
                     {
                         throw std::invalid_argument("Color out of range");
                     }
-                    colors.push_back(static_cast<uint8_t>(color));
+                    pattern.colors[pattern.numPegs] = static_cast<uint8_t>(color);
+                    pattern.numPegs++;
                 }
 
-                if (colors.size() != config.numPegs)
+                if (pattern.numPegs != config.numPegs)
                 {
                     std::cout << "Error: Pattern must have exactly " << config.numPegs << " colors.\n";
                     continue;
@@ -99,8 +101,6 @@ namespace Game
                     std::cout << "Error: Invalid feedback values.\n";
                     continue;
                 }
-
-                Mastermind::Pattern pattern(colors);
                 Mastermind::Feedback feedback;
                 feedback.guess = pattern;
                 feedback.correctPosition = static_cast<uint8_t>(correctPos);
@@ -150,21 +150,23 @@ namespace Game
                 std::string patternStr = trimmed.substr(0, pipePos);
                 std::string feedbackStr = trimmed.substr(pipePos + 1);
 
-                // Parse pattern
+                // Parse pattern directly into Pattern
                 std::istringstream patternIss(patternStr);
-                std::vector<uint8_t> colors;
+                Mastermind::Pattern pattern;
+                pattern.numPegs = 0;
                 std::string token;
-                while (patternIss >> token)
+                while (patternIss >> token && pattern.numPegs < Mastermind::MAX_PEGS)
                 {
                     int color = std::stoi(token);
                     if (color < 0 || color > static_cast<int>(config.numColors))
                     {
                         throw std::invalid_argument("Color out of range");
                     }
-                    colors.push_back(static_cast<uint8_t>(color));
+                    pattern.colors[pattern.numPegs] = static_cast<uint8_t>(color);
+                    pattern.numPegs++;
                 }
 
-                if (colors.size() != config.numPegs)
+                if (pattern.numPegs != config.numPegs)
                 {
                     throw std::invalid_argument("Invalid number of pegs");
                 }
@@ -174,7 +176,6 @@ namespace Game
                 int correctPos, correctCol;
                 if (feedbackIss >> correctPos >> correctCol)
                 {
-                    Mastermind::Pattern pattern(colors);
                     Mastermind::Feedback feedback;
                     feedback.guess = pattern;
                     feedback.correctPosition = static_cast<uint8_t>(correctPos);
@@ -336,21 +337,23 @@ namespace Game
                 std::string patternStr = input.substr(0, pipePos);
                 std::string feedbackStr = input.substr(pipePos + 1);
 
-                // Parse pattern colors
+                // Parse pattern colors directly into Pattern
                 std::istringstream patternIss(patternStr);
-                std::vector<uint8_t> colors;
+                Mastermind::Pattern pattern;
+                pattern.numPegs = 0;
                 std::string token;
-                while (patternIss >> token)
+                while (patternIss >> token && pattern.numPegs < Mastermind::MAX_PEGS)
                 {
                     int color = std::stoi(token);
                     if (color < 0 || color > static_cast<int>(config.numColors))
                     {
                         throw std::invalid_argument("Color out of range");
                     }
-                    colors.push_back(static_cast<uint8_t>(color));
+                    pattern.colors[pattern.numPegs] = static_cast<uint8_t>(color);
+                    pattern.numPegs++;
                 }
 
-                if (colors.size() != config.numPegs)
+                if (pattern.numPegs != config.numPegs)
                 {
                     std::cout << "Error: Pattern must have exactly " << config.numPegs << " colors.\n";
                     continue;
@@ -371,8 +374,6 @@ namespace Game
                     std::cout << "Error: Invalid feedback values.\n";
                     continue;
                 }
-
-                Mastermind::Pattern pattern(colors);
                 Mastermind::Feedback feedback;
                 feedback.guess = pattern;
                 feedback.correctPosition = static_cast<uint8_t>(correctPos);
