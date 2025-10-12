@@ -1,151 +1,136 @@
 #pragma once
-#include <string>
-#include <vector>
 #include <array>
 #include <bitset>
 #include <cmath>
+#include <string>
+#include <vector>
 
-#include "../utils/utils.hpp"
 #include "../utils/EntropySolver.hpp"
+#include "../utils/utils.hpp"
 
-namespace Wordle
-{
-    struct Config
-    {
-        uint8_t maxDepth = 1; // How many moves ahead to calculate entropy
-        bool excludeUncommonWords = false;
-    };
+namespace Wordle {
+struct Config {
+  uint8_t maxDepth = 1; // How many moves ahead to calculate entropy
+  bool excludeUncommonWords = false;
+};
 
-    struct Feedback
-    {
-        std::string word;       // 5-letter guess
-        std::bitset<10> colors; // Optimized: bits 0,2,4,6,8 = letter in word, bits 1,3,5,7,9 = correct position
+struct Feedback {
+  std::string word;       // 5-letter guess
+  std::bitset<10> colors; // Optimized: bits 0,2,4,6,8 = letter in word, bits
+                          // 1,3,5,7,9 = correct position
 
-        bool operator==(const Feedback &other) const
-        {
-            return word == other.word && colors == other.colors;
-        }
+  bool operator==(const Feedback &other) const {
+    return word == other.word && colors == other.colors;
+  }
 
-        bool operator<(const Feedback &other) const
-        {
-            if (word != other.word)
-                return word < other.word;
-            return colors.to_ulong() < other.colors.to_ulong();
-        }
+  bool operator<(const Feedback &other) const {
+    if (word != other.word)
+      return word < other.word;
+    return colors.to_ulong() < other.colors.to_ulong();
+  }
 
-        // Helper methods to get/set feedback for position i
-        void setGrey(const int i)
-        {
-            colors.reset(i * 2);
-            colors.reset(i * 2 + 1);
-        }
+  // Helper methods to get/set feedback for position i
+  void setGrey(const int i) {
+    colors.reset(i * 2);
+    colors.reset(i * 2 + 1);
+  }
 
-        void setYellow(const int i)
-        {
-            colors.set(i * 2);
-            colors.reset(i * 2 + 1);
-        }
+  void setYellow(const int i) {
+    colors.set(i * 2);
+    colors.reset(i * 2 + 1);
+  }
 
-        void setGreen(const int i)
-        {
-            colors.set(i * 2);
-            colors.set(i * 2 + 1);
-        }
+  void setGreen(const int i) {
+    colors.set(i * 2);
+    colors.set(i * 2 + 1);
+  }
 
-        int getColor(const int i) const
-        {
-            if (colors[i * 2 + 1])
-                return 2; // green
-            if (colors[i * 2])
-                return 1; // yellow
-            return 0;     // grey
-        }
-    };
+  int getColor(const int i) const {
+    if (colors[i * 2 + 1])
+      return 2; // green
+    if (colors[i * 2])
+      return 1; // yellow
+    return 0;   // grey
+  }
+};
 
-    struct WordGuess
-    {
-        Utils::Word word;
-        double entropy = 0.0;
-        double probability = 0.0;
-        std::vector<double> entropyList;
+struct WordGuess {
+  Utils::Word word;
+  double entropy = 0.0;
+  double probability = 0.0;
+  std::vector<double> entropyList;
 
-        bool operator<(const WordGuess &other) const
-        {
-            // Compare entropy levels from highest depth to lowest (E3, E2, E1)
-            // We want higher entropy values to come first (better guesses)
-            int maxLevels = std::max(entropyList.size(), other.entropyList.size());
+  bool operator<(const WordGuess &other) const {
+    // Compare entropy levels from highest depth to lowest (E3, E2, E1)
+    // We want higher entropy values to come first (better guesses)
+    int maxLevels = std::max(entropyList.size(), other.entropyList.size());
 
-            // Use small tolerance for floating point comparison
-            const double tolerance = 1e-9;
+    // Use small tolerance for floating point comparison
+    const double tolerance = 1e-9;
 
-            size_t n = maxLevels;
-            while (n-- > 0)
-            {
-                double thisEntropy = (n < entropyList.size()) ? entropyList[n] : 0.0;
-                double otherEntropy = (n < other.entropyList.size()) ? other.entropyList[n] : 0.0;
+    size_t n = maxLevels;
+    while (n-- > 0) {
+      double thisEntropy = (n < entropyList.size()) ? entropyList[n] : 0.0;
+      double otherEntropy =
+          (n < other.entropyList.size()) ? other.entropyList[n] : 0.0;
 
-                if (std::abs(thisEntropy - otherEntropy) > tolerance)
-                    return thisEntropy > otherEntropy; // Sort in descending order (higher entropy first)
-            }
+      if (std::abs(thisEntropy - otherEntropy) > tolerance)
+        return thisEntropy >
+               otherEntropy; // Sort in descending order (higher entropy first)
+    }
 
-            // If all entropy levels are equal, prefer higher probability
-            if (std::abs(probability - other.probability) > tolerance)
-                return probability > other.probability; // Sort in descending order (higher probability first)
+    // If all entropy levels are equal, prefer higher probability
+    if (std::abs(probability - other.probability) > tolerance)
+      return probability > other.probability; // Sort in descending order
+                                              // (higher probability first)
 
-            // If both entropy and probability are equal, sort by word for consistency
-            return word.wordString < other.word.wordString;
-        }
-    };
+    // If both entropy and probability are equal, sort by word for consistency
+    return word.wordString < other.word.wordString;
+  }
+};
 
-    struct Result
-    {
-        std::vector<WordGuess> sortedGuesses;
-        int totalPossibleWords = 0;
-    };
+struct Result {
+  std::vector<WordGuess> sortedGuesses;
+  int totalPossibleWords = 0;
+};
 
-    // Parse feedback string like "STEAL 01201"
-    Feedback parseFeedback(const std::string &input);
+// Parse feedback string like "STEAL 01201"
+Feedback parseFeedback(const std::string &input);
 
-    // Check if a word matches feedback constraints
-    bool matchesFeedback(const Utils::Word &candidate, const Feedback &fb);
+// Check if a word matches feedback constraints
+bool matchesFeedback(const Utils::Word &candidate, const Feedback &fb);
 
-    // Generate feedback for a guess against a target word
-    Feedback generateFeedback(const Utils::Word &target, const std::string &guess);
+// Generate feedback for a guess against a target word
+Feedback generateFeedback(const Utils::Word &target, const std::string &guess);
 
-    // Get all possible feedback patterns for a 5-letter word
-    std::vector<Feedback> getAllPossibleFeedbacks();
+// Get all possible feedback patterns for a 5-letter word
+std::vector<Feedback> getAllPossibleFeedbacks();
 
-    // Calculate entropy (information value) of a guess
-    double calculateEntropy(const std::vector<Utils::Word> &possibleWords,
-                            const Utils::Word &guess);
+// Calculate entropy (information value) of a guess
+double calculateEntropy(const std::vector<Utils::Word> &possibleWords,
+                        const Utils::Word &guess);
 
-    // Filter possible words given a list of guesses and feedbacks
-    std::vector<Utils::Word> filterWords(
-        const std::vector<Utils::Word> &words,
-        const std::vector<Feedback> &feedbacks);
+// Filter possible words given a list of guesses and feedbacks
+std::vector<Utils::Word> filterWords(const std::vector<Utils::Word> &words,
+                                     const std::vector<Feedback> &feedbacks);
 
-    // Generic EntropySolver-based version (cleaner implementation)
-    Result runWordleSolver(
-        const std::vector<Utils::Word> &allWords,
-        const std::vector<Feedback> &feedbacks,
-        const Config &config = Config{});
-}
+// Generic EntropySolver-based version (cleaner implementation)
+Result runWordleSolver(const std::vector<Utils::Word> &allWords,
+                       const std::vector<Feedback> &feedbacks,
+                       const Config &config = Config{});
+} // namespace Wordle
 
 // Provide std::hash specialization for Wordle::Feedback so it can be used as an
 // unordered_map/unordered_set key in generic code (like the EntropySolver).
-namespace std
-{
-    template <>
-    struct hash<Wordle::Feedback>
-    {
-        size_t operator()(const Wordle::Feedback &fb) const noexcept
-        {
-            // Combine hash of the word string and the bitset colors
-            size_t h1 = std::hash<std::string>{}(fb.word);
-            size_t h2 = std::hash<unsigned long>{}(fb.colors.to_ulong());
+namespace std {
+template <> struct hash<Wordle::Feedback> {
+  size_t operator()(const Wordle::Feedback &fb) const noexcept {
+    // Combine hash of the word string and the bitset colors
+    size_t h1 = std::hash<std::string>{}(fb.word);
+    size_t h2 = std::hash<unsigned long>{}(fb.colors.to_ulong());
 
-            // Use a simple but effective hash combiner
-            return h1 ^ (h2 + 0x9e3779b9 + (h1 << 6) + (h1 >> 2));
-        }
-    };
-}
+    // Use a simple but effective hash combiner
+    return h1 ^ (h2 + 0x9e3779b9 + (h1 << 6) + (h1 >> 2));
+  }
+};
+} // namespace std

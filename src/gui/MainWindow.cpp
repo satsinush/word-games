@@ -6,26 +6,22 @@
 #include <QPushButton> // You need to include headers for widgets you use in slots
 
 MainWindow::MainWindow(QWidget *parent)
-    : QMainWindow(parent), ui(new Ui::MainWindow)
-{
-    // This function reads the .ui file and creates all the widgets
-    ui->setupUi(this);
+    : QMainWindow(parent), ui(new Ui::MainWindow) {
+  // This function reads the .ui file and creates all the widgets
+  ui->setupUi(this);
 
-    setWindowTitle("Word Games Suite");
+  setWindowTitle("Word Games Suite");
 
-    // Connect the button's clicked signal to our slot
-    connect(ui->helloButton, &QPushButton::clicked, this, &MainWindow::onButtonClicked);
+  // Connect the button's clicked signal to our slot
+  connect(ui->helloButton, &QPushButton::clicked, this,
+          &MainWindow::onButtonClicked);
 }
 
-MainWindow::~MainWindow()
-{
-    delete ui;
-}
+MainWindow::~MainWindow() { delete ui; }
 
-void MainWindow::onButtonClicked()
-{
-    ui->statusLabel->setText("Hello, Designer World!");
-    ui->helloButton->setText("Clicked!");
+void MainWindow::onButtonClicked() {
+  ui->statusLabel->setText("Hello, Designer World!");
+  ui->helloButton->setText("Clicked!");
 }
 
 #endif // WITH_GUI
