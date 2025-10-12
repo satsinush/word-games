@@ -12,3 +12,4 @@ build/
 data/
 gmon.out
 profile_results.txt
+.env

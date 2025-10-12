@@ -101,3 +101,9 @@ g++ main.cpp utils.cpp letterBoxed.cpp spellingBee.cpp -o word_solver -std=c++17
 
 You may need to include additional header and source files if the project is structured differently.
 The compiled executable will be named `word_solver`.
+
+## Licensing
+
+The source code for this project is licensed under the MIT License. See the `LICENSE` file for details.
+
+This project uses the Qt Framework under the LGPLv3 license. A copy of the LGPLv3 license is included as `LICENSE-QT.txt`. The source code for Qt is available on the [official Qt website](https://www.qt.io/download-open-source).

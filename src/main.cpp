@@ -13,6 +13,11 @@
 #include "wordle/WordleGame.hpp"
 #include "mastermind/MastermindGame.hpp"
 
+#ifdef WITH_GUI
+#include <QApplication>
+#include "gui/MainWindow.hpp"
+#endif
+
 void printUsage(const char *programName)
 {
     std::cout << "Usage:\n";
@@ -199,6 +204,19 @@ void runInteractiveMode(const std::vector<Utils::Word> &wordVec)
 
 int main(int argc, char *argv[])
 {
+#ifdef WITH_GUI
+    // Check if no arguments are provided - launch GUI
+    if (argc == 1)
+    {
+        QApplication app(argc, argv);
+
+        MainWindow window;
+        window.show();
+
+        return app.exec();
+    }
+#endif
+
     // Load words (not needed for Mastermind, but we'll load them anyway for consistency)
     std::vector<Utils::Word> wordVec = Utils::loadWords();
 

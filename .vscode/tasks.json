@@ -1,75 +1,22 @@
 {
     "version": "2.0.0",
-    "inputs": [
-        {
-            // This is the new dropdown input for selecting the build type.
-            "id": "buildType",
-            "type": "pickString",
-            "description": "Select the build configuration",
-            "options": [
-                "Release",
-                "Debug"
-            ],
-            "default": "Release"
-        },
-        {
-            // Your existing input for program arguments.
-            "id": "programArgs",
-            "type": "promptString",
-            "description": "Enter all command-line arguments",
-            "default": ""
-        }
-    ],
     "tasks": [
         {
-            "label": "Configure",
+            "label": "Build Active Target",
             "type": "shell",
-            // The command now uses the selected build type.
-            "command": "cmake -S . -B build/${input:buildType} -D CMAKE_BUILD_TYPE=${input:buildType}",
-            "problemMatcher": []
-        },
-        {
-            "label": "Build",
-            "type": "shell",
-            // The build directory is now dynamic.
-            "command": "cmake --build build/${input:buildType}",
+            "command": "cmake",
+            "args": [
+                "--build",
+                // This variable automatically finds the correct build dir (Debug or Release)
+                "${command:cmake.buildDirectory}"
+            ],
             "group": {
                 "kind": "build",
                 "isDefault": true
             },
-            "problemMatcher": "$gcc"
-        },
-        {
-            "label": "Build (Debug)",
-            "type": "shell",
-            // This command is hardcoded for the Debug build
-            "command": "cmake --build build/Debug",
-            "problemMatcher": "$gcc"
-        },
-        {
-            "label": "Run",
-            "type": "shell",
-            // The executable path is also dynamic.
-            // Using ${pathSeparator} is more robust than the echo hack.
-            "command": "echo. & \"${workspaceFolder}${pathSeparator}build${pathSeparator}${input:buildType}${pathSeparator}word-games.exe\" ${input:programArgs} & echo.",
-            "group": {
-                "kind": "test",
-                "isDefault": true
-            },
-            "problemMatcher": []
-        },
-        {
-            "label": "Clean",
-            "type": "shell",
-            "command": "cmake --build build/${input:buildType} --target clean",
-            "problemMatcher": []
-        },
-        {
-            "label": "Rebuild",
-            "type": "shell",
-            // Rebuild is just a clean followed by a build.
-            "command": "cmake --build build/${input:buildType} --target clean && cmake --build build/${input:buildType}",
-            "problemMatcher": []
+            "problemMatcher": [
+                "$gcc"
+            ]
         }
     ]
 }

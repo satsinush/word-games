@@ -1,23 +1,28 @@
 {
     "version": "0.2.0",
-    "inputs": [
-        {
-            "id": "programArgs",
-            "type": "promptString",
-            "description": "Enter all command-line arguments",
-            "default": ""
-        }
-    ],
     "configurations": [
         {
             "name": "Debug",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/build/debug/word-games.exe",
+            "program": "${workspaceFolder}/build/Debug/word-games.exe",
             "args": [],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
-            "environment": [],
+            "environment": [
+                {
+                    // --- THIS IS THE FIX ---
+                    // Add the path to your Qt bin directory to the PATH variable
+                    "name": "PATH",
+                    "value": "C:/Qt/6.9.3/mingw_64/bin;${env:PATH}"
+                },
+                {
+                    // --- THIS IS THE FIX ---
+                    // Tell Qt where to find the platform plugins (like qwindows.dll)
+                    "name": "QT_PLUGIN_PATH",
+                    "value": "C:/Qt/6.9.3/mingw_64/plugins"
+                }
+            ],
             "externalConsole": false,
             "MIMode": "gdb",
             "setupCommands": [
@@ -27,7 +32,7 @@
                     "ignoreFailures": true
                 }
             ],
-            "preLaunchTask": "Build (Debug)"
+            "preLaunchTask": "Build Active Target"
         }
     ]
 }
