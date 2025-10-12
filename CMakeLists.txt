@@ -61,41 +61,35 @@ else()
     target_compile_options(word-games PRIVATE -Wall -Wextra -fdiagnostics-color=always -Wno-stringop-overread)
 endif()
 
-# # ===================================================================
-# # AUTOMATIC DLL DEPLOYMENT
-# # ===================================================================
-# if(WIN32)
-#     # 1. Find the windeployqt executable
-#     find_program(
-#         WINDEPLOYQT_EXECUTABLE windeployqt
-#         HINTS ${CMAKE_PREFIX_PATH}/bin
-#     )
+# ===================================================================
+# AUTOMATIC DLL DEPLOYMENT
+# ===================================================================
+if(WIN32)
+    # 1. Find the windeployqt executable
+    find_program(
+        WINDEPLOYQT_EXECUTABLE windeployqt
+        HINTS ${CMAKE_PREFIX_PATH}/bin
+    )
 
-#     if(WINDEPLOYQT_EXECUTABLE)
-#         message(STATUS "windeployqt found: ${WINDEPLOYQT_EXECUTABLE}")
+    if(WINDEPLOYQT_EXECUTABLE)
+        message(STATUS "windeployqt found: ${WINDEPLOYQT_EXECUTABLE}")
 
-#         # 2. Add a command that runs after the build is finished
-#         add_custom_command(
-#             TARGET word-games POST_BUILD
+        # 2. Add a command that runs after the build is finished
+        add_custom_command(
+            TARGET word-games POST_BUILD
             
-#             # The actual command to run
-#             COMMAND ${WINDEPLOYQT_EXECUTABLE}
+            # The actual command to run
+            COMMAND ${WINDEPLOYQT_EXECUTABLE}
             
-#             # Arguments for the command
-#             ARGS
-#                 # Use a generator expression to add the --debug flag ONLY for debug builds
-#                 $<IF:$<CONFIG:Debug>,--debug,>
-                
-#                 # A generator expression to get the path to the created .exe
-#                 $<TARGET_FILE:word-games>
+            # Arguments for the command (no --debug flag needed)
+            ARGS
+                $<TARGET_FILE:word-games>
 
-#             # Tell the command where to run (in the folder with the .exe)
-#             WORKING_DIRECTORY $<TARGET_FILE_DIR:word-games>
-
-#             # A comment that will show up in the build log
-#             COMMENT "Running windeployqt to deploy dependencies..."
-#         )
-#     else()
-#         message(WARNING "windeployqt not found. DLLs will not be deployed automatically.")
-#     endif()
-# endif()
+            # Tell the command where to run
+            WORKING_DIRECTORY $<TARGET_FILE_DIR:word-games>
+            COMMENT "Running windeployqt to deploy dependencies..."
+        )
+    else()
+        message(WARNING "windeployqt not found. DLLs will not be deployed automatically.")
+    endif()
+endif()
