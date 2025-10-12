@@ -87,8 +87,8 @@ namespace LetterBoxed
         const Config &config,
         std::vector<WordPath> &results,
         std::vector<int> &currentPathGlobalIndexes,
-        int lastUsedSide,
-        unsigned int depth,
+        const int lastUsedSide,
+        const uint8_t depth,
         std::vector<int> &allPathIndices)
     {
         if (depth == wordObj.wordString.length())
@@ -157,7 +157,7 @@ namespace LetterBoxed
     void expandAndStoreSolutions(
         const std::vector<const EquivalenceClass *> &classPath,
         std::vector<const WordPath *> &currentWordChain,
-        unsigned int depth,
+        const uint8_t depth,
         std::vector<Solution> &finalSolutions,
         const Config &config,
         const std::vector<int> &allPathIndices)
@@ -198,8 +198,8 @@ namespace LetterBoxed
     void findClassSolutionsRecursive(
         const EquivalenceClass *lastClass,
         std::vector<const EquivalenceClass *> &currentClassPath, // pass by reference
-        std::bitset<12> lettersCovered,
-        unsigned int currentDepth,
+        const std::bitset<12> lettersCovered,
+        const uint8_t currentDepth,
         const std::vector<EquivalenceClass> &allEqClasses,
         const std::array<CharStartIndexer, 256> &classIndexers,
         const Config &config,
@@ -299,12 +299,11 @@ namespace LetterBoxed
 
     std::vector<Solution> runLetterBoxedSolver(
         const Config &config,
-        const std::vector<Utils::Word> &words,
-        int totalLetterCount)
+        const std::vector<Utils::Word> &words)
     {
         // Create a vector to hold all character indices for all valid word paths.
         std::vector<int> allPathIndices;
-        allPathIndices.reserve(totalLetterCount / 100); // Reserve space for indices
+        allPathIndices.reserve(words.size() / 100); // Reserve space for indices
         std::vector<WordPath> allValidWordPaths;
         allValidWordPaths.reserve(words.size() / 100);
         filterWords(allValidWordPaths, words, config, allPathIndices);

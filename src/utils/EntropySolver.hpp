@@ -114,7 +114,7 @@ namespace Utils
          */
         std::vector<double> calculateEntropyAtDepths(const TCandidateType &guessCandidate,
                                                      const std::vector<TCandidateType> &possibleCandidates,
-                                                     int maxDepth)
+                                                     const int maxDepth)
         {
             std::vector<double> entropyList(maxDepth, 0.0);
 
@@ -142,7 +142,7 @@ namespace Utils
             }
 
             // Calculate deeper entropy levels if needed
-            for (int depth = 2; depth <= maxDepth; ++depth)
+            for (uint8_t depth = 2; depth <= maxDepth; ++depth)
             {
                 double totalDeeperEntropy = 0.0;
 

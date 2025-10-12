@@ -13,10 +13,10 @@ namespace Mastermind
 {
     struct Config
     {
-        unsigned int numPegs = 4;    // Number of pegs in the pattern
-        unsigned int numColors = 6;  // Total number of available colors (0 to numColors-1)
+        uint8_t numPegs = 4;         // Number of pegs in the pattern
+        uint8_t numColors = 6;       // Total number of available colors (0 to numColors-1)
         bool allowDuplicates = true; // Whether duplicate colors are allowed
-        unsigned int maxDepth = 0;   // How many moves ahead to calculate entropy
+        uint8_t maxDepth = 0;        // How many moves ahead to calculate entropy
     };
 
     static constexpr size_t MAX_PEGS = 32; // Maximum number of pegs supported
@@ -159,22 +159,8 @@ namespace Mastermind
         const std::vector<Pattern> &patterns,
         const std::vector<Feedback> &guessHistory);
 
-    // Calculate best guesses sorted by information value with multi-depth entropy
-    std::vector<PatternGuess> calculateBestGuesses(
-        const std::vector<Pattern> &allPatterns,
-        const std::vector<Pattern> &possiblePatterns,
-        const std::vector<Feedback> &guessHistory,
-        const Config &config = Config{},
-        int recursionLevel = 0);
-
-    // Enhanced solver that returns best guesses ranked by entropy and possible pattern count
-    Result runMastermindSolverWithEntropy(
-        const std::vector<Pattern> &allPatterns,
-        const std::vector<Feedback> &guessHistory,
-        const Config &config = Config{});
-
     // Generic EntropySolver-based version (cleaner implementation)
-    Result runMastermindSolverWithGenericEntropy(
+    Result runMastermindSolver(
         const std::vector<Pattern> &allPatterns,
         const std::vector<Feedback> &guessHistory,
         const Config &config = Config{});

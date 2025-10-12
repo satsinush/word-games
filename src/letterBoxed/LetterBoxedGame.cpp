@@ -11,12 +11,7 @@
 namespace Game
 {
     LetterBoxedGame::LetterBoxedGame(const std::vector<Utils::Word> &words)
-        : wordVec(words)
-    {
-        totalLetterCount = 0;
-        for (const auto &word : wordVec)
-            totalLetterCount += word.wordString.size();
-    }
+        : wordVec(words) {}
 
     void LetterBoxedGame::drawPuzzle(const std::array<char, 12> &letters)
     {
@@ -198,7 +193,7 @@ namespace Game
         return config;
     }
 
-    void LetterBoxedGame::printSolutions(const std::vector<LetterBoxed::Solution> &solutions, int limit)
+    void LetterBoxedGame::printSolutions(const std::vector<LetterBoxed::Solution> &solutions, const int limit)
     {
         int lastNumWords = 0;
         int toPrint = std::min(limit, static_cast<int>(solutions.size()));
@@ -233,7 +228,7 @@ namespace Game
             std::cout << "  Prune dominated classes: " << (config.pruneDominatedClasses ? "true" : "false") << "\n\n";
 
             std::cout << "Running solver...\n";
-            std::vector<LetterBoxed::Solution> solutions = LetterBoxed::runLetterBoxedSolver(config, wordVec, totalLetterCount);
+            std::vector<LetterBoxed::Solution> solutions = LetterBoxed::runLetterBoxedSolver(config, wordVec);
 
             int printLimit = 100;
             printSolutions(solutions, printLimit);
@@ -264,7 +259,7 @@ namespace Game
         {
             LetterBoxed::Config config = getConfigFromArgs(args);
 
-            std::vector<LetterBoxed::Solution> solutions = LetterBoxed::runLetterBoxedSolver(config, wordVec, totalLetterCount);
+            std::vector<LetterBoxed::Solution> solutions = LetterBoxed::runLetterBoxedSolver(config, wordVec);
 
             // Output to file if specified
             std::string outputFile = Utils::Input::getArgValue(args, "file", std::string("results/temp.txt"));

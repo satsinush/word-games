@@ -26,7 +26,7 @@ namespace Utils
             .count();
     }
 
-    std::string getDatetime(int plusSeconds)
+    std::string getDatetime(const int plusSeconds)
     {
         std::chrono::time_point<std::chrono::system_clock> now = std::chrono::system_clock::now();
         time_t now_c = std::chrono::system_clock::to_time_t(now + std::chrono::seconds(plusSeconds));
@@ -48,7 +48,7 @@ namespace Utils
         this->lastMessageSize = 0;
     }
 
-    void Process::printUpdate(std::string message)
+    void Process::printUpdate(const std::string &message)
     {
         int64_t time = getTime();
         lastPrint = time;
@@ -73,7 +73,7 @@ namespace Utils
         clearLine();
     }
 
-    std::string Process::formatSeconds(int64_t totalNano)
+    std::string Process::formatSeconds(int64_t totalNano) const
     {
 
         int days = totalNano / 86400000000000;
@@ -105,7 +105,7 @@ namespace Utils
         return (s);
     }
 
-    int64_t Process::getTimeRemaining(double progress)
+    int64_t Process::getTimeRemaining(const double progress) const
     {
         return (((getTime() - startTime) / (progress - 0)) * (1 - progress));
     }
@@ -285,14 +285,14 @@ namespace Utils
         this->running = false;
     }
 
-    void Profiler::logProfile(FunctionProfile &profile, int64_t totalTime, int depth, bool corner)
+    void Profiler::logProfile(const FunctionProfile &profile, const int64_t totalTime, int depth, const bool corner)
     {
-        FunctionProfile *parent_ptr = profile.getParent();
+        const FunctionProfile *parent_ptr = profile.getParent();
         if (parent_ptr == nullptr)
         {
             parent_ptr = &profile; // Avoid null dereference for root
         }
-        FunctionProfile &parent = *parent_ptr;
+        const FunctionProfile &parent = *parent_ptr;
 
         uint32_t indentNumChars = depth * 4;
         std::string indent = "";
@@ -335,8 +335,8 @@ namespace Utils
         for (uint32_t i = 0; i < numChild; i++)
         {
             FunctionProfile &child = *children[i];
-            corner = (i == numChild - 1) || !child.getChildren().empty();
-            logProfile(child, totalTime, depth + 1, corner);
+            bool is_corner = (i == numChild - 1) || !child.getChildren().empty();
+            logProfile(child, totalTime, depth + 1, is_corner);
         }
     }
 

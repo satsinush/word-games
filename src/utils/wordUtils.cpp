@@ -45,6 +45,36 @@ namespace Utils
         return trimmed;
     }
 
+    // Binary I/O functions for efficient binary serialization
+    void writeBinary(std::ostream &os, const Word &word)
+    {
+        // Write string length first, then string data
+        size_t len = word.wordString.size();
+        os.write(reinterpret_cast<const char *>(&len), sizeof(len));
+        os.write(word.wordString.data(), len);
+
+        // Write other members directly
+        os.write(reinterpret_cast<const char *>(&word.score), sizeof(word.score));
+        os.write(reinterpret_cast<const char *>(&word.is_scrabble), sizeof(word.is_scrabble));
+        os.write(reinterpret_cast<const char *>(&word.uniqueLetters), sizeof(word.uniqueLetters));
+        os.write(reinterpret_cast<const char *>(&word.letterCount), sizeof(word.letterCount));
+    }
+
+    void readBinary(std::istream &is, Word &word)
+    {
+        // Read string length first, then string data
+        size_t len;
+        is.read(reinterpret_cast<char *>(&len), sizeof(len));
+        word.wordString.resize(len);
+        is.read(&word.wordString[0], len);
+
+        // Read other members directly
+        is.read(reinterpret_cast<char *>(&word.score), sizeof(word.score));
+        is.read(reinterpret_cast<char *>(&word.is_scrabble), sizeof(word.is_scrabble));
+        is.read(reinterpret_cast<char *>(&word.uniqueLetters), sizeof(word.uniqueLetters));
+        is.read(reinterpret_cast<char *>(&word.letterCount), sizeof(word.letterCount));
+    }
+
     // Loads words from words.bin if available, otherwise from word_scores.csv (first 300,000 words) and saves to words.bin.
     std::vector<Word> loadWords()
     {
@@ -65,14 +95,7 @@ namespace Utils
                 allWordsVec.resize(n);
                 for (size_t i = 0; i < n; ++i)
                 {
-                    size_t len;
-                    in.read(reinterpret_cast<char *>(&len), sizeof(len));
-                    allWordsVec[i].wordString.resize(len);
-                    in.read(&allWordsVec[i].wordString[0], len);
-                    in.read(reinterpret_cast<char *>(&allWordsVec[i].score), sizeof(allWordsVec[i].score));
-                    in.read(reinterpret_cast<char *>(&allWordsVec[i].is_scrabble), sizeof(allWordsVec[i].is_scrabble));
-                    in.read(reinterpret_cast<char *>(&allWordsVec[i].uniqueLetters), sizeof(allWordsVec[i].uniqueLetters));
-                    in.read(reinterpret_cast<char *>(&allWordsVec[i].letterCount), sizeof(allWordsVec[i].letterCount));
+                    readBinary(in, allWordsVec[i]);
                     if (!in)
                         throw std::runtime_error("Read error");
                 }
@@ -170,13 +193,7 @@ namespace Utils
                 out.write(reinterpret_cast<const char *>(&n), sizeof(n));
                 for (const auto &w : allWordsVec)
                 {
-                    size_t len = w.wordString.size();
-                    out.write(reinterpret_cast<const char *>(&len), sizeof(len));
-                    out.write(w.wordString.data(), len);
-                    out.write(reinterpret_cast<const char *>(&w.score), sizeof(w.score));
-                    out.write(reinterpret_cast<const char *>(&w.is_scrabble), sizeof(w.is_scrabble));
-                    out.write(reinterpret_cast<const char *>(&w.uniqueLetters), sizeof(w.uniqueLetters));
-                    out.write(reinterpret_cast<const char *>(&w.letterCount), sizeof(w.letterCount));
+                    writeBinary(out, w);
                 }
                 out.close();
             }

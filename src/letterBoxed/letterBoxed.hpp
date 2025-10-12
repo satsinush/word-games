@@ -16,9 +16,9 @@ namespace LetterBoxed
         std::bitset<12> uniquePuzzleLetters;
         std::array<int, 256> charToIndexMap;
 
-        unsigned int minWordLength = 3;
-        unsigned int minUniqueLetters = 1;
-        unsigned int maxDepth = 3;
+        uint8_t minWordLength = 3;
+        uint8_t minUniqueLetters = 1;
+        uint8_t maxDepth = 3;
         bool pruneRedundantPaths = true;
         bool pruneDominatedClasses = true;
     };
@@ -69,6 +69,5 @@ namespace LetterBoxed
 
     std::vector<Solution> runLetterBoxedSolver(
         const Config &config,
-        const std::vector<Utils::Word> &words,
-        int totalLetterCount);
+        const std::vector<Utils::Word> &words);
 }

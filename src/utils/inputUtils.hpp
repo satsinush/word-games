@@ -8,17 +8,17 @@ namespace Utils
     namespace Input
     {
         // Get validated integer input with default value and optional range
-        int promptInt(const std::string &prompt, int defaultValue, int min = INT_MIN, int max = INT_MAX);
+        int promptInt(const std::string &prompt, const int defaultValue, const int min = INT_MIN, const int max = INT_MAX);
 
         // Get validated boolean input (accepts 0/1, y/n, yes/no, true/false)
-        bool promptBool(const std::string &prompt, bool defaultValue);
+        bool promptBool(const std::string &prompt, const bool defaultValue);
 
         // Get string input with optional validation function
         std::string promptString(const std::string &prompt, const std::string &defaultValue = "",
                                  std::function<bool(const std::string &)> validator = nullptr);
 
         // Get letters input with specified count and validation
-        std::string promptLetters(const std::string &prompt, size_t expectedCount, bool allowDuplicates = true);
+        std::string promptLetters(const std::string &prompt, const size_t expectedCount, const bool allowDuplicates = true);
 
         // Parse command line arguments into key-value pairs
         std::map<std::string, std::string> parseCommandArgs(int argc, char *argv[]);

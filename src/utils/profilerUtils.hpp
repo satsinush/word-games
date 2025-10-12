@@ -11,7 +11,7 @@ namespace Utils
 
     long long getTime();
 
-    std::string getDatetime(int plusSeconds = 0);
+    std::string getDatetime(const int plusSeconds = 0);
 
     /*
      * A simple utility class to manage and display progress updates in the console.
@@ -21,7 +21,7 @@ namespace Utils
     public:
         Process();
         // Print a message to the console, overwriting the previous message
-        void printUpdate(std::string message);
+        void printUpdate(const std::string &message);
         // Clear the current line in the console
         void clearLine();
         // Set the start time for the process
@@ -29,9 +29,9 @@ namespace Utils
         // Clear the current line in the console
         void stop();
         // Format a duration in nanoseconds into a human-readable string
-        std::string formatSeconds(int64_t totalNano);
+        std::string formatSeconds(int64_t totalNano) const;
         // Estimate the remaining time (in nanoseconds) based on progress (0-1)
-        int64_t getTimeRemaining(double progress);
+        int64_t getTimeRemaining(const double progress) const;
         // Update the progress display if enough time has passed (delay in seconds)
         void update(double progress, double delay = 1.0);
 
@@ -121,7 +121,7 @@ namespace Utils
 
     private:
         // Log a specific function profile and its children recursively
-        void logProfile(FunctionProfile &profile, int64_t totalTime, int depth = 0, bool corner = false);
+        void logProfile(const FunctionProfile &profile, const int64_t totalTime, const int depth = 0, const bool corner = false);
 
         // Pointer to the special "[PROFILER]" function profile for overhead tracking
         FunctionProfile *profilerUpdater;

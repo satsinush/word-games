@@ -28,6 +28,10 @@ namespace Utils
         bool operator==(const Word &other) const { return wordString == other.wordString; }
     };
 
+    // Binary stream operators for efficient binary I/O
+    void writeBinary(std::ostream &os, const Word &word);
+    void readBinary(std::istream &is, Word &word);
+
     // Trims whitespace and converts a string to lowercase
     std::string trimToLower(const std::string &str);
 

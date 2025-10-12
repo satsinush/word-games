@@ -13,7 +13,7 @@ namespace Utils
 {
     namespace Input
     {
-        int promptInt(const std::string &prompt, int defaultValue, int min, int max)
+        int promptInt(const std::string &prompt, const int defaultValue, const int min, const int max)
         {
             while (true)
             {
@@ -42,7 +42,7 @@ namespace Utils
             }
         }
 
-        bool promptBool(const std::string &prompt, bool defaultValue)
+        bool promptBool(const std::string &prompt, const bool defaultValue)
         {
             while (true)
             {
@@ -86,7 +86,7 @@ namespace Utils
             }
         }
 
-        std::string promptLetters(const std::string &prompt, size_t expectedCount, bool allowDuplicates)
+        std::string promptLetters(const std::string &prompt, const size_t expectedCount, const bool allowDuplicates)
         {
             while (true)
             {

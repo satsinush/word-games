@@ -16,7 +16,7 @@ namespace Game
         void drawPuzzle(const std::array<char, 12> &letters);
         LetterBoxed::Config getConfigFromUser();
         LetterBoxed::Config getConfigFromArgs(const std::map<std::string, std::string> &args);
-        void printSolutions(const std::vector<LetterBoxed::Solution> &solutions, int limit = 100);
+        void printSolutions(const std::vector<LetterBoxed::Solution> &solutions, const int limit = 100);
 
     public:
         explicit LetterBoxedGame(const std::vector<Utils::Word> &words);

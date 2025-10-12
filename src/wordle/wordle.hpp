@@ -12,7 +12,7 @@ namespace Wordle
 {
     struct Config
     {
-        unsigned int maxDepth = 1; // How many moves ahead to calculate entropy
+        uint8_t maxDepth = 1; // How many moves ahead to calculate entropy
         bool excludeUncommonWords = false;
     };
 
@@ -34,25 +34,25 @@ namespace Wordle
         }
 
         // Helper methods to get/set feedback for position i
-        void setGrey(int i)
+        void setGrey(const int i)
         {
             colors.reset(i * 2);
             colors.reset(i * 2 + 1);
         }
 
-        void setYellow(int i)
+        void setYellow(const int i)
         {
             colors.set(i * 2);
             colors.reset(i * 2 + 1);
         }
 
-        void setGreen(int i)
+        void setGreen(const int i)
         {
             colors.set(i * 2);
             colors.set(i * 2 + 1);
         }
 
-        int getColor(int i) const
+        int getColor(const int i) const
         {
             if (colors[i * 2 + 1])
                 return 2; // green
@@ -124,23 +124,8 @@ namespace Wordle
         const std::vector<Utils::Word> &words,
         const std::vector<Feedback> &feedbacks);
 
-    // Calculate best guesses sorted by information value with multi-depth entropy
-    std::vector<WordGuess> calculateBestGuesses(
-        const std::vector<Utils::Word> &allWords,
-        const std::vector<Utils::Word> &possibleWords,
-        const std::vector<Feedback> &feedbackHistory,
-        const Config &config = Config{},
-        int recursionLevel = 0);
-
-    // Enhanced solver that returns best guesses ranked by entropy and possible word count
-    // If config.maxDepth is 0, skips entropy calculation and just returns filtered words
-    Result runWordleSolverWithEntropy(
-        const std::vector<Utils::Word> &allWords,
-        const std::vector<Feedback> &feedbacks,
-        const Config &config = Config{});
-
     // Generic EntropySolver-based version (cleaner implementation)
-    Result runWordleSolverWithGenericEntropy(
+    Result runWordleSolver(
         const std::vector<Utils::Word> &allWords,
         const std::vector<Feedback> &feedbacks,
         const Config &config = Config{});
