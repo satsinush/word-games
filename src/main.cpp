@@ -204,9 +204,6 @@ void runInteractiveMode(const std::vector<Utils::Word> &wordVec)
 
 int main(int argc, char *argv[])
 {
-    // Load words (not needed for Mastermind, but we'll load them anyway for consistency)
-    std::vector<Utils::Word> wordVec = Utils::loadWords();
-
 #ifdef WITH_GUI
     // Check if no arguments are provided - launch GUI
     if (argc == 1)
@@ -229,6 +226,9 @@ int main(int argc, char *argv[])
         printUsage(argv[0]);
         return 0;
     }
+
+    // Load words (not needed for Mastermind, but we'll load them anyway for consistency)
+    std::vector<Utils::Word> wordVec = Utils::loadWords();
 
     // Check if mode is specified for headless operation
     if (args.find("mode") != args.end())
