@@ -9,7 +9,7 @@ results/
 *.exe
 ngram_freq.csv
 build/
-data/
+resources/
 gmon.out
 profile_results.txt
 .env

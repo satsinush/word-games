@@ -93,3 +93,16 @@ if(WIN32)
         message(WARNING "windeployqt not found. DLLs will not be deployed automatically.")
     endif()
 endif()
+
+# --- Copy all runtime resources to the build directory ---
+set(RESOURCE_DIR ${CMAKE_SOURCE_DIR}/resources)
+
+# This command runs after the executable is built.
+# It copies the contents of the 'resources' directory into the same folder as the .exe
+add_custom_command(
+    TARGET word-games POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        ${RESOURCE_DIR}
+        $<TARGET_FILE_DIR:word-games>/resources
+    COMMENT "Copying resources to build directory..."
+)

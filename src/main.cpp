@@ -204,6 +204,9 @@ void runInteractiveMode(const std::vector<Utils::Word> &wordVec)
 
 int main(int argc, char *argv[])
 {
+    // Load words (not needed for Mastermind, but we'll load them anyway for consistency)
+    std::vector<Utils::Word> wordVec = Utils::loadWords();
+
 #ifdef WITH_GUI
     // Check if no arguments are provided - launch GUI
     if (argc == 1)
@@ -216,9 +219,6 @@ int main(int argc, char *argv[])
         return app.exec();
     }
 #endif
-
-    // Load words (not needed for Mastermind, but we'll load them anyway for consistency)
-    std::vector<Utils::Word> wordVec = Utils::loadWords();
 
     // Parse command line arguments
     std::map<std::string, std::string> args = Utils::Input::parseCommandArgs(argc, argv);

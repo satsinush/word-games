@@ -7,14 +7,31 @@
 #include <fstream>
 #include <map>
 #include <iomanip>
-#include <filesystem>
 #include <set>
 #include <sstream>
+
+#include <filesystem>
+#ifdef _WIN32
+#include <windows.h>
+#else
+#include <unistd.h>
+#endif
 
 #include "wordUtils.hpp"
 
 namespace Utils
 {
+    std::filesystem::path getExecutableDir()
+    {
+        char buffer[1024];
+#ifdef _WIN32
+        GetModuleFileNameA(NULL, buffer, sizeof(buffer));
+#else
+        readlink("/proc/self/exe", buffer, sizeof(buffer));
+#endif
+        return std::filesystem::path(buffer).parent_path();
+    }
+
     std::string trimToLower(const std::string &str)
     {
         std::string trimmed = str;
@@ -31,7 +48,7 @@ namespace Utils
     // Loads words from words.bin if available, otherwise from word_scores.csv (first 300,000 words) and saves to words.bin.
     std::vector<Word> loadWords()
     {
-        std::filesystem::path data_dir = std::filesystem::current_path() / "data";
+        std::filesystem::path data_dir = getExecutableDir() / "resources";
         std::filesystem::path csv_file = data_dir / "word_scores.csv";
         std::filesystem::path bin_file = data_dir / "words.bin";
         std::vector<Word> allWordsVec;

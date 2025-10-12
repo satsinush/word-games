@@ -106,4 +106,6 @@ The compiled executable will be named `word_solver`.
 
 The source code for this project is licensed under the MIT License. See the `LICENSE` file for details.
 
-This project uses the Qt Framework under the LGPLv3 license. A copy of the LGPLv3 license is included as `LICENSE-QT.txt`. The source code for Qt is available on the [official Qt website](https://www.qt.io/download-open-source).
+This project uses the **Qt Framework** under the **LGPLv3 license**. A copy of the LGPLv3 license is included as `LICENSE-QT.txt`. The source code for Qt is available on the [official Qt website](https://www.qt.io/download-open-source).
+
+**To enable relinking against a modified Qt library, the full source code for this application and its build scripts (CMake files) are provided here, allowing users to compile and relink the application's executable.**

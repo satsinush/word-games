@@ -2,4 +2,3 @@
 - Add function descriptions and inline comments for confusing lines of code
 - Make unit tests?
 - Create GUI
-- Update Cmake to use windeployqt to automatiaclly get and copy debug dlls

@@ -3,9 +3,12 @@
 #include <vector>
 #include <array>
 #include <cstdint>
+#include <filesystem>
 
 namespace Utils
 {
+    std::filesystem::path getExecutableDir();
+
     // Represents a word with its properties
     struct Word
     {
