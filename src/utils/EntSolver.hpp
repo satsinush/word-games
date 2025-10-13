@@ -37,6 +37,11 @@ protected:
   virtual TFeedbackType generateFeedback(const TCandidateType &target,
                                          const TCandidateType &guess) const = 0;
 
+  // Virtual method for getting candidate score (likelihood to be solution)
+  virtual double getScore(const TCandidateType &candidate) const {
+    return 1.0; // Default uniform score if not overridden
+  }
+
   // Pure virtual methods for creating result objects directly
   virtual TGuessType createGuess(const TCandidateType &candidate, double ent,
                                  double probability) const = 0;
@@ -140,22 +145,29 @@ private:
 
     // ITERATE OVER ALL POSSIBLE NEXT GUESSES
     for (const auto &nextGuess : allCandidates) {
-      // Group current candidates based on this nextGuess
+      // Calculate total score for normalization
+      double totalScore = 0.0;
+
+      // Group current candidates based on this nextGuess, with weighted scores
       std::unordered_map<TFeedbackType, std::vector<TCandidateType>>
           feedbackGroups;
-      feedbackGroups.reserve(currentCandidates.size());
+      std::unordered_map<TFeedbackType, double> feedbackWeights;
 
+      feedbackGroups.reserve(currentCandidates.size());
       for (const auto &target : currentCandidates) {
         TFeedbackType feedback = generateFeedback(target, nextGuess);
         feedbackGroups[feedback].push_back(target);
+        double score = getScore(target);
+        feedbackWeights[feedback] += score;
+        totalScore += score;
       }
 
-      // Calculate Expected Number of Turns for this guess
+      // Calculate Expected Number of Turns for this guess using weighted
+      // probabilities
       double expectedTurns = 0.0;
-      double total = static_cast<double>(currentCandidates.size());
 
       for (const auto &group : feedbackGroups) {
-        double prob = static_cast<double>(group.second.size()) / total;
+        double prob = feedbackWeights[group.first] / totalScore;
 
         if (group.second.size() == 1) {
           // This feedback group leads to a solution in 1 more turn
@@ -191,21 +203,29 @@ private:
     if (possibleCandidates.empty())
       return 1.0; // If no candidates, assume 1 turn (shouldn't happen)
 
-    // Group candidates by feedback pattern for this guess
+    // Calculate total score for normalization
+    double totalScore = 0.0;
+
+    // Group candidates by feedback pattern for this guess, with weighted scores
     std::unordered_map<TFeedbackType, std::vector<TCandidateType>>
         feedbackGroups;
+    std::unordered_map<TFeedbackType, double> feedbackWeights;
+
     feedbackGroups.reserve(possibleCandidates.size());
     for (const auto &target : possibleCandidates) {
       TFeedbackType feedback = generateFeedback(target, guessCandidate);
       feedbackGroups[feedback].push_back(target);
+      double score = getScore(target);
+      feedbackWeights[feedback] += score;
+      totalScore += score;
     }
 
-    // Calculate Expected Number of Turns for this guess
+    // Calculate Expected Number of Turns for this guess using weighted
+    // probabilities
     double expectedTurns = 0.0;
-    double total = static_cast<double>(possibleCandidates.size());
 
     for (const auto &group : feedbackGroups) {
-      double prob = static_cast<double>(group.second.size()) / total;
+      double prob = feedbackWeights[group.first] / totalScore;
 
       if (group.second.size() == 1) {
         // We know the optimal turns remaining is 0, so avoid the function call
