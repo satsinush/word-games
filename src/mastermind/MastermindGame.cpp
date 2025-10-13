@@ -196,11 +196,11 @@ void MastermindGame::printResults(const Mastermind::Result &result) {
 
     // Header
     std::cout << std::setw(10) << "Rank";
-    std::cout << std::setw(12) << "Pattern";
+    std::cout << std::setw(25) << "Pattern";
     std::cout << std::setw(12) << "ENT Score";
     std::cout << std::setw(15) << "Probability" << "\n";
 
-    int totalWidth = 10 + 12 + 12 + 15;
+    int totalWidth = 10 + 25 + 12 + 15;
     std::cout << std::string(std::max(0, totalWidth), '-') << "\n";
 
     int possibleCount = 0;
@@ -215,7 +215,7 @@ void MastermindGame::printResults(const Mastermind::Result &result) {
 
       std::cout << std::setw(10) << (i);
 
-      std::cout << std::setw(12) << guess.pattern.toString();
+      std::cout << std::setw(25) << guess.pattern.toString();
 
       std::cout << std::setw(12) << std::fixed << std::setprecision(3)
                 << guess.ent;
@@ -239,7 +239,7 @@ void MastermindGame::printResults(const Mastermind::Result &result) {
 
       std::cout << std::setw(10) << (i);
 
-      std::cout << std::setw(12) << guess.pattern.toString();
+      std::cout << std::setw(25) << guess.pattern.toString();
 
       std::cout << std::setw(12) << std::fixed << std::setprecision(3)
                 << guess.ent;
@@ -335,7 +335,7 @@ void MastermindGame::runCLI() {
 
     if (input == "solve") {
       config.maxDepth =
-          Utils::Input::promptInt("Enter search depth (1-3)", 1, 1, 3);
+          Utils::Input::promptInt("Enter search depth (0-2)", 1, 0, 2);
 
       std::cout << "Calculating best guesses...\n";
       Mastermind::Result result =

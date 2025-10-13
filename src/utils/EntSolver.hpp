@@ -80,7 +80,10 @@ public:
       for (const auto &candidate : possibleCandidates) {
         double probability =
             possibleCandidates.empty() ? 0.0 : 1.0 / possibleCandidates.size();
-        TGuessType guess = createGuess(candidate, 0.0, probability);
+        TGuessType guess = createGuess(
+            candidate,
+            std::log2(static_cast<double>(possibleCandidates.size())),
+            probability);
         guesses.push_back(guess);
       }
       return createResult(guesses, totalPossible);
