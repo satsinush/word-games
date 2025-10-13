@@ -1,5 +1,7 @@
 - Create presentation
 - Add function descriptions and inline comments for confusing lines of code
-- Make unit tests?
-- Create GUI
-- Fix compiler warning for unused parameter 'candidate' in EntSolver.hpp(41, 49)
+- Make unit tests/benchmarks
+- Create GUI for games
+- Put profiler methods in sub namespace
+- Make benchmarking functions part of the game interface
+- Consolidate and make print commands more consistent
