@@ -143,10 +143,14 @@ private:
 
     double minExpectedTurns = std::numeric_limits<double>::max();
 
+    double totalScore = 0.0;
+    for (const auto &target : currentCandidates) {
+      totalScore += getScore(target);
+    }
+
     // ITERATE OVER ALL POSSIBLE NEXT GUESSES
     for (const auto &nextGuess : allCandidates) {
       // Calculate total score for normalization
-      double totalScore = 0.0;
 
       // Group current candidates based on this nextGuess, with weighted scores
       std::unordered_map<TFeedbackType, std::vector<TCandidateType>>
@@ -159,7 +163,6 @@ private:
         feedbackGroups[feedback].push_back(target);
         double score = getScore(target);
         feedbackWeights[feedback] += score;
-        totalScore += score;
       }
 
       // Calculate Expected Number of Turns for this guess using weighted
