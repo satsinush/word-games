@@ -17,7 +17,7 @@ Wordle::Config WordleGame::getConfigFromUser() {
 
   std::cout << "Configure Wordle solver:\n";
   config.maxDepth = Utils::Input::promptInt(
-      "Search depth for entropy calculation (0-2)", 0, 0, 2);
+      "Search depth for ENT calculation (0-2)", 0, 0, 2);
   config.excludeUncommonWords = Utils::Input::promptBool(
       "Exclude uncommon words from suggestions?", false);
 
@@ -114,19 +114,38 @@ void WordleGame::printResults(const Wordle::Result &result) {
 
   if (!result.sortedGuesses.empty()) {
     std::cout << "Best next guesses (top 10):\n";
-    std::cout << std::setw(12) << "Word" << std::setw(12) << "Entropy"
-              << std::setw(15) << "Probability" << "\n";
-    std::cout << std::string(40, '-') << "\n";
+
+    // Header
+    std::cout << std::setw(12) << "Word";
+    std::cout << std::setw(12) << "ENT";
+    std::cout << std::setw(15) << "Probability" << "\n";
+
+    int totalWidth = 12 + 12 + 15;
+    std::cout << std::string(std::max(0, totalWidth), '-') << "\n";
 
     int count = 0;
     for (const auto &guess : result.sortedGuesses) {
       if (++count > 10)
         break;
 
-      std::cout << std::setw(12) << guess.word.wordString << std::setw(12)
-                << std::fixed << std::setprecision(3) << guess.entropy
-                << std::setw(15) << std::fixed << std::setprecision(6)
+      std::cout << std::setw(12) << guess.word.wordString;
+
+      std::cout << std::setw(12) << std::fixed << std::setprecision(3)
+                << guess.ent;
+
+      std::cout << std::setw(15) << std::fixed << std::setprecision(6)
                 << guess.probability << "\n";
+    }
+  }
+
+  // Print top 10 possible words (those with probability > 0)
+  std::cout << "\nTop 10 possible words:\n";
+  int printed = 0;
+  for (const auto &guess : result.sortedGuesses) {
+    if (guess.probability > 0.0) {
+      std::cout << "  " << guess.word.wordString << "\n";
+      if (++printed >= 10)
+        break;
     }
   }
 }
@@ -152,7 +171,7 @@ void WordleGame::saveResults(const Wordle::Result &result,
     possibleOut.close();
   }
 
-  // Save all guesses with entropy
+  // Save all guesses with ENT
   std::filesystem::path guessesPath(guessesFile);
   if (!guessesPath.parent_path().empty() &&
       !std::filesystem::exists(guessesPath.parent_path())) {
@@ -161,9 +180,9 @@ void WordleGame::saveResults(const Wordle::Result &result,
 
   std::ofstream guessesOut(guessesFile);
   if (guessesOut.is_open()) {
-    guessesOut << "word,entropy,probability\n";
+    guessesOut << "word,expected_turns,probability\n";
     for (const auto &guess : result.sortedGuesses) {
-      guessesOut << guess.word.wordString << "," << guess.entropy << ","
+      guessesOut << guess.word.wordString << "," << guess.ent << ","
                  << guess.probability << "\n";
     }
     guessesOut.close();

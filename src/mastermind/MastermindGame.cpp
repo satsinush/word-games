@@ -193,7 +193,7 @@ void MastermindGame::printResults(const Mastermind::Result &result) {
 
   if (!result.sortedGuesses.empty()) {
     std::cout << "Best next guesses (top 10):\n";
-    std::cout << std::setw(20) << "Pattern" << std::setw(12) << "Entropy"
+    std::cout << std::setw(20) << "Pattern" << std::setw(12) << "Exp. Turns"
               << std::setw(15) << "Probability" << "\n";
     std::cout << std::string(50, '-') << "\n";
 
@@ -203,7 +203,7 @@ void MastermindGame::printResults(const Mastermind::Result &result) {
         break;
 
       std::cout << std::setw(20) << guess.pattern.toString() << std::setw(12)
-                << std::fixed << std::setprecision(3) << guess.entropy
+                << std::fixed << std::setprecision(3) << guess.ent
                 << std::setw(15) << std::fixed << std::setprecision(6)
                 << guess.probability << "\n";
     }
@@ -231,7 +231,7 @@ void MastermindGame::saveResults(const Mastermind::Result &result,
     possibleOut.close();
   }
 
-  // Save all guesses with entropy
+  // Save all guesses with ENT
   std::filesystem::path guessesPath(guessesFile);
   if (!guessesPath.parent_path().empty() &&
       !std::filesystem::exists(guessesPath.parent_path())) {
@@ -240,9 +240,9 @@ void MastermindGame::saveResults(const Mastermind::Result &result,
 
   std::ofstream guessesOut(guessesFile);
   if (guessesOut.is_open()) {
-    guessesOut << "pattern,entropy,probability\n";
+    guessesOut << "pattern,expected_turns,probability\n";
     for (const auto &guess : result.sortedGuesses) {
-      guessesOut << "\"" << guess.pattern.toString() << "\"," << guess.entropy
+      guessesOut << "\"" << guess.pattern.toString() << "\"," << guess.ent
                  << "," << guess.probability << "\n";
     }
     guessesOut.close();

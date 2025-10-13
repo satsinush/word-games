@@ -5,12 +5,12 @@
 #include <string>
 #include <vector>
 
-#include "../utils/EntropySolver.hpp"
+#include "../utils/EntSolver.hpp"
 #include "../utils/utils.hpp"
 
 namespace Wordle {
 struct Config {
-  uint8_t maxDepth = 1; // How many moves ahead to calculate entropy
+  uint8_t maxDepth = 1; // How many moves ahead to calculate ENT
   bool excludeUncommonWords = false;
 };
 
@@ -56,36 +56,23 @@ struct Feedback {
 
 struct WordGuess {
   Utils::Word word;
-  double entropy = 0.0;
+  double ent = 0.0; // Expected Number of Turns
   double probability = 0.0;
-  std::vector<double> entropyList;
 
   bool operator<(const WordGuess &other) const {
-    // Compare entropy levels from highest depth to lowest (E3, E2, E1)
-    // We want higher entropy values to come first (better guesses)
-    int maxLevels = std::max(entropyList.size(), other.entropyList.size());
-
-    // Use small tolerance for floating point comparison
+    // Primary sort: Expected Number of Turns (lower is better)
     const double tolerance = 1e-9;
 
-    size_t n = maxLevels;
-    while (n-- > 0) {
-      double thisEntropy = (n < entropyList.size()) ? entropyList[n] : 0.0;
-      double otherEntropy =
-          (n < other.entropyList.size()) ? other.entropyList[n] : 0.0;
+    if (std::abs(ent - other.ent) > tolerance)
+      return ent < other.ent; // Sort lower ENT first (fewer expected turns)
 
-      if (std::abs(thisEntropy - otherEntropy) > tolerance)
-        return thisEntropy >
-               otherEntropy; // Sort in descending order (higher entropy first)
-    }
-
-    // If all entropy levels are equal, prefer higher probability
+    // Secondary tiebreaker: probability (higher is better - prefer possible
+    // answers)
     if (std::abs(probability - other.probability) > tolerance)
-      return probability > other.probability; // Sort in descending order
-                                              // (higher probability first)
+      return probability > other.probability; // Sort higher probability first
 
-    // If both entropy and probability are equal, sort by word for consistency
-    return word.wordString < other.word.wordString;
+    // Final tiebreaker: sort by word for consistency
+    return word < other.word;
   }
 };
 
@@ -106,22 +93,18 @@ Feedback generateFeedback(const Utils::Word &target, const std::string &guess);
 // Get all possible feedback patterns for a 5-letter word
 std::vector<Feedback> getAllPossibleFeedbacks();
 
-// Calculate entropy (information value) of a guess
-double calculateEntropy(const std::vector<Utils::Word> &possibleWords,
-                        const Utils::Word &guess);
-
 // Filter possible words given a list of guesses and feedbacks
 std::vector<Utils::Word> filterWords(const std::vector<Utils::Word> &words,
                                      const std::vector<Feedback> &feedbacks);
 
-// Generic EntropySolver-based version (cleaner implementation)
+// Generic EntSolver-based version (cleaner implementation)
 Result runWordleSolver(const std::vector<Utils::Word> &allWords,
                        const std::vector<Feedback> &feedbacks,
                        const Config &config = Config{});
 } // namespace Wordle
 
 // Provide std::hash specialization for Wordle::Feedback so it can be used as an
-// unordered_map/unordered_set key in generic code (like the EntropySolver).
+// unordered_map/unordered_set key in generic code (like the EntSolver).
 namespace std {
 template <> struct hash<Wordle::Feedback> {
   size_t operator()(const Wordle::Feedback &fb) const noexcept {

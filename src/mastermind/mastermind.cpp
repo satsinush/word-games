@@ -11,7 +11,7 @@
 #include <unordered_set>
 #include <vector>
 
-#include "../utils/EntropySolver.hpp"
+#include "../utils/EntSolver.hpp"
 #include "mastermind.hpp"
 
 namespace Mastermind {
@@ -145,39 +145,6 @@ Feedback generateFeedback(const Pattern &target, const Pattern &guess) {
   return fb;
 }
 
-// Calculate information bits
-double bits(double probability) {
-  if (probability <= 0.0)
-    return 0.0;
-  return -std::log2(probability);
-}
-
-// Calculate entropy (information value) of a guess
-double calculateEntropy(const std::vector<Pattern> &possiblePatterns,
-                        const Pattern &guess) {
-  if (possiblePatterns.empty())
-    return 0.0;
-
-  std::map<Feedback, int> feedbackCounts;
-
-  // For each possible target pattern, generate feedback and count
-  for (const auto &target : possiblePatterns) {
-    Feedback fb = generateFeedback(target, guess);
-    feedbackCounts[fb]++;
-  }
-
-  // Calculate entropy
-  double entropy = 0.0;
-  int totalPatterns = possiblePatterns.size();
-
-  for (const auto &pair : feedbackCounts) {
-    double probability = static_cast<double>(pair.second) / totalPatterns;
-    entropy += probability * bits(probability);
-  }
-
-  return entropy;
-}
-
 // Generate all possible patterns for the given configuration
 std::vector<Pattern> generateAllPatterns(const Config &config) {
   std::vector<Pattern> patterns;
@@ -255,10 +222,10 @@ std::vector<Pattern> filterPatterns(const std::vector<Pattern> &patterns,
   return filtered;
 }
 
-// Mastermind-specific entropy solver implementation
-class MastermindEntropySolver
-    : public Utils::AbstractEntropySolver<Pattern, Feedback, Config,
-                                          PatternGuess, Result> {
+// Mastermind-specific ENT solver implementation
+class MastermindEntSolver
+    : public Utils::AbstractEntSolver<Pattern, Feedback, Config, PatternGuess,
+                                      Result> {
 protected:
   bool matchesFeedback(const Pattern &candidate,
                        const Feedback &feedback) const override {
@@ -270,14 +237,12 @@ protected:
     return Mastermind::generateFeedback(target, guess);
   }
 
-  PatternGuess
-  createGuess(const Pattern &candidate, double entropy, double probability,
-              const std::vector<double> &entropyList) const override {
+  PatternGuess createGuess(const Pattern &candidate, double ent,
+                           double probability) const override {
     PatternGuess guess;
     guess.pattern = candidate;
-    guess.entropy = entropy;
+    guess.ent = ent;
     guess.probability = probability;
-    guess.entropyList = entropyList;
     return guess;
   }
 
@@ -294,9 +259,8 @@ Result runMastermindSolver(const std::vector<Pattern> &allPatterns,
                            const std::vector<Feedback> &guessHistory,
                            const Config &config) {
 
-  // Use the specialized Mastermind entropy solver
-  MastermindEntropySolver solver;
-  // Use the specialized Mastermind entropy solver - returns Result directly!
+  // Use the specialized Mastermind ENT solver - returns Result directly!
+  MastermindEntSolver solver;
   return solver.solve(allPatterns, guessHistory, config);
 }
 } // namespace Mastermind

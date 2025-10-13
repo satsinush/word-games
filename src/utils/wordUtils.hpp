@@ -22,6 +22,8 @@ struct Word {
   std::array<uint8_t, 26> letterCount;
   // Comparison operator for sorting words alphabetically
   bool operator<(const Word &other) const {
+    if (score != other.score)
+      return score > other.score; // Higher score first
     return wordString < other.wordString;
   }
   // Equality operator for comparing words

@@ -125,11 +125,11 @@ private:
   double findMinExpectedTurns(
       const std::vector<TCandidateType> &currentCandidates,
       const std::vector<TCandidateType> &allCandidates,
-      int maxDepth = 10) { // Depth limit to prevent infinite recursion
+      const int maxDepth) { // Depth limit to prevent infinite recursion
 
-    // Base Case: If only one candidate left, it takes 1 turn to find the answer
+    // Base Case: If only one candidate left, it has already been found
     if (currentCandidates.size() <= 1)
-      return 1.0;
+      return 0.0;
 
     // Depth limit reached - return pessimistic estimate
     if (maxDepth <= 0)
@@ -186,7 +186,7 @@ private:
   double
   calculateExpectedTurns(const TCandidateType &guessCandidate,
                          const std::vector<TCandidateType> &possibleCandidates,
-                         int maxDepth = 10) {
+                         const int maxDepth) {
 
     if (possibleCandidates.empty())
       return 1.0; // If no candidates, assume 1 turn (shouldn't happen)
@@ -208,16 +208,14 @@ private:
       double prob = static_cast<double>(group.second.size()) / total;
 
       if (group.second.size() == 1) {
-        // This feedback group leads to a solution in 1 more turn
-        expectedTurns += prob * 1.0;
+        // We know the optimal turns remaining is 0, so avoid the function call
+        // entirely
+        expectedTurns += prob; // * 1.0 for this turn
       } else {
         // This feedback group requires optimal play on the subgroup
         double optimalSubTurns = findMinExpectedTurns(
             group.second, possibleCandidates, maxDepth - 1);
-        expectedTurns +=
-            prob *
-            (1.0 +
-             optimalSubTurns); // 1 turn for this guess + optimal sub-turns
+        expectedTurns += prob * (1.0 + optimalSubTurns);
       }
     }
 

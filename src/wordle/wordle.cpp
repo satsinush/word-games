@@ -9,7 +9,7 @@
 #include <unordered_set>
 #include <vector>
 
-#include "../utils/EntropySolver.hpp"
+#include "../utils/EntSolver.hpp"
 #include "wordle.hpp"
 
 namespace Wordle {
@@ -114,39 +114,6 @@ Feedback generateFeedback(const Utils::Word &target, const std::string &guess) {
   return fb;
 }
 
-// Calculate information bits
-double bits(double probability) {
-  if (probability <= 0.0)
-    return 0.0;
-  return -std::log2(probability);
-}
-
-// Calculate entropy (information value) of a guess
-double calculateEntropy(const std::vector<Utils::Word> &possibleWords,
-                        const Utils::Word &guess) {
-  if (possibleWords.empty())
-    return 0.0;
-
-  std::unordered_map<unsigned long, int> feedbackCounts;
-
-  // For each possible target word, generate feedback and count
-  for (const auto &target : possibleWords) {
-    Feedback fb = generateFeedback(target, guess.wordString);
-    feedbackCounts[fb.colors.to_ulong()]++;
-  }
-
-  // Calculate entropy
-  double entropy = 0.0;
-  int totalWords = possibleWords.size();
-
-  for (const auto &pair : feedbackCounts) {
-    double probability = static_cast<double>(pair.second) / totalWords;
-    entropy += probability * bits(probability);
-  }
-
-  return entropy;
-}
-
 std::vector<Utils::Word> filterWords(const std::vector<Utils::Word> &words,
                                      const std::vector<Feedback> &feedbacks) {
   std::vector<Utils::Word> filtered;
@@ -170,10 +137,10 @@ runWordleSolver(const std::vector<Utils::Word> &words,
   return filterWords(words, feedbacks);
 }
 
-// Wordle-specific entropy solver implementation
-class WordleEntropySolver
-    : public Utils::AbstractEntropySolver<Utils::Word, Feedback, Config,
-                                          WordGuess, Result> {
+// Wordle-specific ENT solver implementation
+class WordleEntSolver
+    : public Utils::AbstractEntSolver<Utils::Word, Feedback, Config, WordGuess,
+                                      Result> {
 protected:
   bool matchesFeedback(const Utils::Word &candidate,
                        const Feedback &feedback) const override {
@@ -185,14 +152,12 @@ protected:
     return Wordle::generateFeedback(target, guess.wordString);
   }
 
-  WordGuess createGuess(const Utils::Word &candidate, double entropy,
-                        double probability,
-                        const std::vector<double> &entropyList) const override {
+  WordGuess createGuess(const Utils::Word &candidate, double ent,
+                        double probability) const override {
     WordGuess guess;
     guess.word = candidate;
-    guess.entropy = entropy;
+    guess.ent = ent;
     guess.probability = probability;
-    guess.entropyList = entropyList;
     return guess;
   }
 
@@ -217,8 +182,8 @@ Result runWordleSolver(const std::vector<Utils::Word> &allWords,
     }
   }
 
-  // Use the specialized Wordle entropy solver - returns Result directly!
-  WordleEntropySolver solver;
+  // Use the specialized Wordle ENT solver - returns Result directly!
+  WordleEntSolver solver;
   return solver.solve(availableWords, feedbacks, config);
 }
 } // namespace Wordle

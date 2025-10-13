@@ -6,7 +6,7 @@
 #include <unordered_map>
 #include <vector>
 
-#include "../utils/EntropySolver.hpp"
+#include "../utils/EntSolver.hpp"
 #include "../utils/utils.hpp"
 
 namespace Mastermind {
@@ -14,7 +14,7 @@ struct Config {
   uint8_t numPegs = 4;   // Number of pegs in the pattern
   uint8_t numColors = 6; // Total number of available colors (0 to numColors-1)
   bool allowDuplicates = true; // Whether duplicate colors are allowed
-  uint8_t maxDepth = 0;        // How many moves ahead to calculate entropy
+  uint8_t maxDepth = 0;        // How many moves ahead to calculate ENT
 };
 
 static constexpr size_t MAX_PEGS = 32; // Maximum number of pegs supported
@@ -84,36 +84,22 @@ struct Feedback {
 
 struct PatternGuess {
   Pattern pattern;
-  double entropy = 0.0;
+  double ent = 0.0; // Expected Number of Turns
   double probability = 0.0;
-  std::vector<double> entropyList;
 
   bool operator<(const PatternGuess &other) const {
-    // Compare entropy levels from highest depth to lowest (E3, E2, E1)
-    // We want higher entropy values to come first (better guesses)
-    size_t maxLevels = std::max(entropyList.size(), other.entropyList.size());
-
-    // Use small tolerance for floating point comparison
+    // Primary sort: Expected Number of Turns (lower is better)
     const double tolerance = 1e-9;
 
-    size_t n = maxLevels;
-    while (n-- > 0) {
-      double thisEntropy = (n < entropyList.size()) ? entropyList[n] : 0.0;
-      double otherEntropy =
-          (n < other.entropyList.size()) ? other.entropyList[n] : 0.0;
+    if (std::abs(ent - other.ent) > tolerance)
+      return ent < other.ent; // Sort lower ENT first (fewer expected turns)
 
-      if (std::abs(thisEntropy - otherEntropy) > tolerance)
-        return thisEntropy >
-               otherEntropy; // Sort in descending order (higher entropy first)
-    }
-
-    // If all entropy levels are equal, prefer higher probability
+    // Secondary tiebreaker: probability (higher is better - prefer possible
+    // answers)
     if (std::abs(probability - other.probability) > tolerance)
-      return probability > other.probability; // Sort in descending order
-                                              // (higher probability first)
+      return probability > other.probability; // Sort higher probability first
 
-    // If both entropy and probability are equal, sort by pattern for
-    // consistency
+    // Final tiebreaker: sort by pattern for consistency
     return pattern < other.pattern;
   }
 };
@@ -132,10 +118,6 @@ bool matchesFeedback(const Pattern &candidate, const Feedback &fb);
 // Generate feedback for a guess against a target pattern
 Feedback generateFeedback(const Pattern &target, const Pattern &guess);
 
-// Calculate entropy (information value) of a guess
-double calculateEntropy(const std::vector<Pattern> &possiblePatterns,
-                        const Pattern &guess, const Config &config);
-
 // Generate all possible patterns for the given configuration
 std::vector<Pattern> generateAllPatterns(const Config &config);
 
@@ -143,14 +125,14 @@ std::vector<Pattern> generateAllPatterns(const Config &config);
 std::vector<Pattern> filterPatterns(const std::vector<Pattern> &patterns,
                                     const std::vector<Feedback> &guessHistory);
 
-// Generic EntropySolver-based version (cleaner implementation)
+// Generic EntSolver-based version (cleaner implementation)
 Result runMastermindSolver(const std::vector<Pattern> &allPatterns,
                            const std::vector<Feedback> &guessHistory,
                            const Config &config = Config{});
 } // namespace Mastermind
 
 // Provide std::hash specializations for Mastermind types so they can be used as
-// unordered_map/unordered_set keys in generic code (like the EntropySolver).
+// unordered_map/unordered_set keys in generic code (like the EntSolver).
 namespace std {
 template <> struct hash<Mastermind::Pattern> {
   size_t operator()(const Mastermind::Pattern &pattern) const noexcept {
