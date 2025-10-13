@@ -22,6 +22,7 @@ static constexpr size_t MAX_PEGS = 32; // Maximum number of pegs supported
 struct Pattern {
   std::array<uint8_t, MAX_PEGS> colors; // Array of color values
   size_t numPegs = 4;                   // Actual number of pegs used
+  double score = 1.0;                   // Score for weighting (default 1.0)
 
   Pattern() { colors.fill(0); }
   Pattern(const std::array<uint8_t, MAX_PEGS> &c, size_t pegCount)

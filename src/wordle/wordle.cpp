@@ -152,11 +152,6 @@ protected:
     return Wordle::generateFeedback(target, guess.wordString);
   }
 
-  double getScore(const Utils::Word &candidate) const override {
-    // Use the word's custom score - higher scores for more common words
-    return candidate.score;
-  }
-
   WordGuess createGuess(const Utils::Word &candidate, double ent,
                         double probability) const override {
     WordGuess guess;
