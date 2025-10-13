@@ -144,45 +144,10 @@ private:
 
     double minExpectedTurns = std::numeric_limits<double>::max();
 
-    double totalScore = 0.0;
-    for (const auto &target : currentCandidates) {
-      totalScore += target.score;
-    }
-
-    // ITERATE OVER ALL POSSIBLE NEXT GUESSES
+    // ITERATE OVER ALL POSSIBLE NEXT GUESSES to find the optimal one
     for (const auto &nextGuess : allCandidates) {
-      // Calculate total score for normalization
-
-      // Group current candidates based on this nextGuess, with weighted scores
-      std::unordered_map<TFeedbackType, FeedbackGroup> feedbackGroups;
-
-      feedbackGroups.reserve(currentCandidates.size());
-      for (const auto &target : currentCandidates) {
-        TFeedbackType feedback = generateFeedback(target, nextGuess);
-        feedbackGroups[feedback].candidates.push_back(target);
-        feedbackGroups[feedback].totalScore += target.score;
-      }
-
-      // Calculate Expected Number of Turns for this guess using weighted
-      // probabilities
-      double expectedTurns = 0.0;
-
-      for (const auto &group : feedbackGroups) {
-        double prob = group.second.totalScore / totalScore;
-
-        if (group.second.candidates.size() == 1) {
-          // This feedback group leads to a solution in 1 more turn
-          expectedTurns += prob * 1.0;
-        } else {
-          // This feedback group requires optimal play on the subgroup
-          double optimalSubTurns = findMinExpectedTurns(
-              group.second.candidates, allCandidates, maxDepth - 1);
-          expectedTurns +=
-              prob *
-              (1.0 +
-               optimalSubTurns); // 1 turn for this guess + optimal sub-turns
-        }
-      }
+      double expectedTurns = calculateExpectedTurns(
+          nextGuess, currentCandidates, allCandidates, maxDepth);
 
       // Minimax: Find the best next guess (minimize expected turns)
       minExpectedTurns = std::min(minExpectedTurns, expectedTurns);
@@ -198,25 +163,26 @@ private:
    */
   double
   calculateExpectedTurns(const TCandidateType &guessCandidate,
-                         const std::vector<TCandidateType> &possibleCandidates,
+                         const std::vector<TCandidateType> &currentCandidates,
                          const std::vector<TCandidateType> &allCandidates,
                          const int maxDepth) {
-
-    if (possibleCandidates.empty())
+    if (currentCandidates.empty())
       return 1.0; // If no candidates, assume 1 turn (shouldn't happen)
 
     // Calculate total score for normalization
     double totalScore = 0.0;
+    for (const auto &target : currentCandidates) {
+      totalScore += target.score;
+    }
 
     // Group candidates by feedback pattern for this guess, with weighted scores
     std::unordered_map<TFeedbackType, FeedbackGroup> feedbackGroups;
+    feedbackGroups.reserve(currentCandidates.size());
 
-    feedbackGroups.reserve(possibleCandidates.size());
-    for (const auto &target : possibleCandidates) {
+    for (const auto &target : currentCandidates) {
       TFeedbackType feedback = generateFeedback(target, guessCandidate);
       feedbackGroups[feedback].candidates.push_back(target);
       feedbackGroups[feedback].totalScore += target.score;
-      totalScore += target.score;
     }
 
     // Calculate Expected Number of Turns for this guess using weighted
@@ -227,9 +193,8 @@ private:
       double prob = group.second.totalScore / totalScore;
 
       if (group.second.candidates.size() == 1) {
-        // We know the optimal turns remaining is 0, so avoid the function call
-        // entirely
-        expectedTurns += prob; // * 1.0 for this turn
+        // This feedback group leads to a solution in 1 more turn
+        expectedTurns += prob * 1.0;
       } else {
         // This feedback group requires optimal play on the subgroup
         double optimalSubTurns = findMinExpectedTurns(
