@@ -192,21 +192,63 @@ void MastermindGame::printResults(const Mastermind::Result &result) {
             << "\n\n";
 
   if (!result.sortedGuesses.empty()) {
-    std::cout << "Best next guesses (top 10):\n";
-    std::cout << std::setw(20) << "Pattern" << std::setw(12) << "Exp. Turns"
-              << std::setw(15) << "Probability" << "\n";
-    std::cout << std::string(50, '-') << "\n";
+    std::cout << "=== Best guesses ===\n";
 
-    int count = 0;
-    for (const auto &guess : result.sortedGuesses) {
-      if (++count > 10)
-        break;
+    // Header
+    std::cout << std::setw(10) << "Rank";
+    std::cout << std::setw(12) << "Pattern";
+    std::cout << std::setw(12) << "ENT Score";
+    std::cout << std::setw(15) << "Probability" << "\n";
 
-      std::cout << std::setw(20) << guess.pattern.toString() << std::setw(12)
-                << std::fixed << std::setprecision(3) << guess.ent
-                << std::setw(15) << std::fixed << std::setprecision(6)
+    int totalWidth = 10 + 12 + 12 + 15;
+    std::cout << std::string(std::max(0, totalWidth), '-') << "\n";
+
+    int possibleCount = 0;
+    int i = 0;
+
+    // Print the top 10 guesses first
+    while (i < 10 && i < static_cast<int>(result.sortedGuesses.size())) {
+      const auto &guess = result.sortedGuesses[i];
+      if (guess.probability > 0.0)
+        possibleCount++;
+      i++;
+
+      std::cout << std::setw(10) << (i);
+
+      std::cout << std::setw(12) << guess.pattern.toString();
+
+      std::cout << std::setw(12) << std::fixed << std::setprecision(3)
+                << guess.ent;
+
+      std::cout << std::setw(15) << std::fixed << std::setprecision(6)
                 << guess.probability << "\n";
     }
+
+    std::cout << std::string(std::max(0, totalWidth), '-') << "\n";
+
+    // Print the next possible guesses until 10 possible patterns have been
+    // shown
+    while (possibleCount < 10 &&
+           i < static_cast<int>(result.sortedGuesses.size())) {
+      const auto &guess = result.sortedGuesses[i];
+      i++;
+      if (guess.probability <= 0.0) {
+        continue; // Skip guesses with zero probability
+      }
+      possibleCount++;
+
+      std::cout << std::setw(10) << (i);
+
+      std::cout << std::setw(12) << guess.pattern.toString();
+
+      std::cout << std::setw(12) << std::fixed << std::setprecision(3)
+                << guess.ent;
+
+      std::cout << std::setw(15) << std::fixed << std::setprecision(6)
+                << guess.probability << "\n";
+    }
+  } else {
+    std::cout << "No guesses available.\n";
   }
 }
 
