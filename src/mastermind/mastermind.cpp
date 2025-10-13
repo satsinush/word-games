@@ -15,7 +15,7 @@
 #include "mastermind.hpp"
 
 namespace Mastermind {
-Feedback parseFeedback(const std::string &input, unsigned int numPegs) {
+Feedback parseFeedback(const std::string &input, uint8_t numPegs) {
   // Split input by pipe separator
   size_t pipePos = input.find('|');
   if (pipePos == std::string::npos) {
@@ -74,14 +74,15 @@ bool matchesFeedback(const Pattern &candidate, const Feedback &fb) {
 
   // Count color occurrences in candidate using vector for better cache
   // performance uint8_t can only have values 0-255, so reserve 256 spots
-  std::array<int, 256> candidateCount = {};
-  for (uint8_t color : candidate.colors) {
+  std::array<uint8_t, 256> candidateCount = {};
+  for (uint8_t i = 0; i < candidate.numPegs; ++i) {
+    uint8_t color = candidate.colors[i];
     candidateCount[color]++;
   }
 
   // Count correct positions and adjust counts
   int correctPositions = 0;
-  for (size_t i = 0; i < candidate.numPegs; ++i) {
+  for (uint8_t i = 0; i < candidate.numPegs; ++i) {
     if (candidate.colors[i] == guess.colors[i]) {
       correctPositions++;
       candidateCount[candidate.colors[i]]--;
@@ -93,7 +94,7 @@ bool matchesFeedback(const Pattern &candidate, const Feedback &fb) {
 
   // Count correct colors in wrong positions
   int correctColors = 0;
-  for (size_t i = 0; i < guess.numPegs; ++i) {
+  for (uint8_t i = 0; i < guess.numPegs; ++i) {
     // Skip positions that were already correct
     if (candidate.colors[i] == guess.colors[i])
       continue;
@@ -118,12 +119,12 @@ Feedback generateFeedback(const Pattern &target, const Pattern &guess) {
   // Count color occurrences in target using vector for better cache performance
   // uint8_t can only have values 0-255, so reserve 256 spots
   std::array<int, 256> targetCount = {};
-  for (size_t i = 0; i < target.numPegs; ++i) {
+  for (uint8_t i = 0; i < target.numPegs; ++i) {
     targetCount[target.colors[i]]++;
   }
 
   // First pass: count correct positions
-  for (size_t i = 0; i < target.numPegs; ++i) {
+  for (uint8_t i = 0; i < target.numPegs; ++i) {
     if (target.colors[i] == guess.colors[i]) {
       fb.correctPosition++;
       targetCount[target.colors[i]]--;
@@ -131,7 +132,7 @@ Feedback generateFeedback(const Pattern &target, const Pattern &guess) {
   }
 
   // Second pass: count correct colors in wrong positions
-  for (size_t i = 0; i < guess.numPegs; ++i) {
+  for (uint8_t i = 0; i < guess.numPegs; ++i) {
     // Skip positions that were already correct
     if (target.colors[i] == guess.colors[i])
       continue;

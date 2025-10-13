@@ -87,20 +87,24 @@ public:
     }
 
     // Calculate Expected Number of Turns (ENT) for all candidates
+    const double possibleProb =
+        possibleCandidates.empty() ? 0.0 : 1.0 / possibleCandidates.size();
     for (const auto &guessCandidate : allCandidates) {
       // Calculate probability (how likely this candidate is to be the answer)
       // O(1) lookup in unordered_set with proper hash and equality
       bool isPossible = possibleCandidateSet.find(guessCandidate) !=
                         possibleCandidateSet.end();
 
-      double probability = isPossible ? (possibleCandidates.empty()
-                                             ? 0.0
-                                             : 1.0 / possibleCandidates.size())
-                                      : 0.0;
+      double probability = isPossible ? possibleProb : 0.0;
 
-      // Calculate Expected Number of Turns (ENT) - primary sorting metric
-      double expectedTurns = calculateExpectedTurns(
-          guessCandidate, possibleCandidates, allCandidates, config.maxDepth);
+      // If there is only one candidate left, the expected turns after guessing
+      // the correct candidate is 0, otherwise it is 1
+      double expectedTurns = isPossible ? 0.0 : 1.0;
+      // If there are multiple possible candidates, calculate the expected turns
+      if (possibleCandidates.size() > 1) {
+        expectedTurns = calculateExpectedTurns(
+            guessCandidate, possibleCandidates, allCandidates, config.maxDepth);
+      }
 
       TGuessType guess =
           createGuess(guessCandidate, expectedTurns, probability);
@@ -166,9 +170,6 @@ private:
                          const std::vector<TCandidateType> &currentCandidates,
                          const std::vector<TCandidateType> &allCandidates,
                          const int maxDepth) {
-    if (currentCandidates.empty())
-      return 1.0; // If no candidates, assume 1 turn (shouldn't happen)
-
     // Calculate total score for normalization
     double totalScore = 0.0;
     for (const auto &target : currentCandidates) {

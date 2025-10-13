@@ -21,11 +21,11 @@ static constexpr size_t MAX_PEGS = 32; // Maximum number of pegs supported
 
 struct Pattern {
   std::array<uint8_t, MAX_PEGS> colors; // Array of color values
-  size_t numPegs = 4;                   // Actual number of pegs used
+  uint8_t numPegs = 4;                  // Actual number of pegs used
   double score = 1.0;                   // Score for weighting (default 1.0)
 
   Pattern() { colors.fill(0); }
-  Pattern(const std::array<uint8_t, MAX_PEGS> &c, size_t pegCount)
+  Pattern(const std::array<uint8_t, MAX_PEGS> &c, uint8_t pegCount)
       : numPegs(pegCount) {
     colors = c;
   }
@@ -34,7 +34,7 @@ struct Pattern {
   bool operator<(const Pattern &other) const {
     if (numPegs != other.numPegs)
       return numPegs < other.numPegs;
-    for (size_t i = 0; i < numPegs; ++i) {
+    for (uint8_t i = 0; i < numPegs; ++i) {
       if (colors[i] != other.colors[i])
         return colors[i] < other.colors[i];
     }
@@ -53,7 +53,7 @@ struct Pattern {
 
   std::string toString() const {
     std::string result;
-    for (size_t i = 0; i < numPegs; ++i) {
+    for (uint8_t i = 0; i < numPegs; ++i) {
       if (i > 0)
         result += " ";
       result += std::to_string(colors[i]);
@@ -139,7 +139,7 @@ template <> struct hash<Mastermind::Pattern> {
   size_t operator()(const Mastermind::Pattern &pattern) const noexcept {
     // Hash the colors array using FNV-1a style mixing
     uint64_t h = 1469598103934665603ULL;
-    for (size_t i = 0; i < pattern.numPegs; ++i) {
+    for (uint8_t i = 0; i < pattern.numPegs; ++i) {
       h ^= static_cast<uint64_t>(pattern.colors[i]);
       h *= 1099511628211ULL;
     }
@@ -153,7 +153,7 @@ template <> struct hash<Mastermind::Feedback> {
     // Use a simple but decent combiner (64-bit FNV-1a style mix + shift/xor
     // mix)
     uint64_t h = 1469598103934665603ULL;
-    for (size_t i = 0; i < fb.guess.numPegs; ++i) {
+    for (uint8_t i = 0; i < fb.guess.numPegs; ++i) {
       h ^= static_cast<uint64_t>(fb.guess.colors[i]);
       h *= 1099511628211ULL;
     }

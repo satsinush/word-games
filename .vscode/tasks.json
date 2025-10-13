@@ -7,7 +7,7 @@
             "command": "cmake",
             "args": [
                 "--preset",
-                "Debug"
+                "mingw-debug"
             ],
             "problemMatcher": []
         },
@@ -39,7 +39,7 @@
             "command": "cmake",
             "args": [
                 "--preset",
-                "Release"
+                "mingw-release"
             ],
             "problemMatcher": []
         },
