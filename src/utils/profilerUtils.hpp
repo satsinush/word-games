@@ -8,6 +8,8 @@
 
 namespace Utils {
 
+namespace Profiling {
+
 long long getTime();
 
 std::string getDatetime(const int plusSeconds = 0);
@@ -164,5 +166,7 @@ constexpr int SEC_TO_NANO = 1000000000;
 extern Profiler g_profiler;
 // Global process instance
 extern Process g_process;
+
+} // namespace Profiling
 
 } // namespace Utils

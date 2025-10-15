@@ -314,10 +314,10 @@ int main(int argc, char *argv[]) {
     }
 
     try {
-      Utils::g_profiler.start();
+      Utils::Profiling::g_profiler.start();
       game->runHeadless(args);
-      Utils::g_profiler.stop();
-      Utils::g_profiler.logProfilerData();
+      Utils::Profiling::g_profiler.stop();
+      Utils::Profiling::g_profiler.logProfilerData();
     } catch (const std::exception &e) {
       std::cerr << "Error: " << e.what() << "\n";
       return 1;

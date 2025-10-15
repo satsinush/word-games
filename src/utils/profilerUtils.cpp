@@ -14,6 +14,9 @@
 #include "profilerUtils.hpp"
 
 namespace Utils {
+
+namespace Profiling {
+
 Profiler g_profiler;
 Process g_process;
 
@@ -98,7 +101,8 @@ int64_t Process::getTimeRemaining(const double progress) const {
 }
 
 void Process::update(double progress, double delay) {
-  Utils::ProfileScope scope(Utils::g_profiler, "[PROCESS UPDATE]");
+  Utils::Profiling::ProfileScope scope(Utils::Profiling::g_profiler,
+                                       "[PROCESS UPDATE]");
   if (progress <= 0) {
     progress = 0;
   }
@@ -334,4 +338,5 @@ ProfileScope::~ProfileScope() {
     return;
   profiler.profileStop(functionName);
 }
+} // namespace Profiling
 } // namespace Utils

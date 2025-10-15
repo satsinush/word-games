@@ -26,7 +26,7 @@ BenchmarkResult runRuntimeBenchmark(const std::string &gameMode,
               << config.iterations << " iterations)...\n";
   }
 
-  int64_t startTime = Utils::getTime();
+  int64_t startTime = Utils::Profiling::getTime();
 
   for (int i = 0; i < config.iterations; ++i) {
     if (gameMode == "wordle") {
@@ -106,9 +106,9 @@ BenchmarkResult runRuntimeBenchmark(const std::string &gameMode,
     }
   }
 
-  int64_t endTime = Utils::getTime();
+  int64_t endTime = Utils::Profiling::getTime();
 
-  result.totalTimeMs = (endTime - startTime) * Utils::NANO_TO_SEC *
+  result.totalTimeMs = (endTime - startTime) * Utils::Profiling::NANO_TO_SEC *
                        1000.0; // Convert nanoseconds to milliseconds
   result.averageTimeMs = result.totalTimeMs / config.iterations;
 
@@ -149,7 +149,7 @@ BenchmarkResult runPerformanceBenchmark(const std::string &gameMode,
               << " words...\n";
   }
 
-  int64_t startTime = Utils::getTime();
+  int64_t startTime = Utils::Profiling::getTime();
 
   int totalGuesses = 0;
   int minGuesses = INT_MAX;
@@ -159,9 +159,9 @@ BenchmarkResult runPerformanceBenchmark(const std::string &gameMode,
   solverConfig.maxDepth = 1; // Reasonable performance vs accuracy tradeoff
   solverConfig.excludeUncommonWords = true;
 
-  Utils::g_process.start();
+  Utils::Profiling::g_process.start();
   for (int i = 0; i < testWords; ++i) {
-    Utils::g_process.update(static_cast<double>(i) / testWords);
+    Utils::Profiling::g_process.update(static_cast<double>(i) / testWords);
     const Utils::Word &targetWord = fiveLetterWords[i];
     std::vector<Wordle::Feedback> feedbackHistory;
 
@@ -211,11 +211,11 @@ BenchmarkResult runPerformanceBenchmark(const std::string &gameMode,
                 << static_cast<double>(totalGuesses) / (i + 1) << " guesses)\n";
     }
   }
-  Utils::g_process.stop();
+  Utils::Profiling::g_process.stop();
 
-  int64_t endTime = Utils::getTime();
+  int64_t endTime = Utils::Profiling::getTime();
 
-  result.totalTimeMs = (endTime - startTime) * Utils::NANO_TO_SEC *
+  result.totalTimeMs = (endTime - startTime) * Utils::Profiling::NANO_TO_SEC *
                        1000.0; // Convert nanoseconds to milliseconds
   result.averageTimeMs = result.totalTimeMs / testWords;
   result.averageGuesses = static_cast<double>(totalGuesses) / testWords;
