@@ -34,6 +34,14 @@ struct Solution {
   double scoreMin;
   double scoreMax;
   double scoreSum;
+
+  bool operator<(const Solution &other) const {
+    if (wordCount != other.wordCount)
+      return wordCount < other.wordCount;
+    if (scoreMin != other.scoreMin)
+      return scoreMin > other.scoreMin;
+    return text < other.text;
+  }
 };
 
 struct CharStartIndexer {

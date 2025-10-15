@@ -375,17 +375,11 @@ runLetterBoxedSolver(const Config &config,
                             config, allPathIndices);
   }
 
-  std::sort(finalSolutions.begin(), finalSolutions.end(),
-            [](const Solution &a, const Solution &b) {
-              if (a.wordCount != b.wordCount)
-                return a.wordCount < b.wordCount;
-              if (a.scoreMin != b.scoreMin)
-                return a.scoreMin > b.scoreMin;
-              return a.text < b.text;
-            }); // Sort by text last
+  std::sort(finalSolutions.begin(), finalSolutions.end());
 
-  // Deduplicate solutions by their text representation, keeping the first
-  // occurrence in sorted order
+  // Deduplicate solutions by their text representation
+  // Multiple internal paths can produce identical solution strings with
+  // identical scores
   std::vector<Solution> deduped;
   deduped.reserve(finalSolutions.size());
   std::unordered_set<std::string> seen;
