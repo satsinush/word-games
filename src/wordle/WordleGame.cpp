@@ -27,9 +27,9 @@ Wordle::Config WordleGame::getConfigFromUser() {
 Wordle::Config
 WordleGame::getConfigFromArgs(const std::map<std::string, std::string> &args) {
   Wordle::Config config;
-  config.maxDepth = Utils::Input::getArgValue(args, "maxDepth", 0);
+  config.maxDepth = Utils::Input::getArgValue(args, "max-depth", 0);
   config.excludeUncommonWords =
-      Utils::Input::getArgValue(args, "excludeUncommonWords", false);
+      Utils::Input::getArgValue(args, "exclude-uncommon-words", false);
   return config;
 }
 
@@ -295,9 +295,9 @@ void WordleGame::runHeadless(const std::map<std::string, std::string> &args) {
         Wordle::runWordleSolver(wordVec, feedbackHistory, config);
 
     std::string possibleFile = Utils::Input::getArgValue(
-        args, "possibleFile", std::string("results/possible.txt"));
+        args, "possible-file", std::string("results/possible.txt"));
     std::string guessesFile = Utils::Input::getArgValue(
-        args, "guessesFile", std::string("results/guesses.txt"));
+        args, "guesses-file", std::string("results/guesses.txt"));
 
     saveResults(result, possibleFile, guessesFile);
   } catch (const std::exception &e) {

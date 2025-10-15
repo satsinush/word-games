@@ -1,5 +1,3 @@
---mode letterboxed --preset 1 --letters uvjswitgebac
-
 uvjswitgebac
 chiurpngoeaj
 eciaxyotuhrn

@@ -25,11 +25,11 @@ Mastermind::Config MastermindGame::getConfigFromUser() {
 Mastermind::Config MastermindGame::getConfigFromArgs(
     const std::map<std::string, std::string> &args) {
   Mastermind::Config config;
-  config.numPegs = Utils::Input::getArgValue(args, "numPegs", 4u);
-  config.numColors = Utils::Input::getArgValue(args, "numColors", 6u);
+  config.numPegs = Utils::Input::getArgValue(args, "num-pegs", 4u);
+  config.numColors = Utils::Input::getArgValue(args, "num-colors", 6u);
   config.allowDuplicates =
-      Utils::Input::getArgValue(args, "allowDuplicates", true);
-  config.maxDepth = Utils::Input::getArgValue(args, "maxDepth", 1u);
+      Utils::Input::getArgValue(args, "allow-duplicates", true);
+  config.maxDepth = Utils::Input::getArgValue(args, "max-depth", 1u);
   return config;
 }
 
@@ -422,9 +422,9 @@ void MastermindGame::runHeadless(
         Mastermind::runMastermindSolver(allPatterns, guessHistory, config);
 
     std::string possibleFile = Utils::Input::getArgValue(
-        args, "possibleFile", std::string("results/possible.txt"));
+        args, "possible-file", std::string("results/possible.txt"));
     std::string guessesFile = Utils::Input::getArgValue(
-        args, "guessesFile", std::string("results/guesses.txt"));
+        args, "guesses-file", std::string("results/guesses.txt"));
 
     saveResults(result, possibleFile, guessesFile);
   } catch (const std::exception &e) {

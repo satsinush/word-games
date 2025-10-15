@@ -22,75 +22,89 @@
 
 void printUsage(const char *programName) {
   const char *usage_message = R"(Usage:
-  --mode <mode>: Specify the mode of operation. Options are:
-      letterboxed: Solve the Letter Boxed puzzle.
-      spellingbee: Solve the Spelling Bee puzzle.
-      wordle: Solve Wordle puzzles with entropy-based suggestions.
-      mastermind: Solve Mastermind puzzles with entropy-based suggestions.
-      read: Read and display results from a file.
+  %s [OPTIONS] [MODE]
+  
+  If no arguments provided: Launch GUI mode (if compiled with GUI support)
+  If MODE is provided: Run the specified game mode
+  
+Options:
+  -h, --help              Display this help message
+  -v, --verbose           Enable verbose output (for future use)
+  -i                      Run in interactive CLI mode
 
-  Letter Boxed:
-    %s --mode letterboxed --letters <12letters> [--preset <1|2|3|0>] [--file <filename>]
-      --letters: Specify the 12 letters for the Letter Boxed puzzle.
-      --preset: 1=Default, 2=Fast, 3=Thorough, 0=Custom. (optional)
-      --maxDepth: Maximum number of words per solution (required if preset=0).
-      --minWordLength: Minimum word length (required if preset=0).
-      --minUniqueLetters: Minimum unique letters per word (required if preset=0).
-      --pruneRedundantPaths: 0 or 1 to enable/disable pruning redundant paths (required if preset=0).
-      --pruneDominatedClasses: 0 or 1 to enable/disable pruning dominated classes (required if preset=0).
-      --file: Specify the output file to save solutions (default: results/temp.txt).
+Modes:
+  letterboxed            Solve the Letter Boxed puzzle
+  spellingbee            Solve the Spelling Bee puzzle
+  wordle                 Solve Wordle puzzles with entropy-based suggestions
+  mastermind             Solve Mastermind puzzles with entropy-based suggestions
+  read                   Read and display results from a file
 
-  Spelling Bee:
-    %s --mode spellingbee --letters <7letters> [--file <filename>]
-      --letters: Specify the 7 letters for the Spelling Bee puzzle.
-      --file: Specify the output file to save solutions (default: results/temp.txt).
+Letter Boxed:
+  %s letterboxed --letters <12letters> [OPTIONS]
+    --letters <letters>         12 letters for the puzzle (required)
+    --preset <1|2|3|0>         Preset configuration (default: 1)
+                                 1=Default, 2=Fast, 3=Thorough, 0=Custom
+    --max-depth <n>            Maximum words per solution (required if preset=0)
+    --min-word-length <n>      Minimum word length (required if preset=0)
+    --min-unique-letters <n>   Minimum unique letters per word (required if preset=0)
+    --prune-paths              Enable pruning redundant paths (1/true/yes or 0/false/no)
+    --prune-classes            Enable pruning dominated classes (1/true/yes or 0/false/no)
+    --file <filename>          Output file (default: results/temp.txt)
 
-  Wordle:
-    %s --mode wordle [--guesses <guesses>] [--maxDepth <depth>] [--possibleFile <filename>] [--guessesFile <filename>] [--excludeUncommonWords <0|1>]
-      --guesses: Specify guess/feedback pairs. Format: "STEAL 01201;CRANE 00120" where:
-                  0=grey (letter not in word), 1=yellow (letter in word, wrong position),
-                  2=green (letter in word, correct position)
-      --maxDepth: Search depth for entropy calculation (0-2, default: 0). Higher values are more accurate but slower.
-      --possibleFile: Output file for possible solution words (default: results/possible.txt).
-      --guessesFile: Output file for all guesses with entropy/probability (default: results/guesses.txt).
-      --excludeUncommonWords: 0 or 1 to enable/disable excluding uncommon words (default: 0).
+Spelling Bee:
+  %s spellingbee --letters <7letters> [OPTIONS]
+    --letters <letters>         7 letters for the puzzle (required)
+    --file <filename>          Output file (default: results/temp.txt)
 
-  Mastermind:
-    %s --mode mastermind [--guesses <guesses>] [--numPegs <pegs>] [--numColors <colors>] [--allowDuplicates <0|1>] [--maxDepth <depth>] [--possibleFile <filename>] [--guessesFile <filename>]
-      --guesses: Specify guess/feedback pairs. Format: "1 1 2 2 3|1 2;3 4 5 6 7|1 2" where:
-                  Pattern: sequence of color numbers separated by spaces
-                  Feedback: <correct_position> <correct_color> (e.g., "2 2" = 2 correct position, 2 correct color)
-      --numPegs: Number of pegs in the pattern (default: 4)
-      --numColors: Number of available colors (default: 6)
-      --allowDuplicates: 0 or 1 to disable/enable duplicate colors in patterns (default: 1)
-      --maxDepth: Search depth for entropy calculation (1-3, default: 1)
-      --possibleFile: Output file for possible solution patterns (default: results/possible.txt)
-      --guessesFile: Output file for all guesses with entropy/probability (default: results/guesses.txt)
+Wordle:
+  %s wordle [OPTIONS]
+    --guesses <guesses>        Guess/feedback pairs. Format: "STEAL 01201;CRANE 00120"
+                                 0=grey, 1=yellow, 2=green
+    --max-depth <0-2>          Search depth for entropy (default: 0)
+    --possible-file <file>     Output file for possible words (default: results/possible.txt)
+    --guesses-file <file>      Output file for all guesses (default: results/guesses.txt)
+    --exclude-uncommon-words   Exclude uncommon words (1/true/yes or 0/false/no)
 
-  Read Mode:
-    %s --mode read [--file <filename>] [--start <startIndex>] [--end <endIndex>]
-      --file: Specify the input file to read solutions from (default: results/temp.txt).
-      --start: Starting index of results to display (default: 0).
-      --end: Ending index of results to display (default: all results).
+Mastermind:
+  %s mastermind [OPTIONS]
+    --guesses <guesses>        Guess/feedback pairs. Format: "1 1 2 2|1 2;3 4 5 6|1 2"
+                                 Pattern|Feedback (pos color)
+    --num-pegs <n>             Number of pegs (default: 4)
+    --num-colors <n>           Number of colors (default: 6)
+    --allow-duplicates         Allow duplicate colors (1/true/yes or 0/false/no, default: 1)
+    --max-depth <1-3>          Search depth for entropy (default: 1)
+    --possible-file <file>     Output file for possible patterns (default: results/possible.txt)
+    --guesses-file <file>      Output file for all guesses (default: results/guesses.txt)
 
-  Benchmarking:
-    %s --benchmark runtime --mode <mode> [--iterations <count>] [--verbose <0|1>]
-      Runs a runtime benchmark for the specified game mode.
-      --iterations: Number of iterations to run (default: 1)
-      --verbose: Enable verbose output during benchmark (default: 0)
+Read Mode:
+  %s read [OPTIONS]
+    --file <filename>          Input file to read (default: results/temp.txt)
+    --start <n>                Starting index (default: 0)
+    --end <n>                  Ending index (default: all)
 
-    %s --benchmark performance --mode <mode> [--verbose <0|1>]
-      Runs a performance benchmark for the specified game mode.
-      Currently only available for Wordle - tests solver against top 1000 words.
-      --verbose: Enable verbose output during benchmark (default: 0)
+Benchmarking:
+  %s --benchmark runtime <mode> [OPTIONS]
+    Run runtime benchmark for specified game mode
+    --iterations <n>           Number of iterations (default: 1)
+    --verbose                  Enable verbose output
 
-  Help:
-    %s --help
-      Displays this help message with detailed information about arguments and options.
+  %s --benchmark performance <mode> [OPTIONS]
+    Run performance benchmark (currently Wordle only)
+    --verbose                  Enable verbose output
+
+Boolean Values:
+  Accepted as TRUE:  1, y, Y, yes, YES, Yes, t, T, true, True, TRUE
+  Accepted as FALSE: 0, n, N, no, NO, No, f, F, false, False, FALSE
+
+Examples:
+  %s letterboxed --letters abcdefghijkl --preset 2
+  %s -i
+  %s wordle --guesses "STEAL 01201;CRANE 00120" --max-depth 1
 )";
 
   printf(usage_message, programName, programName, programName, programName,
-         programName, programName, programName, programName);
+         programName, programName, programName, programName, programName,
+         programName, programName);
 }
 
 void runReadMode(const std::map<std::string, std::string> &args) {
@@ -205,8 +219,18 @@ void runInteractiveMode(const std::vector<Utils::Word> &wordVec) {
 }
 
 int main(int argc, char *argv[]) {
+  // Parse command line arguments
+  std::map<std::string, std::string> args =
+      Utils::Input::parseCommandArgs(argc, argv);
+
+  // Check for help
+  if (args.find("h") != args.end() || args.find("help") != args.end()) {
+    printUsage(argv[0]);
+    return 0;
+  }
+
 #ifdef WITH_GUI
-  // Check if no arguments are provided - launch GUI
+  // Check if no arguments are provided or no mode specified - launch GUI
   if (argc == 1) {
     QApplication app(argc, argv);
 
@@ -217,15 +241,10 @@ int main(int argc, char *argv[]) {
   }
 #endif
 
-  // Parse command line arguments
-  std::map<std::string, std::string> args =
-      Utils::Input::parseCommandArgs(argc, argv);
-
-  // Check for help
-  if (argc > 1 &&
-      (std::string(argv[1]) == "--help" || std::string(argv[1]) == "help" ||
-       std::string(argv[1]) == "-h")) {
-    printUsage(argv[0]);
+  // Check if interactive mode is requested
+  if (args.find("i") != args.end()) {
+    std::vector<Utils::Word> wordVec = Utils::loadWords();
+    runInteractiveMode(wordVec);
     return 0;
   }
 

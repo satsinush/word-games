@@ -175,14 +175,15 @@ LetterBoxed::Config LetterBoxedGame::getConfigFromArgs(
     config.pruneDominatedClasses = false;
   } else if (preset == 0) {
     // Custom - read individual settings
-    config.maxDepth = Utils::Input::getArgValue(args, "maxDepth", 2);
-    config.minWordLength = Utils::Input::getArgValue(args, "minWordLength", 3);
+    config.maxDepth = Utils::Input::getArgValue(args, "max-depth", 2);
+    config.minWordLength =
+        Utils::Input::getArgValue(args, "min-word-length", 3);
     config.minUniqueLetters =
-        Utils::Input::getArgValue(args, "minUniqueLetters", 2);
+        Utils::Input::getArgValue(args, "min-unique-letters", 2);
     config.pruneRedundantPaths =
-        Utils::Input::getArgValue(args, "pruneRedundantPaths", true);
+        Utils::Input::getArgValue(args, "prune-paths", true);
     config.pruneDominatedClasses =
-        Utils::Input::getArgValue(args, "pruneDominatedClasses", false);
+        Utils::Input::getArgValue(args, "prune-classes", false);
   }
 
   return config;

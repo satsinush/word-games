@@ -260,7 +260,9 @@ parseBenchmarkArgs(const std::map<std::string, std::string> &args) {
 
   config.gameMode = Utils::Input::getArgValue(args, "mode", std::string(""));
   config.iterations = Utils::Input::getArgValue(args, "iterations", 1);
-  config.verbose = Utils::Input::getArgValue(args, "verbose", false);
+  // Check for both -v and --verbose
+  config.verbose = Utils::Input::getArgValue(args, "v", false) ||
+                   Utils::Input::getArgValue(args, "verbose", false);
 
   return config;
 }

@@ -128,16 +128,18 @@ std::string promptLetters(const std::string &prompt, const size_t expectedCount,
 
 std::map<std::string, std::string> parseCommandArgs(int argc, char *argv[]) {
   std::map<std::string, std::string> args;
+  int positionalIndex = 0;
 
   for (int i = 1; i < argc; ++i) {
     std::string arg = argv[i];
 
+    // Handle long options (--option)
     if (arg.substr(0, 2) == "--") {
       std::string key = arg.substr(2);
       std::string value;
 
       // Check if next argument exists and is not a flag
-      if (i + 1 < argc && std::string(argv[i + 1]).substr(0, 2) != "--") {
+      if (i + 1 < argc && argv[i + 1][0] != '-') {
         value = argv[i + 1];
         i++; // Skip next argument as it's the value
       } else {
@@ -145,6 +147,32 @@ std::map<std::string, std::string> parseCommandArgs(int argc, char *argv[]) {
       }
 
       args[key] = value;
+    }
+    // Handle short options (-o)
+    else if (arg.size() >= 2 && arg[0] == '-' && arg[1] != '-') {
+      // Short option(s)
+      for (size_t j = 1; j < arg.size(); ++j) {
+        char opt = arg[j];
+        std::string key(1, opt);
+
+        // If it's the last character and there's a next arg that's not a flag,
+        // take it as value
+        if (j == arg.size() - 1 && i + 1 < argc && argv[i + 1][0] != '-') {
+          args[key] = argv[i + 1];
+          i++;
+        } else {
+          args[key] = "true";
+        }
+      }
+    }
+    // Handle positional arguments
+    else {
+      if (positionalIndex == 0) {
+        args["mode"] = arg;
+      } else {
+        args["positional" + std::to_string(positionalIndex)] = arg;
+      }
+      positionalIndex++;
     }
   }
 
@@ -173,12 +201,17 @@ bool getArgValue(const std::map<std::string, std::string> &args,
   if (it == args.end())
     return defaultValue;
 
-  std::string value = Utils::trimToLower(it->second);
-  if (value == "0" || value == "false" || value == "no" || value == "f" ||
-      value == "n")
+  std::string value = it->second;
+  std::string valueLower = Utils::trimToLower(value);
+
+  // Accept various forms of false
+  if (valueLower == "0" || valueLower == "false" || valueLower == "no" ||
+      valueLower == "f" || valueLower == "n")
     return false;
-  if (value == "1" || value == "true" || value == "yes" || value == "t" ||
-      value == "y")
+
+  // Accept various forms of true (case-insensitive)
+  if (valueLower == "1" || valueLower == "true" || valueLower == "yes" ||
+      valueLower == "t" || valueLower == "y")
     return true;
 
   return defaultValue;

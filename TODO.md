@@ -4,4 +4,4 @@
 - Create GUI for games
 - Put profiler methods in sub namespace
 - Make benchmarking functions part of the game interface
-- Consolidate and make print commands more consistent
+- Consolidate and make print commands more consistent, and make interactive mode more intuitive
