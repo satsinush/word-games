@@ -49,20 +49,20 @@ Letter Boxed:
     --min-unique-letters <n>   Minimum unique letters per word (required if preset=0)
     --prune-paths              Enable pruning redundant paths (1/true/yes or 0/false/no)
     --prune-classes            Enable pruning dominated classes (1/true/yes or 0/false/no)
-    --file <filename>          Output file (default: results/temp.txt)
+    -o, --output <file>        Output file (default: results/temp.txt)
 
 Spelling Bee:
   %s spellingbee --letters <7letters> [OPTIONS]
     --letters <letters>         7 letters for the puzzle (required)
-    --file <filename>          Output file (default: results/temp.txt)
+    -o, --output <file>        Output file (default: results/temp.txt)
 
 Wordle:
   %s wordle [OPTIONS]
     --guesses <guesses>        Guess/feedback pairs. Format: "STEAL 01201;CRANE 00120"
                                  0=grey, 1=yellow, 2=green
     --max-depth <0-2>          Search depth for entropy (default: 0)
-    --possible-file <file>     Output file for possible words (default: results/possible.txt)
-    --guesses-file <file>      Output file for all guesses (default: results/guesses.txt)
+    -o, --output <file>        Output file with possible words and all guesses
+                                 (default: results/guesses.txt)
     --exclude-uncommon-words   Exclude uncommon words (1/true/yes or 0/false/no)
 
 Mastermind:
@@ -73,12 +73,12 @@ Mastermind:
     --num-colors <n>           Number of colors (default: 6)
     --allow-duplicates         Allow duplicate colors (1/true/yes or 0/false/no, default: 1)
     --max-depth <1-3>          Search depth for entropy (default: 1)
-    --possible-file <file>     Output file for possible patterns (default: results/possible.txt)
-    --guesses-file <file>      Output file for all guesses (default: results/guesses.txt)
+    -o, --output <file>        Output file with possible patterns and all guesses
+                                 (default: results/guesses.txt)
 
 Read Mode:
-  %s read [OPTIONS]
-    --file <filename>          Input file to read (default: results/temp.txt)
+  %s read [FILE] [OPTIONS]
+    FILE                       Input file to read (default: results/temp.txt)
     --start <n>                Starting index (default: 0)
     --end <n>                  Ending index (default: all)
 
@@ -97,19 +97,30 @@ Boolean Values:
   Accepted as FALSE: 0, n, N, no, NO, No, f, F, false, False, FALSE
 
 Examples:
-  %s letterboxed --letters abcdefghijkl --preset 2
+  %s letterboxed --letters abcdefghijkl --preset 2 -o results/solutions.txt
   %s -i
-  %s wordle --guesses "STEAL 01201;CRANE 00120" --max-depth 1
+  %s wordle --guesses "STEAL 01201;CRANE 00120" --max-depth 1 -o results/wordle.txt
+  %s read results/wordle.txt --start 0 --end 10
 )";
 
   printf(usage_message, programName, programName, programName, programName,
          programName, programName, programName, programName, programName,
-         programName, programName);
+         programName, programName, programName, programName);
 }
 
-void runReadMode(const std::map<std::string, std::string> &args) {
-  std::string filename =
-      Utils::Input::getArgValue(args, "file", std::string("results/temp.txt"));
+void runReadMode(const std::map<std::string, std::string> &args,
+                 const std::vector<std::string> &positional = {}) {
+  // Use second positional argument as filename (from command line),
+  // or "file" key (from interactive mode), or default
+  std::string filename;
+  if (positional.size() >= 2) {
+    // Command line: second positional arg is the filename
+    filename = positional[1];
+  } else {
+    // Interactive mode: check "file" key
+    filename = Utils::Input::getArgValue(args, "file",
+                                         std::string("results/temp.txt"));
+  }
   int start = Utils::Input::getArgValue(args, "start", 0);
   int end = Utils::Input::getArgValue(args, "end", -1);
 
@@ -220,8 +231,9 @@ void runInteractiveMode(const std::vector<Utils::Word> &wordVec) {
 
 int main(int argc, char *argv[]) {
   // Parse command line arguments
-  std::map<std::string, std::string> args =
+  Utils::Input::CommandArgs cmdArgs =
       Utils::Input::parseCommandArgs(argc, argv);
+  std::map<std::string, std::string> &args = cmdArgs.flags;
 
   // Check for help
   if (args.find("h") != args.end() || args.find("help") != args.end()) {
@@ -230,7 +242,7 @@ int main(int argc, char *argv[]) {
   }
 
 #ifdef WITH_GUI
-  // Check if no arguments are provided or no mode specified - launch GUI
+  // Check if no arguments are provided
   if (argc == 1) {
     QApplication app(argc, argv);
 
@@ -263,12 +275,12 @@ int main(int argc, char *argv[]) {
       return 1;
     }
 
-    if (args.find("mode") == args.end()) {
+    if (cmdArgs.positional.empty()) {
       std::cerr << "Mode must be specified for benchmarking\n";
       return 1;
     }
 
-    std::string mode = Utils::Input::getArgValue(args, "mode", std::string(""));
+    std::string mode = cmdArgs.positional[0];
     Utils::Testing::BenchmarkConfig config =
         Utils::Testing::parseBenchmarkArgs(args);
 
@@ -291,13 +303,13 @@ int main(int argc, char *argv[]) {
   }
 
   // Check if mode is specified for headless operation
-  if (args.find("mode") != args.end()) {
-    std::string mode = Utils::Input::getArgValue(args, "mode", std::string(""));
+  if (!cmdArgs.positional.empty()) {
+    std::string mode = cmdArgs.positional[0];
 
     // Handle read mode separately since it doesn't use the game interface
     if (mode == "read") {
       try {
-        runReadMode(args);
+        runReadMode(args, cmdArgs.positional);
       } catch (const std::exception &e) {
         std::cerr << "Error: " << e.what() << "\n";
         return 1;
@@ -315,7 +327,7 @@ int main(int argc, char *argv[]) {
 
     try {
       Utils::Profiling::g_profiler.start();
-      game->runHeadless(args);
+      game->runHeadless(cmdArgs);
       Utils::Profiling::g_profiler.stop();
       Utils::Profiling::g_profiler.logProfilerData();
     } catch (const std::exception &e) {

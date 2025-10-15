@@ -180,47 +180,34 @@ void WordleGame::printResults(const Wordle::Result &result) {
 }
 
 void WordleGame::saveResults(const Wordle::Result &result,
-                             const std::string &possibleFile,
-                             const std::string &guessesFile) {
-  // Save possible words
-  std::filesystem::path possiblePath(possibleFile);
-  if (!possiblePath.parent_path().empty() &&
-      !std::filesystem::exists(possiblePath.parent_path())) {
-    std::filesystem::create_directories(possiblePath.parent_path());
+                             const std::string &outputFile) {
+  // Save to single output file
+  std::filesystem::path outputPath(outputFile);
+  if (!outputPath.parent_path().empty() &&
+      !std::filesystem::exists(outputPath.parent_path())) {
+    std::filesystem::create_directories(outputPath.parent_path());
   }
 
-  std::ofstream possibleOut(possibleFile);
-  if (possibleOut.is_open()) {
-    // Extract possible words from sorted guesses that have probability > 0
+  std::ofstream out(outputFile);
+  if (out.is_open()) {
+    // Write possible words first (those with probability > 0)
     for (const auto &guess : result.sortedGuesses) {
       if (guess.probability > 0.0) {
-        possibleOut << guess.word.wordString << "\n";
+        out << guess.word.wordString << "\n";
       }
     }
-    possibleOut.close();
-  }
-
-  // Save all guesses with ENT
-  std::filesystem::path guessesPath(guessesFile);
-  if (!guessesPath.parent_path().empty() &&
-      !std::filesystem::exists(guessesPath.parent_path())) {
-    std::filesystem::create_directories(guessesPath.parent_path());
-  }
-
-  std::ofstream guessesOut(guessesFile);
-  if (guessesOut.is_open()) {
-    guessesOut << "word,expected_turns,probability\n";
     for (const auto &guess : result.sortedGuesses) {
-      guessesOut << guess.word.wordString << "," << guess.ent << ","
-                 << guess.probability << "\n";
+      out << guess.word.wordString << "," << guess.ent << ","
+          << guess.probability << "\n";
     }
-    guessesOut.close();
+    out.close();
+  } else {
+    std::cerr << "Could not write to file: " << outputFile << "\n";
   }
 
   std::cout << result.totalPossibleWords << "\n";
   std::cout << result.sortedGuesses.size() << "\n";
-  std::cout << possibleFile << "\n";
-  std::cout << guessesFile;
+  std::cout << outputFile;
 }
 
 void WordleGame::runCLI() {
@@ -286,20 +273,23 @@ void WordleGame::runCLI() {
   }
 }
 
-void WordleGame::runHeadless(const std::map<std::string, std::string> &args) {
+void WordleGame::runHeadless(const Utils::Input::CommandArgs &cmdArgs) {
   try {
+    const auto &args = cmdArgs.flags;
     Wordle::Config config = getConfigFromArgs(args);
     std::vector<Wordle::Feedback> feedbackHistory = getFeedbackFromArgs(args);
 
     Wordle::Result result =
         Wordle::runWordleSolver(wordVec, feedbackHistory, config);
 
-    std::string possibleFile = Utils::Input::getArgValue(
-        args, "possible-file", std::string("results/possible.txt"));
-    std::string guessesFile = Utils::Input::getArgValue(
-        args, "guesses-file", std::string("results/guesses.txt"));
+    std::string outputFile =
+        Utils::Input::getArgValue(args, "o", std::string(""));
+    if (outputFile.empty()) {
+      outputFile = Utils::Input::getArgValue(
+          args, "output", std::string("results/guesses.txt"));
+    }
 
-    saveResults(result, possibleFile, guessesFile);
+    saveResults(result, outputFile);
   } catch (const std::exception &e) {
     std::cerr << "Error: " << e.what() << "\n";
   }

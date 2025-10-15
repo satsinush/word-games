@@ -2,9 +2,15 @@
 #include <functional>
 #include <map>
 #include <string>
+#include <vector>
 
 namespace Utils {
 namespace Input {
+// Structure to hold parsed command line arguments
+struct CommandArgs {
+  std::map<std::string, std::string> flags;
+  std::vector<std::string> positional;
+};
 // Get validated integer input with default value and optional range
 int promptInt(const std::string &prompt, const int defaultValue,
               const int min = INT_MIN, const int max = INT_MAX);
@@ -21,8 +27,8 @@ promptString(const std::string &prompt, const std::string &defaultValue = "",
 std::string promptLetters(const std::string &prompt, const size_t expectedCount,
                           const bool allowDuplicates = true);
 
-// Parse command line arguments into key-value pairs
-std::map<std::string, std::string> parseCommandArgs(int argc, char *argv[]);
+// Parse command line arguments into flags and positional arguments
+CommandArgs parseCommandArgs(int argc, char *argv[]);
 
 // Helper to get value from args map with default
 template <typename T>

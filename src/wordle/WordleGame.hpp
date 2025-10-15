@@ -17,15 +17,13 @@ private:
   std::vector<Wordle::Feedback>
   getFeedbackFromArgs(const std::map<std::string, std::string> &args);
   void printResults(const Wordle::Result &result);
-  void saveResults(const Wordle::Result &result,
-                   const std::string &possibleFile,
-                   const std::string &guessesFile);
+  void saveResults(const Wordle::Result &result, const std::string &outputFile);
 
 public:
   explicit WordleGame(const std::vector<Utils::Word> &words);
 
   void runCLI() override;
-  void runHeadless(const std::map<std::string, std::string> &args) override;
+  void runHeadless(const Utils::Input::CommandArgs &cmdArgs) override;
   void runGUI() override;
   std::string getGameName() const override { return "wordle"; }
 };

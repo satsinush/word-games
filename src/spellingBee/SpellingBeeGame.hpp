@@ -20,7 +20,7 @@ public:
   explicit SpellingBeeGame(const std::vector<Utils::Word> &words);
 
   void runCLI() override;
-  void runHeadless(const std::map<std::string, std::string> &args) override;
+  void runHeadless(const Utils::Input::CommandArgs &cmdArgs) override;
   void runGUI() override;
   std::string getGameName() const override { return "spellingbee"; }
 };

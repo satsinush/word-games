@@ -129,17 +129,21 @@ void SpellingBeeGame::runCLI() {
   }
 }
 
-void SpellingBeeGame::runHeadless(
-    const std::map<std::string, std::string> &args) {
+void SpellingBeeGame::runHeadless(const Utils::Input::CommandArgs &cmdArgs) {
   try {
+    const auto &args = cmdArgs.flags;
     SpellingBee::Config config = getConfigFromArgs(args);
 
     std::vector<Utils::Word> solutions =
         SpellingBee::runSpellingBeeSolver(wordVec, config);
 
     // Output to file if specified
-    std::string outputFile = Utils::Input::getArgValue(
-        args, "file", std::string("results/temp.txt"));
+    std::string outputFile =
+        Utils::Input::getArgValue(args, "o", std::string(""));
+    if (outputFile.empty()) {
+      outputFile = Utils::Input::getArgValue(args, "output",
+                                             std::string("results/temp.txt"));
+    }
 
     // Ensure directory exists
     std::filesystem::path filePath(outputFile);

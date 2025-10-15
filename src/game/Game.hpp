@@ -1,5 +1,5 @@
 #pragma once
-#include <map>
+#include "../utils/inputUtils.hpp"
 #include <string>
 
 namespace Game {
@@ -12,7 +12,7 @@ public:
   virtual void runCLI() = 0;
 
   // Run game in headless mode with command-line arguments
-  virtual void runHeadless(const std::map<std::string, std::string> &args) = 0;
+  virtual void runHeadless(const Utils::Input::CommandArgs &cmdArgs) = 0;
 
   // Run game with GUI (to be implemented later)
   virtual void runGUI() = 0;

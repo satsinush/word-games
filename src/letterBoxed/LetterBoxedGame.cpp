@@ -248,17 +248,21 @@ void LetterBoxedGame::runCLI() {
   }
 }
 
-void LetterBoxedGame::runHeadless(
-    const std::map<std::string, std::string> &args) {
+void LetterBoxedGame::runHeadless(const Utils::Input::CommandArgs &cmdArgs) {
   try {
+    const auto &args = cmdArgs.flags;
     LetterBoxed::Config config = getConfigFromArgs(args);
 
     std::vector<LetterBoxed::Solution> solutions =
         LetterBoxed::runLetterBoxedSolver(config, wordVec);
 
     // Output to file if specified
-    std::string outputFile = Utils::Input::getArgValue(
-        args, "file", std::string("results/temp.txt"));
+    std::string outputFile =
+        Utils::Input::getArgValue(args, "o", std::string(""));
+    if (outputFile.empty()) {
+      outputFile = Utils::Input::getArgValue(args, "output",
+                                             std::string("results/temp.txt"));
+    }
 
     // Ensure directory exists
     std::filesystem::path filePath(outputFile);

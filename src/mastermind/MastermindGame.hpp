@@ -18,14 +18,13 @@ private:
                       const Mastermind::Config &config);
   void printResults(const Mastermind::Result &result);
   void saveResults(const Mastermind::Result &result,
-                   const std::string &possibleFile,
-                   const std::string &guessesFile);
+                   const std::string &outputFile);
 
 public:
   MastermindGame() = default;
 
   void runCLI() override;
-  void runHeadless(const std::map<std::string, std::string> &args) override;
+  void runHeadless(const Utils::Input::CommandArgs &cmdArgs) override;
   void runGUI() override;
   std::string getGameName() const override { return "mastermind"; }
 };

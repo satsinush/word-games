@@ -126,9 +126,8 @@ std::string promptLetters(const std::string &prompt, const size_t expectedCount,
   }
 }
 
-std::map<std::string, std::string> parseCommandArgs(int argc, char *argv[]) {
-  std::map<std::string, std::string> args;
-  int positionalIndex = 0;
+CommandArgs parseCommandArgs(int argc, char *argv[]) {
+  CommandArgs result;
 
   for (int i = 1; i < argc; ++i) {
     std::string arg = argv[i];
@@ -146,7 +145,7 @@ std::map<std::string, std::string> parseCommandArgs(int argc, char *argv[]) {
         value = "true"; // Flag without value defaults to true
       }
 
-      args[key] = value;
+      result.flags[key] = value;
     }
     // Handle short options (-o)
     else if (arg.size() >= 2 && arg[0] == '-' && arg[1] != '-') {
@@ -158,25 +157,20 @@ std::map<std::string, std::string> parseCommandArgs(int argc, char *argv[]) {
         // If it's the last character and there's a next arg that's not a flag,
         // take it as value
         if (j == arg.size() - 1 && i + 1 < argc && argv[i + 1][0] != '-') {
-          args[key] = argv[i + 1];
+          result.flags[key] = argv[i + 1];
           i++;
         } else {
-          args[key] = "true";
+          result.flags[key] = "true";
         }
       }
     }
     // Handle positional arguments
     else {
-      if (positionalIndex == 0) {
-        args["mode"] = arg;
-      } else {
-        args["positional" + std::to_string(positionalIndex)] = arg;
-      }
-      positionalIndex++;
+      result.positional.push_back(arg);
     }
   }
 
-  return args;
+  return result;
 }
 
 // Template specializations
