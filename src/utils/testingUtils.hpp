@@ -11,10 +11,19 @@ namespace Utils {
 namespace Testing {
 
 /**
+ * Benchmark types
+ */
+enum class BenchmarkType {
+  RUNTIME,    // Measures execution time
+  PERFORMANCE // Measures solving performance (e.g., average guesses)
+};
+
+/**
  * Benchmark configuration for different game modes
  */
 struct BenchmarkConfig {
   std::string gameMode;
+  BenchmarkType type = BenchmarkType::RUNTIME;
   int iterations = 1;
   bool verbose = false;
 };
@@ -36,24 +45,6 @@ struct BenchmarkResult {
 };
 
 /**
- * Run a basic runtime benchmark for the specified game mode
- */
-BenchmarkResult
-runRuntimeBenchmark(const std::string &gameMode,
-                    const std::vector<Utils::Word> &wordVec,
-                    const BenchmarkConfig &config = BenchmarkConfig{});
-
-/**
- * Run a performance benchmark (currently only available for Wordle)
- * Tests the solver against a set of target words and measures solving
- * performance
- */
-BenchmarkResult
-runPerformanceBenchmark(const std::string &gameMode,
-                        const std::vector<Utils::Word> &wordVec,
-                        const BenchmarkConfig &config = BenchmarkConfig{});
-
-/**
  * Print benchmark results in a formatted table
  */
 void printBenchmarkResults(const BenchmarkResult &result);
@@ -61,8 +52,7 @@ void printBenchmarkResults(const BenchmarkResult &result);
 /**
  * Parse benchmark arguments from command line
  */
-BenchmarkConfig
-parseBenchmarkArgs(const std::map<std::string, std::string> &args);
+BenchmarkConfig parseBenchmarkArgs(const Utils::Input::CommandArgs &cmdArgs);
 
 } // namespace Testing
 } // namespace Utils

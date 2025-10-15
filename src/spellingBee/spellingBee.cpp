@@ -45,9 +45,7 @@ runSpellingBeeSolver(const std::vector<Utils::Word> &words,
             [](const Utils::Word &a, const Utils::Word &b) {
               if (a.uniqueLetters != b.uniqueLetters)
                 return a.uniqueLetters > b.uniqueLetters;
-              if (a.score != b.score)
-                return a.score > b.score;
-              return a.wordString < b.wordString; // Sort by text last
+              return a < b; // Sort by word last
             });
   return wordsCopy;
 }

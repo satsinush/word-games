@@ -211,39 +211,63 @@ void LetterBoxedGame::printSolutions(
 
 void LetterBoxedGame::runCLI() {
   while (true) {
-    LetterBoxed::Config config = getConfigFromUser();
+    try {
+      LetterBoxed::Config config = getConfigFromUser();
 
-    std::cout << "\nSolver configuration:\n";
-    std::cout << "  Max words per solution: " << config.maxDepth << "\n";
-    std::cout << "  Min word length: " << config.minWordLength << "\n";
-    std::cout << "  Min unique letters per word: " << config.minUniqueLetters
-              << "\n";
-    std::cout << "  Prune redundant paths: "
-              << (config.pruneRedundantPaths ? "true" : "false") << "\n";
-    std::cout << "  Prune dominated classes: "
-              << (config.pruneDominatedClasses ? "true" : "false") << "\n\n";
+      std::cout << "\nSolver configuration:\n";
+      std::cout << "  Max words per solution: "
+                << static_cast<int>(config.maxDepth) << "\n";
+      std::cout << "  Min word length: "
+                << static_cast<int>(config.minWordLength) << "\n";
+      std::cout << "  Min unique letters per word: "
+                << static_cast<int>(config.minUniqueLetters) << "\n";
+      std::cout << "  Prune redundant paths: "
+                << (config.pruneRedundantPaths ? "true" : "false") << "\n";
+      std::cout << "  Prune dominated classes: "
+                << (config.pruneDominatedClasses ? "true" : "false") << "\n\n";
 
-    std::cout << "Running solver...\n";
-    std::vector<LetterBoxed::Solution> solutions =
-        LetterBoxed::runLetterBoxedSolver(config, wordVec);
+      std::cout << "Running solver...\n";
+      std::vector<LetterBoxed::Solution> solutions =
+          LetterBoxed::runLetterBoxedSolver(config, wordVec);
 
-    int printLimit = 100;
-    printSolutions(solutions, printLimit);
+      int printLimit = 100;
+      printSolutions(solutions, printLimit);
 
-    while (true) {
-      std::cout << "Enter 'q' to quit, 'r' to restart, or 'a' to show all.\n\n";
-      std::string input;
-      std::getline(std::cin, input);
-      input = Utils::trimToLower(input);
+      while (true) {
+        try {
+          std::cout << "\nCommands: 's' (solve again), 'a' (show all)\n";
+          std::cout << "Enter command: ";
+          std::string input;
+          std::getline(std::cin, input);
 
-      if (input == "q")
-        return;
-      if (input == "r")
-        break;
-      if (input == "a") {
-        printSolutions(solutions, static_cast<int>(solutions.size()));
-        continue;
+          // Check for EOF
+          if (std::cin.eof()) {
+            std::cin.clear();
+            std::cout << "\n";
+            throw Utils::Input::UserCancelledException();
+          }
+
+          input = Utils::trimToLower(input);
+
+          if (input.empty())
+            continue;
+
+          if (input == "s" || input == "solve")
+            break;
+          if (input == "a" || input == "all") {
+            printSolutions(solutions, static_cast<int>(solutions.size()));
+            continue;
+          }
+        } catch (const Utils::Input::UserCancelledException &) {
+          // User pressed EOF at result menu, go back to game menu
+          std::cout << "Returning to game menu...\n";
+          return;
+        }
       }
+    } catch (const Utils::Input::UserCancelledException &) {
+      // User pressed EOF during config, return to game menu
+      std::cout << "Returning to game menu...\n";
+      return;
     }
   }
 }
@@ -290,5 +314,68 @@ void LetterBoxedGame::runHeadless(const Utils::Input::CommandArgs &cmdArgs) {
 
 void LetterBoxedGame::runGUI() {
   std::cout << "GUI mode not yet implemented for Letter Boxed.\n";
+}
+
+Utils::Testing::BenchmarkResult
+LetterBoxedGame::runBenchmark(const Utils::Testing::BenchmarkConfig &config) {
+  Utils::Testing::BenchmarkResult result;
+  result.gameMode = "letterboxed";
+
+  if (config.type == Utils::Testing::BenchmarkType::PERFORMANCE) {
+    std::cout << "Performance benchmark is not available for Letter Boxed.\n";
+    std::cout << "Running runtime benchmark instead.\n";
+  }
+
+  // Runtime benchmark
+  result.iterations = config.iterations;
+
+  if (config.verbose) {
+    std::cout << "Running runtime benchmark for Letter Boxed ("
+              << config.iterations << " iterations)...\n";
+  }
+
+  int64_t startTime = Utils::Profiling::getTime();
+
+  for (int i = 0; i < config.iterations; ++i) {
+    // Run a basic Letter Boxed solve with test letters
+    LetterBoxed::Config letterBoxedConfig;
+    letterBoxedConfig.maxDepth = 2;
+    letterBoxedConfig.minWordLength = 3;
+    letterBoxedConfig.minUniqueLetters = 3;
+
+    // Set up test letters: 12 letters, 3 per side (4 sides)
+    std::string testLetters = "uvjswitgebac";
+
+    // Initialize charToIndexMap to -1 (invalid)
+    for (int k = 0; k < 256; ++k) {
+      letterBoxedConfig.charToIndexMap[k] = -1;
+    }
+
+    for (int j = 0; j < 12; ++j) {
+      letterBoxedConfig.allLetters[j] = testLetters[j];
+      letterBoxedConfig.letterToSideMapping[j] =
+          j / 3; // 3 letters per side (4 sides)
+      letterBoxedConfig.uniquePuzzleLetters.set(j); // Set bit j (0-11)
+      letterBoxedConfig
+          .charToIndexMap[static_cast<unsigned char>(testLetters[j])] =
+          j; // Map char to index j (0-11)
+    }
+
+    std::vector<LetterBoxed::Solution> solutions =
+        LetterBoxed::runLetterBoxedSolver(letterBoxedConfig, wordVec);
+
+    if (config.verbose && (i + 1) % std::max(1, config.iterations / 10) == 0) {
+      std::cout << "Completed " << (i + 1) << "/" << config.iterations
+                << " iterations\n";
+    }
+  }
+
+  int64_t endTime = Utils::Profiling::getTime();
+
+  result.totalTimeMs =
+      (endTime - startTime) * Utils::Profiling::NANO_TO_SEC * 1000.0;
+  result.averageTimeMs = result.totalTimeMs / config.iterations;
+
+  return result;
 }
 } // namespace Game

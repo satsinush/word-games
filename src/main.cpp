@@ -180,6 +180,13 @@ void runInteractiveMode(const std::vector<Utils::Word> &wordVec) {
 
     std::string input;
     std::getline(std::cin, input);
+
+    // Check for EOF
+    if (std::cin.eof()) {
+      std::cout << "\nGoodbye!\n";
+      return;
+    }
+
     input = Utils::trimToLower(input);
 
     if (input.empty())
@@ -224,7 +231,11 @@ void runInteractiveMode(const std::vector<Utils::Word> &wordVec) {
     }
 
     if (game) {
-      game->runCLI();
+      try {
+        game->runCLI();
+      } catch (const Utils::Input::UserCancelledException &) {
+        std::cout << "Operation cancelled. Returning to main menu.\n";
+      }
     }
   }
 }
@@ -281,17 +292,22 @@ int main(int argc, char *argv[]) {
     }
 
     std::string mode = cmdArgs.positional[0];
+
+    // Create the game instance
+    auto game = createGame(mode, wordVec);
+    if (!game) {
+      std::cerr << "Invalid mode for benchmarking: " << mode << "\n";
+      return 1;
+    }
+
+    // Parse benchmark configuration
     Utils::Testing::BenchmarkConfig config =
-        Utils::Testing::parseBenchmarkArgs(args);
+        Utils::Testing::parseBenchmarkArgs(cmdArgs);
+    config.gameMode = mode;
 
     try {
-      Utils::Testing::BenchmarkResult result;
-
-      if (benchmarkType == "runtime") {
-        result = Utils::Testing::runRuntimeBenchmark(mode, wordVec, config);
-      } else if (benchmarkType == "performance") {
-        result = Utils::Testing::runPerformanceBenchmark(mode, wordVec, config);
-      }
+      // Call the benchmark method on the game instance
+      Utils::Testing::BenchmarkResult result = game->runBenchmark(config);
 
       Utils::Testing::printBenchmarkResults(result);
     } catch (const std::exception &e) {

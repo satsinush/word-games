@@ -214,12 +214,9 @@ void MastermindGame::printResults(const Mastermind::Result &result) {
       i++;
 
       std::cout << std::setw(10) << (i);
-
       std::cout << std::setw(25) << guess.pattern.toString();
-
       std::cout << std::setw(12) << std::fixed << std::setprecision(3)
                 << guess.ent;
-
       std::cout << std::setw(15) << std::fixed << std::setprecision(6)
                 << guess.probability << "\n";
     }
@@ -238,12 +235,9 @@ void MastermindGame::printResults(const Mastermind::Result &result) {
       possibleCount++;
 
       std::cout << std::setw(10) << (i);
-
       std::cout << std::setw(25) << guess.pattern.toString();
-
       std::cout << std::setw(12) << std::fixed << std::setprecision(3)
                 << guess.ent;
-
       std::cout << std::setw(15) << std::fixed << std::setprecision(6)
                 << guess.probability << "\n";
     }
@@ -294,43 +288,65 @@ void MastermindGame::runCLI() {
   std::vector<Mastermind::Feedback> guessHistory;
 
   while (true) {
-    std::cout << "Current guess history:\n";
-    for (size_t i = 0; i < guessHistory.size(); ++i) {
-      std::cout << (i + 1) << ". " << guessHistory[i].guess.toString() << " -> "
-                << static_cast<int>(guessHistory[i].correctPosition) << " "
-                << static_cast<int>(guessHistory[i].correctColor) << "\n";
-    }
-
-    std::cout << "\nCommands:\n";
-    std::cout << "  'solve' - Calculate best next guess\n";
-    std::cout << "  'clear' - Clear guess history\n";
-    std::cout << "  'q' - Quit\n";
-    std::cout << "  Or enter: 'PATTERN|FEEDBACK' (e.g., '1 2 3 4|2 1')\n";
-    std::cout << "\nEnter command: ";
-
     std::string input;
-    std::getline(std::cin, input);
+    try {
+      std::cout << "\n=== MASTERMIND SOLVER ===\n";
+      std::cout << "Commands: 's' (solve), 'c' (clear)\n";
+      std::cout << "Format: PATTERN|FEEDBACK (e.g., '1 2 3 4|2 1')\n";
+      std::cout << "  Feedback: <correct_position> <correct_color>\n\n";
 
-    if (input == "q")
+      if (!guessHistory.empty()) {
+        std::cout << "Current guess history:\n";
+        for (size_t i = 0; i < guessHistory.size(); ++i) {
+          std::cout << (i + 1) << ". " << guessHistory[i].guess.toString()
+                    << " -> "
+                    << static_cast<int>(guessHistory[i].correctPosition) << " "
+                    << static_cast<int>(guessHistory[i].correctColor) << "\n";
+        }
+        std::cout << "\n";
+      }
+
+      std::cout << "Enter guess (or command): ";
+      std::getline(std::cin, input);
+
+      // Check for EOF
+      if (std::cin.eof()) {
+        std::cin.clear();
+        std::cout << "\n";
+        throw Utils::Input::UserCancelledException();
+      }
+
+      input = Utils::trimToLower(input);
+
+      if (input.empty())
+        continue;
+
+      if (input == "c" || input == "clear") {
+        guessHistory.clear();
+        std::cout << "Guess history cleared.\n";
+        continue;
+      }
+
+      if (input == "s" || input == "solve") {
+        try {
+          config.maxDepth =
+              Utils::Input::promptInt("Enter search depth (0-2)", 1, 0, 2);
+
+          std::cout << "Calculating best guesses...\n";
+          Mastermind::Result result = Mastermind::runMastermindSolver(
+              allPatterns, guessHistory, config);
+
+          printResults(result);
+          std::cout << "\nSolver completed.\n";
+        } catch (const Utils::Input::UserCancelledException &) {
+          std::cout << "Solve cancelled.\n";
+        }
+        continue;
+      }
+    } catch (const Utils::Input::UserCancelledException &) {
+      // User pressed EOF at main input, return to game menu
+      std::cout << "Returning to game menu...\n";
       return;
-
-    if (input == "clear") {
-      guessHistory.clear();
-      std::cout << "Guess history cleared.\n\n";
-      continue;
-    }
-
-    if (input == "solve") {
-      config.maxDepth =
-          Utils::Input::promptInt("Enter search depth (0-2)", 1, 0, 2);
-
-      std::cout << "Calculating best guesses...\n";
-      Mastermind::Result result =
-          Mastermind::runMastermindSolver(allPatterns, guessHistory, config);
-
-      printResults(result);
-      std::cout << "\nSolver completed.\n\n";
-      continue;
     }
 
     // Try to parse as pattern and feedback
@@ -423,5 +439,55 @@ void MastermindGame::runHeadless(const Utils::Input::CommandArgs &cmdArgs) {
 
 void MastermindGame::runGUI() {
   std::cout << "GUI mode not yet implemented for Mastermind.\n";
+}
+
+Utils::Testing::BenchmarkResult
+MastermindGame::runBenchmark(const Utils::Testing::BenchmarkConfig &config) {
+  Utils::Testing::BenchmarkResult result;
+  result.gameMode = "mastermind";
+
+  if (config.type == Utils::Testing::BenchmarkType::PERFORMANCE) {
+    std::cout << "Performance benchmark is not available for Mastermind.\n";
+    std::cout << "Running runtime benchmark instead.\n";
+  }
+
+  // Runtime benchmark
+  result.iterations = config.iterations;
+
+  if (config.verbose) {
+    std::cout << "Running runtime benchmark for Mastermind ("
+              << config.iterations << " iterations)...\n";
+  }
+
+  int64_t startTime = Utils::Profiling::getTime();
+
+  for (int i = 0; i < config.iterations; ++i) {
+    // Run a basic Mastermind solve with default configuration
+    Mastermind::Config mastermindConfig;
+    mastermindConfig.numPegs = 4;
+    mastermindConfig.numColors = 6;
+    mastermindConfig.allowDuplicates = true;
+    mastermindConfig.maxDepth = 1;
+
+    std::vector<Mastermind::Pattern> allPatterns =
+        Mastermind::generateAllPatterns(mastermindConfig);
+    std::vector<Mastermind::Feedback> emptyFeedback;
+
+    Mastermind::runMastermindSolver(allPatterns, emptyFeedback,
+                                    mastermindConfig);
+
+    if (config.verbose && (i + 1) % std::max(1, config.iterations / 10) == 0) {
+      std::cout << "Completed " << (i + 1) << "/" << config.iterations
+                << " iterations\n";
+    }
+  }
+
+  int64_t endTime = Utils::Profiling::getTime();
+
+  result.totalTimeMs =
+      (endTime - startTime) * Utils::Profiling::NANO_TO_SEC * 1000.0;
+  result.averageTimeMs = result.totalTimeMs / config.iterations;
+
+  return result;
 }
 } // namespace Game

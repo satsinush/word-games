@@ -17,9 +17,9 @@ Wordle::Config WordleGame::getConfigFromUser() {
 
   std::cout << "Configure Wordle solver:\n";
   config.maxDepth = Utils::Input::promptInt(
-      "Search depth for ENT calculation (0-2)", 0, 0, 2);
+      "Search depth for ENT calculation (0-2)", 1, 0, 2);
   config.excludeUncommonWords = Utils::Input::promptBool(
-      "Exclude uncommon words from suggestions?", false);
+      "Exclude uncommon words from suggestions?", true);
 
   return config;
 }
@@ -136,15 +136,11 @@ void WordleGame::printResults(const Wordle::Result &result) {
       i++;
 
       std::cout << std::setw(10) << (i);
-
       std::cout << std::setw(12) << guess.word.wordString;
-
       std::cout << std::setw(12) << std::fixed << std::setprecision(3)
                 << guess.word.score;
-
       std::cout << std::setw(12) << std::fixed << std::setprecision(3)
                 << guess.ent;
-
       std::cout << std::setw(15) << std::fixed << std::setprecision(6)
                 << guess.probability << "\n";
     }
@@ -162,15 +158,11 @@ void WordleGame::printResults(const Wordle::Result &result) {
       possibleCount++;
 
       std::cout << std::setw(10) << (i);
-
       std::cout << std::setw(12) << guess.word.wordString;
-
       std::cout << std::setw(12) << std::fixed << std::setprecision(3)
                 << guess.word.score;
-
       std::cout << std::setw(12) << std::fixed << std::setprecision(3)
                 << guess.ent;
-
       std::cout << std::setw(15) << std::fixed << std::setprecision(6)
                 << guess.probability << "\n";
     }
@@ -214,49 +206,57 @@ void WordleGame::runCLI() {
   std::vector<Wordle::Feedback> feedbackHistory;
 
   while (true) {
-    std::cout << "\n=== WORDLE SOLVER ===\n";
-    std::cout << "Enter your guesses and their feedback patterns.\n";
-    std::cout << "Format: WORD 01201 (0=grey, 1=yellow, 2=green)\n";
-    std::cout << "Enter 'solve' to get best guesses, 'clear' to start over, "
-                 "'q' to quit\n\n";
+    try {
+      std::cout << "\n=== WORDLE SOLVER ===\n";
+      std::cout << "Commands: 's' (solve), 'c' (clear)\n";
+      std::cout << "Format: WORD 01201 (0=grey, 1=yellow, 2=green)\n\n";
 
-    if (!feedbackHistory.empty()) {
-      std::cout << "Current feedback history:\n";
-      for (const auto &fb : feedbackHistory) {
-        std::cout << "  " << fb.word << " -> ";
-        for (int i = 0; i < 5; ++i) {
-          std::cout << fb.getColor(i);
+      if (!feedbackHistory.empty()) {
+        std::cout << "Current feedback history:\n";
+        for (const auto &fb : feedbackHistory) {
+          std::cout << "  " << fb.word << " -> ";
+          for (int i = 0; i < 5; ++i) {
+            std::cout << fb.getColor(i);
+          }
+          std::cout << "\n";
         }
         std::cout << "\n";
       }
-      std::cout << "\n";
-    }
 
-    while (true) {
       std::cout << "Enter guess (or command): ";
       std::string input;
       std::getline(std::cin, input);
+
+      // Check for EOF
+      if (std::cin.eof()) {
+        std::cin.clear();
+        std::cout << "\n";
+        throw Utils::Input::UserCancelledException();
+      }
+
       input = Utils::trimToLower(input);
 
       if (input.empty())
         continue;
-      if (input == "q")
-        return;
 
-      if (input == "clear") {
+      if (input == "c" || input == "clear") {
         feedbackHistory.clear();
-        std::cout << "Feedback history cleared.\n\n";
-        break;
+        std::cout << "Feedback history cleared.\n";
+        continue;
       }
 
-      if (input == "solve") {
-        Wordle::Config config = getConfigFromUser();
+      if (input == "s" || input == "solve") {
+        try {
+          Wordle::Config config = getConfigFromUser();
 
-        std::cout << "Calculating best guesses...\n";
-        Wordle::Result result =
-            Wordle::runWordleSolver(wordVec, feedbackHistory, config);
+          std::cout << "Calculating best guesses...\n";
+          Wordle::Result result =
+              Wordle::runWordleSolver(wordVec, feedbackHistory, config);
 
-        printResults(result);
+          printResults(result);
+        } catch (const Utils::Input::UserCancelledException &) {
+          std::cout << "Solve cancelled.\n";
+        }
         continue;
       }
 
@@ -267,8 +267,12 @@ void WordleGame::runCLI() {
         std::cout << "Added feedback for " << fb.word << "\n";
       } catch (const std::exception &e) {
         std::cout << "Error: " << e.what() << "\n";
-        std::cout << "Use format: WORD 01201 or commands: solve, clear, q\n";
+        std::cout << "Use format: WORD 01201 or commands: s, c\n";
       }
+    } catch (const Utils::Input::UserCancelledException &) {
+      // User pressed EOF at main input, return to game menu
+      std::cout << "Returning to game menu...\n";
+      return;
     }
   }
 }
@@ -297,5 +301,146 @@ void WordleGame::runHeadless(const Utils::Input::CommandArgs &cmdArgs) {
 
 void WordleGame::runGUI() {
   std::cout << "GUI mode not yet implemented for Wordle.\n";
+}
+
+Utils::Testing::BenchmarkResult
+WordleGame::runBenchmark(const Utils::Testing::BenchmarkConfig &config) {
+  Utils::Testing::BenchmarkResult result;
+  result.gameMode = "wordle";
+
+  if (config.type == Utils::Testing::BenchmarkType::RUNTIME) {
+    // Runtime benchmark - measures execution time
+    result.iterations = config.iterations;
+
+    if (config.verbose) {
+      std::cout << "Running runtime benchmark for Wordle (" << config.iterations
+                << " iterations)...\n";
+    }
+
+    int64_t startTime = Utils::Profiling::getTime();
+
+    for (int i = 0; i < config.iterations; ++i) {
+      // Run a basic Wordle solve with no feedback (all possible words)
+      Wordle::Config wordleConfig;
+      wordleConfig.maxDepth = 0; // Fast configuration
+      wordleConfig.excludeUncommonWords = false;
+
+      std::vector<Wordle::Feedback> emptyFeedback;
+      Wordle::runWordleSolver(wordVec, emptyFeedback, wordleConfig);
+
+      if (config.verbose &&
+          (i + 1) % std::max(1, config.iterations / 10) == 0) {
+        std::cout << "Completed " << (i + 1) << "/" << config.iterations
+                  << " iterations\n";
+      }
+    }
+
+    int64_t endTime = Utils::Profiling::getTime();
+
+    result.totalTimeMs =
+        (endTime - startTime) * Utils::Profiling::NANO_TO_SEC * 1000.0;
+    result.averageTimeMs = result.totalTimeMs / config.iterations;
+
+    return result;
+  }
+
+  // Performance benchmark - measures solving performance
+  // Filter to get 5-letter words and sort by score (highest first)
+  std::vector<Utils::Word> fiveLetterWords;
+  for (const auto &word : wordVec) {
+    if (word.wordString.length() == 5) {
+      fiveLetterWords.push_back(word);
+    }
+  }
+
+  // Sort by score (descending) to get the top words
+  std::sort(fiveLetterWords.begin(), fiveLetterWords.end(),
+            [](const Utils::Word &a, const Utils::Word &b) {
+              return a.score > b.score;
+            });
+
+  // Take top 1000 words (or all if less than 1000)
+  int testWords = std::min(1000, static_cast<int>(fiveLetterWords.size()));
+  result.totalGames = testWords;
+
+  if (config.verbose) {
+    std::cout << "Running Wordle performance benchmark on top " << testWords
+              << " words...\n";
+  }
+
+  int64_t startTime = Utils::Profiling::getTime();
+
+  int totalGuesses = 0;
+  int minGuesses = INT_MAX;
+  int maxGuesses = 0;
+
+  Wordle::Config solverConfig;
+  solverConfig.maxDepth = 1; // Reasonable performance vs accuracy tradeoff
+  solverConfig.excludeUncommonWords = true;
+
+  Utils::Profiling::g_process.start();
+  for (int i = 0; i < testWords; ++i) {
+    Utils::Profiling::g_process.update(static_cast<double>(i) / testWords);
+    const Utils::Word &targetWord = fiveLetterWords[i];
+    std::vector<Wordle::Feedback> feedbackHistory;
+
+    int guesses = 0;
+    const int maxAttempts = 6; // Standard Wordle limit
+
+    // Simulate solving the target word
+    while (guesses < maxAttempts) {
+      std::string guessWord;
+
+      if (guesses == 0) {
+        // Always start with "TARES" as the first guess
+        guessWord = "tares";
+      } else {
+        // Get solver suggestions for subsequent guesses
+        Wordle::Result solverResult = Wordle::runWordleSolver(
+            fiveLetterWords, feedbackHistory, solverConfig);
+
+        if (solverResult.sortedGuesses.empty()) {
+          break; // No more guesses possible
+        }
+
+        // Take the best guess (first in sorted list)
+        guessWord = solverResult.sortedGuesses[0].word.wordString;
+      }
+
+      guesses++;
+
+      // Check if we found the target
+      if (guessWord == targetWord.wordString) {
+        break; // Found it!
+      }
+
+      // Generate feedback for this guess
+      Wordle::Feedback feedback =
+          Wordle::generateFeedback(targetWord, guessWord);
+      feedbackHistory.push_back(feedback);
+    }
+
+    totalGuesses += guesses;
+    minGuesses = std::min(minGuesses, guesses);
+    maxGuesses = std::max(maxGuesses, guesses);
+
+    if (config.verbose && (i + 1) % 100 == 0) {
+      std::cout << "Solved " << (i + 1) << "/" << testWords
+                << " words (avg: " << std::fixed << std::setprecision(2)
+                << static_cast<double>(totalGuesses) / (i + 1) << " guesses)\n";
+    }
+  }
+  Utils::Profiling::g_process.stop();
+
+  int64_t endTime = Utils::Profiling::getTime();
+
+  result.totalTimeMs = (endTime - startTime) * Utils::Profiling::NANO_TO_SEC *
+                       1000.0; // Convert nanoseconds to milliseconds
+  result.averageTimeMs = result.totalTimeMs / testWords;
+  result.averageGuesses = static_cast<double>(totalGuesses) / testWords;
+  result.minGuesses = (minGuesses == INT_MAX) ? 0 : minGuesses;
+  result.maxGuesses = maxGuesses;
+
+  return result;
 }
 } // namespace Game

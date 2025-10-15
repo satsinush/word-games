@@ -90,41 +90,73 @@ SpellingBee::Config SpellingBeeGame::getConfigFromArgs(
 
 void SpellingBeeGame::printSolutions(
     const std::vector<Utils::Word> &solutions) {
+  // Print top 100 solutions
+  int toPrint = std::min(100, static_cast<int>(solutions.size()));
+
   int lastUniqueLetters = 0;
-  for (auto it = solutions.rbegin(); it != solutions.rend(); ++it) {
+  int count = 0;
+
+  for (auto it = solutions.rbegin(); it != solutions.rend() && count < toPrint;
+       ++it, ++count) {
     if (lastUniqueLetters == 0 || (it->uniqueLetters != lastUniqueLetters)) {
-      if (lastUniqueLetters != 0)
+      if (lastUniqueLetters != 0) {
         std::cout << "\n";
+      }
       std::cout << "=== " << it->uniqueLetters << " unique letters ===\n";
     }
     std::cout << it->wordString << "\n";
     lastUniqueLetters = it->uniqueLetters;
   }
-  if (solutions.size() > 0)
-    std::cout << "\n";
-  std::cout << solutions.size() << " valid word(s) found.\n";
+
+  std::cout << "\n" << solutions.size() << " valid word(s) found.";
+  if (toPrint < static_cast<int>(solutions.size())) {
+    std::cout << " (Showing top " << toPrint << ")";
+  }
+  std::cout << "\n";
 }
 
 void SpellingBeeGame::runCLI() {
   while (true) {
-    SpellingBee::Config config = getConfigFromUser();
+    try {
+      SpellingBee::Config config = getConfigFromUser();
 
-    std::cout << "Running solver...\n";
-    std::vector<Utils::Word> solutions =
-        SpellingBee::runSpellingBeeSolver(wordVec, config);
+      std::cout << "Running solver...\n";
+      std::vector<Utils::Word> solutions =
+          SpellingBee::runSpellingBeeSolver(wordVec, config);
 
-    printSolutions(solutions);
+      printSolutions(solutions);
 
-    while (true) {
-      std::cout << "Enter 'q' to quit, 'r' to restart.\n\n";
-      std::string input;
-      std::getline(std::cin, input);
-      input = Utils::trimToLower(input);
+      while (true) {
+        try {
+          std::cout << "\nCommands: 's' (solve again)\n";
+          std::cout << "Enter command: ";
+          std::string input;
+          std::getline(std::cin, input);
 
-      if (input == "q")
-        return;
-      if (input == "r")
-        break;
+          // Check for EOF
+          if (std::cin.eof()) {
+            std::cin.clear();
+            std::cout << "\n";
+            throw Utils::Input::UserCancelledException();
+          }
+
+          input = Utils::trimToLower(input);
+
+          if (input.empty())
+            continue;
+
+          if (input == "s" || input == "solve")
+            break;
+        } catch (const Utils::Input::UserCancelledException &) {
+          // User pressed EOF at result menu, return to game menu
+          std::cout << "Returning to game menu...\n";
+          return;
+        }
+      }
+    } catch (const Utils::Input::UserCancelledException &) {
+      // User pressed EOF during config, return to game menu
+      std::cout << "Returning to game menu...\n";
+      return;
     }
   }
 }
@@ -171,5 +203,54 @@ void SpellingBeeGame::runHeadless(const Utils::Input::CommandArgs &cmdArgs) {
 
 void SpellingBeeGame::runGUI() {
   std::cout << "GUI mode not yet implemented for Spelling Bee.\n";
+}
+
+Utils::Testing::BenchmarkResult
+SpellingBeeGame::runBenchmark(const Utils::Testing::BenchmarkConfig &config) {
+  Utils::Testing::BenchmarkResult result;
+  result.gameMode = "spellingbee";
+
+  if (config.type == Utils::Testing::BenchmarkType::PERFORMANCE) {
+    std::cout << "Performance benchmark is not available for Spelling Bee.\n";
+    std::cout << "Running runtime benchmark instead.\n";
+  }
+
+  // Runtime benchmark
+  result.iterations = config.iterations;
+
+  if (config.verbose) {
+    std::cout << "Running runtime benchmark for Spelling Bee ("
+              << config.iterations << " iterations)...\n";
+  }
+
+  int64_t startTime = Utils::Profiling::getTime();
+
+  for (int i = 0; i < config.iterations; ++i) {
+    // Run a basic Spelling Bee solve with test letters
+    SpellingBee::Config spellingBeeConfig;
+    // Set up test letters: A B C D E F G (A is center letter)
+    std::string testLetters = "nhmkace";
+    for (int j = 0; j < 7; ++j) {
+      spellingBeeConfig.allLetters[j] = testLetters[j];
+      spellingBeeConfig
+          .validLettersMap[static_cast<unsigned char>(testLetters[j])] = true;
+    }
+
+    std::vector<Utils::Word> solutions =
+        SpellingBee::runSpellingBeeSolver(wordVec, spellingBeeConfig);
+
+    if (config.verbose && (i + 1) % std::max(1, config.iterations / 10) == 0) {
+      std::cout << "Completed " << (i + 1) << "/" << config.iterations
+                << " iterations\n";
+    }
+  }
+
+  int64_t endTime = Utils::Profiling::getTime();
+
+  result.totalTimeMs =
+      (endTime - startTime) * Utils::Profiling::NANO_TO_SEC * 1000.0;
+  result.averageTimeMs = result.totalTimeMs / config.iterations;
+
+  return result;
 }
 } // namespace Game

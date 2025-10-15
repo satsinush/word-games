@@ -1,11 +1,18 @@
 #pragma once
 #include <functional>
 #include <map>
+#include <stdexcept>
 #include <string>
 #include <vector>
 
 namespace Utils {
 namespace Input {
+// Exception thrown when user cancels input EOF
+class UserCancelledException : public std::runtime_error {
+public:
+  UserCancelledException() : std::runtime_error("User cancelled input") {}
+};
+
 // Structure to hold parsed command line arguments
 struct CommandArgs {
   std::map<std::string, std::string> flags;

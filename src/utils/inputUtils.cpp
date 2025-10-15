@@ -17,6 +17,14 @@ int promptInt(const std::string &prompt, const int defaultValue, const int min,
     std::cout << prompt << " (default: " << defaultValue << "): ";
     std::string input;
     std::getline(std::cin, input);
+
+    // Check for EOF
+    if (std::cin.eof()) {
+      std::cin.clear(); // Clear EOF state
+      std::cout << "\n";
+      throw UserCancelledException();
+    }
+
     input = Utils::trimToLower(input);
 
     if (input.empty())
@@ -41,6 +49,14 @@ bool promptBool(const std::string &prompt, const bool defaultValue) {
               << "): ";
     std::string input;
     std::getline(std::cin, input);
+
+    // Check for EOF
+    if (std::cin.eof()) {
+      std::cin.clear(); // Clear EOF state
+      std::cout << "\n";
+      throw UserCancelledException();
+    }
+
     input = Utils::trimToLower(input);
 
     if (input.empty())
@@ -69,6 +85,13 @@ std::string promptString(const std::string &prompt,
     std::string input;
     std::getline(std::cin, input);
 
+    // Check for EOF
+    if (std::cin.eof()) {
+      std::cin.clear(); // Clear EOF state
+      std::cout << "\n";
+      throw UserCancelledException();
+    }
+
     if (input.empty() && !defaultValue.empty())
       return defaultValue;
 
@@ -85,6 +108,13 @@ std::string promptLetters(const std::string &prompt, const size_t expectedCount,
     std::cout << prompt << std::endl;
     std::string input;
     std::getline(std::cin, input);
+
+    // Check for EOF
+    if (std::cin.eof()) {
+      std::cin.clear(); // Clear EOF state
+      std::cout << "\n";
+      throw UserCancelledException();
+    }
 
     // Remove all whitespace
     input.erase(std::remove_if(input.begin(), input.end(), ::isspace),
