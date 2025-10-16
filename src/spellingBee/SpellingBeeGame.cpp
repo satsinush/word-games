@@ -90,22 +90,31 @@ SpellingBee::Config SpellingBeeGame::getConfigFromArgs(
 
 void SpellingBeeGame::printSolutions(
     const std::vector<Utils::Word> &solutions) {
-  // Print top 100 solutions
-  int toPrint = std::min(100, static_cast<int>(solutions.size()));
+  // Print top 100 solutions in reverse order (i.e. show best-ranked
+  // solutions but print from lower-ranked of the top group up to the best).
+  int total = static_cast<int>(solutions.size());
+  int toPrint = std::min(100, total);
 
   int lastUniqueLetters = 0;
-  int count = 0;
 
-  for (auto it = solutions.rbegin(); it != solutions.rend() && count < toPrint;
-       ++it, ++count) {
-    if (lastUniqueLetters == 0 || (it->uniqueLetters != lastUniqueLetters)) {
+  // If there are no solutions, just print summary
+  if (toPrint == 0) {
+    std::cout << "\n" << solutions.size() << " valid word(s) found.";
+    std::cout << "\n";
+    return;
+  }
+
+  // Print indices [toPrint-1 .. 0]
+  for (int idx = toPrint - 1; idx >= 0; --idx) {
+    const auto &w = solutions[idx];
+    if (lastUniqueLetters == 0 || (w.uniqueLetters != lastUniqueLetters)) {
       if (lastUniqueLetters != 0) {
         std::cout << "\n";
       }
-      std::cout << "=== " << it->uniqueLetters << " unique letters ===\n";
+      std::cout << "=== " << w.uniqueLetters << " unique letters ===\n";
     }
-    std::cout << it->wordString << "\n";
-    lastUniqueLetters = it->uniqueLetters;
+    std::cout << w.wordString << "\n";
+    lastUniqueLetters = w.uniqueLetters;
   }
 
   std::cout << "\n" << solutions.size() << " valid word(s) found.";
