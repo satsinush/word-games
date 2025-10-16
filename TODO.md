@@ -1,5 +1,3 @@
 - Create presentation
 - Add function descriptions and inline comments for confusing lines of code
-- Make unit tests/benchmarks
 - Create GUI for games
-- Make benchmarking functions part of the game interface

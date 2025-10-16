@@ -39,9 +39,12 @@ void readBinary(std::istream &is, Word &word);
 // Trims whitespace and converts a string to lowercase
 std::string trimToLower(const std::string &str);
 
-// Loads words from words.bin if available, otherwise from word_scores.csv and
-// saves to words.bin.
-std::vector<Word> loadWords();
+// Loads words from a CSV file. If csvPath is empty, uses word_scores.csv.
+// If useBinaryCache is true, tries to load from/save to .bin file.
+// If maxWords is 0, loads all words.
+std::vector<Word> loadWords(const std::string &csvPath = "",
+                            bool useBinaryCache = true,
+                            size_t maxWords = 500002);
 
 } // namespace Utils
 

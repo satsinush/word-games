@@ -6,99 +6,73 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-# ---- The Key Change: Add a build option ----
-option(BUILD_WITH_GUI "Build the application with the Qt GUI" ON)
+option(BUILD_GUI "Build the application with the Qt GUI" ON)
+option(BUILD_TESTING "Build the project's tests" ON)
 
 
-# Glob for core/CLI source files, excluding the gui directory
+# ===================================================================
+# 1. CREATE A LIBRARY FOR YOUR CORE CODE
+# ===================================================================
+# By putting your game logic into a library, you can link it into
+# both your main executable AND your test executable.
+
+# Glob for source files, excluding the gui directory and the main entry point
 file(GLOB_RECURSE CORE_SRCS CONFIGURE_DEPENDS
     "${CMAKE_SOURCE_DIR}/src/*.cpp"
 )
 list(FILTER CORE_SRCS EXCLUDE REGEX "${CMAKE_SOURCE_DIR}/src/gui/.*")
+# Exclude main.cpp from the library, as it will be in the executable
+list(FILTER CORE_SRCS EXCLUDE REGEX ".*/main.cpp")
 
-# --- Change the condition to check our new option ---
-if(BUILD_WITH_GUI)
+if(BUILD_GUI)
     message(STATUS "GUI build enabled. Searching for Qt6...")
-    # Find Qt6 and make it required for a GUI build
     find_package(Qt6 COMPONENTS Widgets REQUIRED)
 
     set(CMAKE_AUTOMOC ON)
     set(CMAKE_AUTOUIC ON)
     set(CMAKE_AUTORCC ON)
 
-    # Glob for all GUI-related files
     file(GLOB_RECURSE GUI_SRCS CONFIGURE_DEPENDS
         "${CMAKE_SOURCE_DIR}/src/gui/*.cpp"
         "${CMAKE_SOURCE_DIR}/src/gui/*.hpp"
         "${CMAKE_SOURCE_DIR}/src/gui/*.ui"
     )
-    # Add the GUI files to the main source list
     list(APPEND CORE_SRCS ${GUI_SRCS})
 else()
     message(STATUS "GUI build disabled. Building CLI-only version.")
 endif()
 
+# Create the library named 'word-games-lib'
+add_library(word-games-lib ${CORE_SRCS})
 
-# Create the executable with the final list of all necessary source files
-add_executable(word-games ${CORE_SRCS})
-
-# Apply settings that are common to both build types
-target_include_directories(word-games PRIVATE
+# Apply settings to the library
+target_include_directories(word-games-lib PUBLIC
     ${CMAKE_SOURCE_DIR}/src
     ${CMAKE_CURRENT_BINARY_DIR}
 )
 
-# Apply settings only if we are building the GUI version
-if(BUILD_WITH_GUI)
-    target_compile_definitions(word-games PRIVATE WITH_GUI)
-    target_link_libraries(word-games PRIVATE Qt6::Widgets)
-endif()
-
-# Compiler warnings
 if(MSVC)
-    target_compile_options(word-games PRIVATE /W4 /permissive-)
+    target_compile_options(word-games-lib PRIVATE /W4 /permissive-)
 else()
-    target_compile_options(word-games PRIVATE -Wall -Wextra -fdiagnostics-color=always -Wno-stringop-overread)
+    target_compile_options(word-games-lib PRIVATE -Wall -Wextra -fdiagnostics-color=always -Wno-stringop-overread)
 endif()
 
-# ===================================================================
-# AUTOMATIC DLL DEPLOYMENT
-# ===================================================================
-if(WIN32)
-    # 1. Find the windeployqt executable
-    find_program(
-        WINDEPLOYQT_EXECUTABLE windeployqt
-        HINTS ${CMAKE_PREFIX_PATH}/bin
-    )
-
-    if(WINDEPLOYQT_EXECUTABLE)
-        message(STATUS "windeployqt found: ${WINDEPLOYQT_EXECUTABLE}")
-
-        # 2. Add a command that runs after the build is finished
-        add_custom_command(
-            TARGET word-games POST_BUILD
-            
-            # The actual command to run
-            COMMAND ${WINDEPLOYQT_EXECUTABLE}
-            
-            # Arguments for the command (no --debug flag needed)
-            ARGS
-                $<TARGET_FILE:word-games>
-
-            # Tell the command where to run
-            WORKING_DIRECTORY $<TARGET_FILE_DIR:word-games>
-            COMMENT "Running windeployqt to deploy dependencies..."
-        )
-    else()
-        message(WARNING "windeployqt not found. DLLs will not be deployed automatically.")
-    endif()
+if(BUILD_GUI)
+    target_compile_definitions(word-games-lib PUBLIC WITH_GUI)
+    target_link_libraries(word-games-lib PUBLIC Qt6::Widgets)
 endif()
 
-# --- Copy all runtime resources to the build directory ---
+
+# ===================================================================
+# 2. CREATE THE MAIN EXECUTABLE
+# ===================================================================
+# The executable now only needs main.cpp and links to our library.
+add_executable(word-games src/main.cpp)
+target_link_libraries(word-games PRIVATE word-games-lib)
+
+# Copy resources and deploy Qt DLLs for the main executable
+# (This part is unchanged)
 set(RESOURCE_DIR ${CMAKE_SOURCE_DIR}/resources)
-
-# This command runs after the executable is built.
-# It copies the contents of the 'resources' directory into the same folder as the .exe
 add_custom_command(
     TARGET word-games POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_directory
@@ -106,3 +80,45 @@ add_custom_command(
         $<TARGET_FILE_DIR:word-games>/resources
     COMMENT "Copying resources to build directory..."
 )
+if(WIN32 AND BUILD_GUI)
+    find_program(WINDEPLOYQT_EXECUTABLE windeployqt HINTS ${CMAKE_PREFIX_PATH}/bin)
+    if(WINDEPLOYQT_EXECUTABLE)
+        add_custom_command(
+            TARGET word-games POST_BUILD
+            COMMAND ${WINDEPLOYQT_EXECUTABLE} ARGS $<TARGET_FILE:word-games>
+            WORKING_DIRECTORY $<TARGET_FILE_DIR:word-games>
+            COMMENT "Running windeployqt..."
+        )
+    endif()
+endif()
+
+
+# ===================================================================
+# 3. SETUP TESTING
+# ===================================================================
+if(BUILD_TESTING) # <-- ADD THIS WRAPPER
+    # Enable testing for the project
+    enable_testing()
+
+    # This will download and configure Google Test for our project.
+    include(FetchContent)
+    FetchContent_Declare(
+      googletest
+      SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/third_party/googletest-1.17.0"
+    )
+    # For Windows: Prevent gtest from installing itself globally
+    set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+    FetchContent_MakeAvailable(googletest)
+
+    # Create the test executable
+    add_executable(word-games-tests tests/tests.cpp)
+
+    # Link the test executable against our code library and Google Test
+    target_link_libraries(word-games-tests PRIVATE word-games-lib gtest_main)
+
+    # Automatically discover and add all tests from the executable to CTest
+    include(GoogleTest)
+    gtest_discover_tests(word-games-tests)
+else()
+    message(STATUS "Testing disabled. Skipping test build.")
+endif() # <-- END WRAPPER

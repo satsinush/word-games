@@ -78,32 +78,37 @@ void readBinary(std::istream &is, Word &word) {
           sizeof(word.letterCount));
 }
 
-// Loads words from words.bin if available, otherwise from word_scores.csv
-// (first 300,000 words) and saves to words.bin.
-std::vector<Word> loadWords() {
+// Loads words from a CSV file. If csvPath is empty, uses word_scores.csv.
+// If useBinaryCache is true, tries to load from/save to .bin file.
+// If maxWords is 0, loads all words.
+std::vector<Word> loadWords(const std::string &csvPath, bool useBinaryCache,
+                            size_t maxWords) {
   std::filesystem::path data_dir = getExecutableDir() / "resources";
-  std::filesystem::path csv_file = data_dir / "word_scores.csv";
+  std::filesystem::path csv_file =
+      csvPath.empty() ? (data_dir / "word_scores.csv") : csvPath;
   std::filesystem::path bin_file = data_dir / "words.bin";
   std::vector<Word> allWordsVec;
 
-  // Try to load from binary file first
-  std::ifstream in(bin_file, std::ios::binary);
+  // Try to load from binary file first (only if using cache and default CSV)
   bool loadedFromBin = false;
-  if (in) {
-    try {
-      size_t n;
-      in.read(reinterpret_cast<char *>(&n), sizeof(n));
-      allWordsVec.resize(n);
-      for (size_t i = 0; i < n; ++i) {
-        readBinary(in, allWordsVec[i]);
-        if (!in)
-          throw std::runtime_error("Read error");
+  if (useBinaryCache && csvPath.empty()) {
+    std::ifstream in(bin_file, std::ios::binary);
+    if (in) {
+      try {
+        size_t n;
+        in.read(reinterpret_cast<char *>(&n), sizeof(n));
+        allWordsVec.resize(n);
+        for (size_t i = 0; i < n; ++i) {
+          readBinary(in, allWordsVec[i]);
+          if (!in)
+            throw std::runtime_error("Read error");
+        }
+        loadedFromBin = true;
+        in.close();
+      } catch (...) {
+        in.close();
+        allWordsVec.clear();
       }
-      loadedFromBin = true;
-      in.close();
-    } catch (...) {
-      in.close();
-      allWordsVec.clear();
     }
   }
 
@@ -111,8 +116,8 @@ std::vector<Word> loadWords() {
   if (!loadedFromBin) {
     std::ifstream file(csv_file);
     if (!file.is_open()) {
-      std::cerr << "Error: Could not open word_scores.csv. Please ensure it's "
-                   "in the 'data' directory.\n";
+      std::cerr << "Error: Could not open " << csv_file
+                << ". Please ensure it exists.\n";
       return allWordsVec;
     }
 
@@ -124,10 +129,10 @@ std::vector<Word> loadWords() {
       return allWordsVec;
     }
 
-    constexpr size_t MAX_WORDS = 500002;
     size_t wordCount = 0;
+    const size_t maxWordsToLoad = (maxWords == 0) ? SIZE_MAX : maxWords;
 
-    while (std::getline(file, line) && wordCount < MAX_WORDS) {
+    while (std::getline(file, line) && wordCount < maxWordsToLoad) {
       if (line.empty())
         continue;
 
@@ -171,19 +176,21 @@ std::vector<Word> loadWords() {
     }
     file.close();
 
-    // Save to binary for next time
-    if (!std::filesystem::exists(data_dir)) {
-      std::filesystem::create_directories(data_dir);
-    }
-
-    std::ofstream out(bin_file, std::ios::binary);
-    if (out) {
-      size_t n = allWordsVec.size();
-      out.write(reinterpret_cast<const char *>(&n), sizeof(n));
-      for (const auto &w : allWordsVec) {
-        writeBinary(out, w);
+    // Save to binary for next time (only if using cache and default CSV)
+    if (useBinaryCache && csvPath.empty()) {
+      if (!std::filesystem::exists(data_dir)) {
+        std::filesystem::create_directories(data_dir);
       }
-      out.close();
+
+      std::ofstream out(bin_file, std::ios::binary);
+      if (out) {
+        size_t n = allWordsVec.size();
+        out.write(reinterpret_cast<const char *>(&n), sizeof(n));
+        for (const auto &w : allWordsVec) {
+          writeBinary(out, w);
+        }
+        out.close();
+      }
     }
   }
 

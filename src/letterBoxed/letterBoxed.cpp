@@ -365,8 +365,8 @@ runLetterBoxedSolver(const Config &config,
   }
 
   std::vector<Solution> finalSolutions;
-  finalSolutions.reserve(classSolutions.size() *
-                         2); // Reserve space for final solutions
+  // Reserve space for final solutions
+  finalSolutions.reserve(classSolutions.size() * 2);
   // Expand each class solution into all possible word paths and store them in
   // finalSolutions.
   for (const auto &classPath : classSolutions) {
