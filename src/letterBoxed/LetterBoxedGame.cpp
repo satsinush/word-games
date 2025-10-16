@@ -316,12 +316,12 @@ void LetterBoxedGame::runGUI() {
   std::cout << "GUI mode not yet implemented for Letter Boxed.\n";
 }
 
-Utils::Testing::BenchmarkResult
-LetterBoxedGame::runBenchmark(const Utils::Testing::BenchmarkConfig &config) {
-  Utils::Testing::BenchmarkResult result;
+Utils::Benchmarking::BenchmarkResult LetterBoxedGame::runBenchmark(
+    const Utils::Benchmarking::BenchmarkConfig &config) {
+  Utils::Benchmarking::BenchmarkResult result;
   result.gameMode = "letterboxed";
 
-  if (config.type == Utils::Testing::BenchmarkType::PERFORMANCE) {
+  if (config.type == Utils::Benchmarking::BenchmarkType::PERFORMANCE) {
     std::cout << "Performance benchmark is not available for Letter Boxed.\n";
     std::cout << "Running runtime benchmark instead.\n";
   }

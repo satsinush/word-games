@@ -303,12 +303,12 @@ void WordleGame::runGUI() {
   std::cout << "GUI mode not yet implemented for Wordle.\n";
 }
 
-Utils::Testing::BenchmarkResult
-WordleGame::runBenchmark(const Utils::Testing::BenchmarkConfig &config) {
-  Utils::Testing::BenchmarkResult result;
+Utils::Benchmarking::BenchmarkResult
+WordleGame::runBenchmark(const Utils::Benchmarking::BenchmarkConfig &config) {
+  Utils::Benchmarking::BenchmarkResult result;
   result.gameMode = "wordle";
 
-  if (config.type == Utils::Testing::BenchmarkType::RUNTIME) {
+  if (config.type == Utils::Benchmarking::BenchmarkType::RUNTIME) {
     // Runtime benchmark - measures execution time
     result.iterations = config.iterations;
 

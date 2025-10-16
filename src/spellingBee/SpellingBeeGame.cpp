@@ -214,12 +214,12 @@ void SpellingBeeGame::runGUI() {
   std::cout << "GUI mode not yet implemented for Spelling Bee.\n";
 }
 
-Utils::Testing::BenchmarkResult
-SpellingBeeGame::runBenchmark(const Utils::Testing::BenchmarkConfig &config) {
-  Utils::Testing::BenchmarkResult result;
+Utils::Benchmarking::BenchmarkResult SpellingBeeGame::runBenchmark(
+    const Utils::Benchmarking::BenchmarkConfig &config) {
+  Utils::Benchmarking::BenchmarkResult result;
   result.gameMode = "spellingbee";
 
-  if (config.type == Utils::Testing::BenchmarkType::PERFORMANCE) {
+  if (config.type == Utils::Benchmarking::BenchmarkType::PERFORMANCE) {
     std::cout << "Performance benchmark is not available for Spelling Bee.\n";
     std::cout << "Running runtime benchmark instead.\n";
   }

@@ -1,6 +1,6 @@
 #pragma once
+#include "../utils/benchmarkUtils.hpp"
 #include "../utils/inputUtils.hpp"
-#include "../utils/testingUtils.hpp"
 #include <string>
 
 namespace Game {
@@ -23,7 +23,7 @@ public:
 
   // Run benchmark for this game
   // The type of benchmark (runtime or performance) is determined by config.type
-  virtual Utils::Testing::BenchmarkResult
-  runBenchmark(const Utils::Testing::BenchmarkConfig &config) = 0;
+  virtual Utils::Benchmarking::BenchmarkResult
+  runBenchmark(const Utils::Benchmarking::BenchmarkConfig &config) = 0;
 };
 } // namespace Game

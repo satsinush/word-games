@@ -10,7 +10,7 @@
 #include "letterBoxed/LetterBoxedGame.hpp"
 #include "mastermind/MastermindGame.hpp"
 #include "spellingBee/SpellingBeeGame.hpp"
-#include "utils/testingUtils.hpp"
+#include "utils/benchmarkUtils.hpp"
 #include "utils/utils.hpp"
 #include "wordle/WordleGame.hpp"
 
@@ -301,15 +301,15 @@ int main(int argc, char *argv[]) {
     }
 
     // Parse benchmark configuration
-    Utils::Testing::BenchmarkConfig config =
-        Utils::Testing::parseBenchmarkArgs(cmdArgs);
+    Utils::Benchmarking::BenchmarkConfig config =
+        Utils::Benchmarking::parseBenchmarkArgs(cmdArgs);
     config.gameMode = mode;
 
     try {
       // Call the benchmark method on the game instance
-      Utils::Testing::BenchmarkResult result = game->runBenchmark(config);
+      Utils::Benchmarking::BenchmarkResult result = game->runBenchmark(config);
 
-      Utils::Testing::printBenchmarkResults(result);
+      Utils::Benchmarking::printBenchmarkResults(result);
     } catch (const std::exception &e) {
       std::cerr << "Benchmark error: " << e.what() << "\n";
       return 1;

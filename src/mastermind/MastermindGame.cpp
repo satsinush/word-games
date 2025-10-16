@@ -441,12 +441,12 @@ void MastermindGame::runGUI() {
   std::cout << "GUI mode not yet implemented for Mastermind.\n";
 }
 
-Utils::Testing::BenchmarkResult
-MastermindGame::runBenchmark(const Utils::Testing::BenchmarkConfig &config) {
-  Utils::Testing::BenchmarkResult result;
+Utils::Benchmarking::BenchmarkResult MastermindGame::runBenchmark(
+    const Utils::Benchmarking::BenchmarkConfig &config) {
+  Utils::Benchmarking::BenchmarkResult result;
   result.gameMode = "mastermind";
 
-  if (config.type == Utils::Testing::BenchmarkType::PERFORMANCE) {
+  if (config.type == Utils::Benchmarking::BenchmarkType::PERFORMANCE) {
     std::cout << "Performance benchmark is not available for Mastermind.\n";
     std::cout << "Running runtime benchmark instead.\n";
   }

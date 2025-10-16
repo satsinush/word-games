@@ -1,4 +1,4 @@
-#include "testingUtils.hpp"
+#include "benchmarkUtils.hpp"
 
 #include <iomanip>
 #include <iostream>
@@ -6,7 +6,7 @@
 #include "inputUtils.hpp"
 
 namespace Utils {
-namespace Testing {
+namespace Benchmarking {
 
 void printBenchmarkResults(const BenchmarkResult &result) {
   std::cout << "\n=== BENCHMARK RESULTS ===\n";
@@ -60,5 +60,5 @@ BenchmarkConfig parseBenchmarkArgs(const Utils::Input::CommandArgs &cmdArgs) {
   return config;
 }
 
-} // namespace Testing
+} // namespace Benchmarking
 } // namespace Utils

@@ -28,7 +28,7 @@ public:
   void runGUI() override;
   std::string getGameName() const override { return "mastermind"; }
 
-  Utils::Testing::BenchmarkResult
-  runBenchmark(const Utils::Testing::BenchmarkConfig &config) override;
+  Utils::Benchmarking::BenchmarkResult
+  runBenchmark(const Utils::Benchmarking::BenchmarkConfig &config) override;
 };
 } // namespace Game

@@ -8,7 +8,7 @@
 #include "utils.hpp"
 
 namespace Utils {
-namespace Testing {
+namespace Benchmarking {
 
 /**
  * Benchmark types
@@ -54,5 +54,5 @@ void printBenchmarkResults(const BenchmarkResult &result);
  */
 BenchmarkConfig parseBenchmarkArgs(const Utils::Input::CommandArgs &cmdArgs);
 
-} // namespace Testing
+} // namespace Benchmarking
 } // namespace Utils
