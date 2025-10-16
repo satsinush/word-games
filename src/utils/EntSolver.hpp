@@ -104,9 +104,14 @@ public:
       // the correct candidate is 0, otherwise it is 1
       double expectedTurns = isPossible ? 0.0 : 1.0;
       // If there are multiple possible candidates, calculate the expected turns
+      // calculateExpectedTurns gets the ENT after this guess, assuming the
+      // guess is not correct So we multiply by (1 - probability) to weight it
+      // by the chance the guess is wrong
       if (possibleCandidates.size() > 1) {
-        expectedTurns = calculateExpectedTurns(
-            guessCandidate, possibleCandidates, allCandidates, config.maxDepth);
+        expectedTurns =
+            (1 - probability) *
+            calculateExpectedTurns(guessCandidate, possibleCandidates,
+                                   allCandidates, config.maxDepth);
       }
 
       TGuessType guess =
@@ -164,9 +169,11 @@ private:
   }
 
   /**
-   * Calculate Expected Number of Turns (ENT) for a specific guess.
-   * Returns the expected number of turns needed to solve the puzzle
-   * if this guess is chosen as the next move.
+   * Calculates the Expected Number of Turns (ENT) that will need to be taken
+   * after making a specific guess.
+   * If the guess is the only candidate left, ENT is 0 (solved).
+   * If the guess will leave only one candidate left, ENT is 1 (next turn
+   * solves).
    */
   double
   calculateExpectedTurns(const TCandidateType &guessCandidate,
