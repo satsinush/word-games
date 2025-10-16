@@ -1,7 +1,6 @@
 #pragma once
 #include "../game/Game.hpp"
 #include "../utils/inputUtils.hpp"
-#include "../utils/profilerUtils.hpp"
 #include "../utils/wordUtils.hpp"
 #include "../wordle/wordle.hpp"
 #include <vector>
@@ -28,8 +27,5 @@ public:
   void runHeadless(const Utils::Input::CommandArgs &cmdArgs) override;
   void runGUI() override;
   std::string getGameName() const override { return "wordle"; }
-
-  Utils::Benchmarking::BenchmarkResult
-  runBenchmark(const Utils::Benchmarking::BenchmarkConfig &config) override;
 };
 } // namespace Game

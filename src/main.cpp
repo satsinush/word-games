@@ -10,7 +10,6 @@
 #include "letterBoxed/LetterBoxedGame.hpp"
 #include "mastermind/MastermindGame.hpp"
 #include "spellingBee/SpellingBeeGame.hpp"
-#include "utils/benchmarkUtils.hpp"
 #include "utils/inputUtils.hpp"
 #include "utils/profilerUtils.hpp"
 #include "utils/wordUtils.hpp"
@@ -85,16 +84,6 @@ Read Mode:
     --start <n>                Starting index (default: 0)
     --end <n>                  Ending index (default: all)
 
-Benchmarking:
-  %s --benchmark runtime <mode> [OPTIONS]
-    Run runtime benchmark for specified game mode
-    --iterations <n>           Number of iterations (default: 1)
-    --verbose                  Enable verbose output
-
-  %s --benchmark performance <mode> [OPTIONS]
-    Run performance benchmark (currently Wordle only)
-    --verbose                  Enable verbose output
-
 Boolean Values:
   Accepted as TRUE:  1, y, Y, yes, YES, Yes, t, T, true, True, TRUE
   Accepted as FALSE: 0, n, N, no, NO, No, f, F, false, False, FALSE
@@ -107,8 +96,7 @@ Examples:
 )";
 
   printf(usage_message, programName, programName, programName, programName,
-         programName, programName, programName, programName, programName,
-         programName, programName, programName, programName);
+         programName, programName, programName, programName, programName);
 }
 
 void runReadMode(const std::map<std::string, std::string> &args,
@@ -277,49 +265,6 @@ int main(int argc, char *argv[]) {
   // Load words (not needed for Mastermind, but we'll load them anyway for
   // consistency)
   std::vector<Utils::Word> wordVec = Utils::loadWords();
-
-  // Check for benchmark mode
-  if (args.find("benchmark") != args.end()) {
-    std::string benchmarkType =
-        Utils::Input::getArgValue(args, "benchmark", std::string(""));
-
-    if (benchmarkType != "runtime" && benchmarkType != "performance") {
-      std::cerr << "Invalid benchmark type: " << benchmarkType << "\n";
-      std::cerr << "Valid options: runtime, performance\n";
-      return 1;
-    }
-
-    if (cmdArgs.positional.empty()) {
-      std::cerr << "Mode must be specified for benchmarking\n";
-      return 1;
-    }
-
-    std::string mode = cmdArgs.positional[0];
-
-    // Create the game instance
-    auto game = createGame(mode, wordVec);
-    if (!game) {
-      std::cerr << "Invalid mode for benchmarking: " << mode << "\n";
-      return 1;
-    }
-
-    // Parse benchmark configuration
-    Utils::Benchmarking::BenchmarkConfig config =
-        Utils::Benchmarking::parseBenchmarkArgs(cmdArgs);
-    config.gameMode = mode;
-
-    try {
-      // Call the benchmark method on the game instance
-      Utils::Benchmarking::BenchmarkResult result = game->runBenchmark(config);
-
-      Utils::Benchmarking::printBenchmarkResults(result);
-    } catch (const std::exception &e) {
-      std::cerr << "Benchmark error: " << e.what() << "\n";
-      return 1;
-    }
-
-    return 0;
-  }
 
   // Check if mode is specified for headless operation
   if (!cmdArgs.positional.empty()) {

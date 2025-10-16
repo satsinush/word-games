@@ -1,3 +1,4 @@
 - Create presentation
 - Add function descriptions and inline comments for confusing lines of code
 - Create GUI for games
+- Use library for profiling?

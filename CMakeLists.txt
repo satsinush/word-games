@@ -8,6 +8,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 option(BUILD_GUI "Build the application with the Qt GUI" ON)
 option(BUILD_TESTING "Build the project's tests" ON)
+option(BUILD_BENCHMARKS "Build the project's benchmarks" ON)
 
 
 # ===================================================================
@@ -96,7 +97,7 @@ endif()
 # ===================================================================
 # 3. SETUP TESTING
 # ===================================================================
-if(BUILD_TESTING) # <-- ADD THIS WRAPPER
+if(BUILD_TESTING)
     # Enable testing for the project
     enable_testing()
 
@@ -121,4 +122,32 @@ if(BUILD_TESTING) # <-- ADD THIS WRAPPER
     gtest_discover_tests(word-games-tests)
 else()
     message(STATUS "Testing disabled. Skipping test build.")
-endif() # <-- END WRAPPER
+endif()
+
+# ===================================================================
+# 4. SETUP BENCHMARKING
+# ===================================================================
+if(BUILD_BENCHMARKS)
+    message(STATUS "Benchmarks enabled. Building benchmark runner.")
+
+    # FetchContent is already included in your testing block
+    include(FetchContent)
+    
+    # Disable building benchmark tests to avoid compilation errors
+    set(BENCHMARK_ENABLE_TESTING OFF CACHE BOOL "Disable benchmark tests" FORCE)
+    
+    FetchContent_Declare(
+        googlebenchmark
+        SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/third_party/benchmark-1.9.4"
+    )
+    FetchContent_MakeAvailable(googlebenchmark)
+
+    # Create the benchmark executable.
+    # Assumes your benchmark source files are in a 'benchmarks/' directory.
+    add_executable(word-games-benchmarks benchmarks/benchmarks.cpp)
+
+    # Link against your core library and Google Benchmark's main library.
+    target_link_libraries(word-games-benchmarks PRIVATE word-games-lib benchmark::benchmark_main)
+else()
+    message(STATUS "Benchmarks disabled. Skipping benchmark build.")
+endif()

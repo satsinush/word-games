@@ -1,5 +1,4 @@
 #pragma once
-#include "../utils/benchmarkUtils.hpp"
 #include "../utils/inputUtils.hpp"
 #include <string>
 
@@ -20,10 +19,5 @@ public:
 
   // Get game name for identification
   virtual std::string getGameName() const = 0;
-
-  // Run benchmark for this game
-  // The type of benchmark (runtime or performance) is determined by config.type
-  virtual Utils::Benchmarking::BenchmarkResult
-  runBenchmark(const Utils::Benchmarking::BenchmarkConfig &config) = 0;
 };
 } // namespace Game
