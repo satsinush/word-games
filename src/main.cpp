@@ -11,7 +11,10 @@
 #include "mastermind/MastermindGame.hpp"
 #include "spellingBee/SpellingBeeGame.hpp"
 #include "utils/benchmarkUtils.hpp"
-#include "utils/utils.hpp"
+#include "utils/inputUtils.hpp"
+#include "utils/profilerUtils.hpp"
+#include "utils/wordUtils.hpp"
+
 #include "wordle/WordleGame.hpp"
 
 #ifdef WITH_GUI

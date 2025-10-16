@@ -1,7 +1,9 @@
 #pragma once
 #include "../game/Game.hpp"
 #include "../spellingBee/spellingBee.hpp"
-#include "../utils/utils.hpp"
+#include "../utils/inputUtils.hpp"
+#include "../utils/profilerUtils.hpp"
+#include "../utils/wordUtils.hpp"
 #include <vector>
 
 namespace Game {

@@ -1,6 +1,8 @@
 #pragma once
 #include "../game/Game.hpp"
-#include "../utils/utils.hpp"
+#include "../utils/inputUtils.hpp"
+#include "../utils/profilerUtils.hpp"
+#include "../utils/wordUtils.hpp"
 #include "../wordle/wordle.hpp"
 #include <vector>
 
