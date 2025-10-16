@@ -5,8 +5,8 @@
 #include <sstream>
 #include <string>
 
-#include "../utils/inputUtils.hpp"
-#include "WordleGame.hpp"
+#include "utils/inputUtils.hpp"
+#include "wordle/WordleGame.hpp"
 
 namespace Game {
 WordleGame::WordleGame(const std::vector<Utils::Word> &words)

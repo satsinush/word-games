@@ -11,7 +11,7 @@
 #include <unordered_set>
 #include <vector>
 
-#include "spellingBee.hpp"
+#include "spellingBee/spellingBee.hpp"
 
 namespace SpellingBee {
 bool isValidWord(Utils::Word &word, const Config &config) {

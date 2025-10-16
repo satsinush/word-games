@@ -1,15 +1,15 @@
 #include <benchmark/benchmark.h>
 
-#include "../src/letterBoxed/LetterBoxedGame.hpp"
-#include "../src/letterBoxed/letterBoxed.hpp"
-#include "../src/mastermind/MastermindGame.hpp"
-#include "../src/mastermind/mastermind.hpp"
-#include "../src/spellingBee/SpellingBeeGame.hpp"
-#include "../src/spellingBee/spellingBee.hpp"
-#include "../src/utils/inputUtils.hpp"
-#include "../src/utils/wordUtils.hpp"
-#include "../src/wordle/WordleGame.hpp"
-#include "../src/wordle/wordle.hpp"
+#include "letterBoxed/LetterBoxedGame.hpp"
+#include "letterBoxed/letterBoxed.hpp"
+#include "mastermind/MastermindGame.hpp"
+#include "mastermind/mastermind.hpp"
+#include "spellingBee/SpellingBeeGame.hpp"
+#include "spellingBee/spellingBee.hpp"
+#include "utils/inputUtils.hpp"
+#include "utils/wordUtils.hpp"
+#include "wordle/WordleGame.hpp"
+#include "wordle/wordle.hpp"
 
 // Global word list - loaded once for all benchmarks
 static std::vector<Utils::Word> g_wordVec;

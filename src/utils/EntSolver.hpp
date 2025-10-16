@@ -4,13 +4,16 @@
 #include <cmath>
 #include <cstdint>
 #include <functional>
+#include <iostream>
 #include <limits>
 #include <map>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
 
+#ifdef TRACY_ENABLE
 #include <tracy/Tracy.hpp>
+#endif
 
 namespace Utils {
 /**
@@ -150,7 +153,9 @@ private:
       const std::vector<TCandidateType> &currentCandidates,
       const std::vector<TCandidateType> &allCandidates,
       const int maxDepth) { // Depth limit to prevent infinite recursion
+#ifdef TRACY_ENABLE
     ZoneScoped;
+#endif
     // Base Case: If only one candidate left, it has already been found
     if (currentCandidates.size() <= 1)
       return 0.0;
@@ -186,7 +191,9 @@ private:
                          const std::vector<TCandidateType> &currentCandidates,
                          const std::vector<TCandidateType> &allCandidates,
                          const int maxDepth) {
+#ifdef TRACY_ENABLE
     ZoneScoped;
+#endif
 
     // Calculate total score for normalization
     double totalScore = 0.0;

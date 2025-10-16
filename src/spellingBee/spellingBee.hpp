@@ -3,9 +3,9 @@
 #include <string>
 #include <vector>
 
-#include "../utils/inputUtils.hpp"
-#include "../utils/profilerUtils.hpp"
-#include "../utils/wordUtils.hpp"
+#include "utils/inputUtils.hpp"
+#include "utils/profilerUtils.hpp"
+#include "utils/wordUtils.hpp"
 
 namespace SpellingBee {
 struct Config {

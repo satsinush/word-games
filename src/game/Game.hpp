@@ -1,5 +1,5 @@
 #pragma once
-#include "../utils/inputUtils.hpp"
+#include "utils/inputUtils.hpp"
 #include <string>
 
 namespace Game {

@@ -17,7 +17,7 @@
 #include <unistd.h>
 #endif
 
-#include "wordUtils.hpp"
+#include "utils/wordUtils.hpp"
 
 namespace Utils {
 std::filesystem::path getExecutableDir() {

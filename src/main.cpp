@@ -22,7 +22,9 @@
 #include "gui/MainWindow.hpp"
 #endif
 
+#ifdef TRACY_ENABLE
 #include <tracy/Tracy.hpp>
+#endif
 
 void printUsage(const char *programName) {
   const char *usage_message = R"(Usage:
@@ -234,7 +236,9 @@ void runInteractiveMode(const std::vector<Utils::Word> &wordVec) {
 }
 
 int run(int argc, char *argv[]) {
+#ifdef TRACY_ENABLE
   ZoneScoped;
+#endif
   // Parse command line arguments
   Utils::Input::CommandArgs cmdArgs =
       Utils::Input::parseCommandArgs(argc, argv);
@@ -315,11 +319,11 @@ int main(int argc, char *argv[]) {
 
   int result = run(argc, argv);
 
+#ifdef TRACY_ENABLE
   FrameMark;
 
-#ifdef TRACY_ENABLE
-  std::cout << "\nSolver finished. Press Enter to exit." << std::endl;
-  std::cin.get(); // Pauses the program, waiting for you to press Enter
+  // std::cout << "\nSolver finished. Press Enter to exit." << std::endl;
+  // std::cin.get(); // Pauses the program, waiting for you to press Enter
 #endif
 
   return result;

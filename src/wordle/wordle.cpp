@@ -9,10 +9,12 @@
 #include <unordered_set>
 #include <vector>
 
-#include "../utils/EntSolver.hpp"
-#include "wordle.hpp"
+#include "utils/EntSolver.hpp"
+#include "wordle/wordle.hpp"
 
+#ifdef TRACY_ENABLE
 #include <tracy/Tracy.hpp>
+#endif
 
 namespace Wordle {
 Feedback parseFeedback(const std::string &input) {
@@ -43,7 +45,9 @@ Feedback parseFeedback(const std::string &input) {
 
 // Helper: Check if a word matches all feedback constraints
 bool matchesFeedback(const Utils::Word &candidate, const Feedback &fb) {
+#ifdef TRACY_ENABLE
   ZoneScoped;
+#endif
   const std::string &guess = fb.word;
   // Use pre-calculated letter count from candidate word
   std::array<uint8_t, 26> candidateLetterCount = candidate.letterCount;
@@ -83,7 +87,9 @@ bool matchesFeedback(const Utils::Word &candidate, const Feedback &fb) {
 
 // Generate feedback for a guess against a target word
 Feedback generateFeedback(const Utils::Word &target, const std::string &guess) {
+#ifdef TRACY_ENABLE
   ZoneScoped;
+#endif
   Feedback fb;
   fb.word = guess;
 
@@ -120,7 +126,9 @@ Feedback generateFeedback(const Utils::Word &target, const std::string &guess) {
 
 std::vector<Utils::Word> filterWords(const std::vector<Utils::Word> &words,
                                      const std::vector<Feedback> &feedbacks) {
+#ifdef TRACY_ENABLE
   ZoneScoped;
+#endif
   std::vector<Utils::Word> filtered;
   for (const auto &w : words) {
     bool ok = true;
@@ -178,6 +186,11 @@ protected:
 Result runWordleSolver(const std::vector<Utils::Word> &allWords,
                        const std::vector<Feedback> &feedbacks,
                        const Config &config) {
+#ifdef TRACY_ENABLE
+  std::cout << "Tracy enabled in " << __FILE__ << " at line " << __LINE__
+            << std::endl;
+  ZoneScoped;
+#endif
   // Filter words to only 5-letter words
   std::vector<Utils::Word> availableWords;
   for (const auto &word : allWords) {

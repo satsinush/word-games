@@ -1,8 +1,8 @@
 #pragma once
-#include "../game/Game.hpp"
-#include "../spellingBee/spellingBee.hpp"
-#include "../utils/inputUtils.hpp"
-#include "../utils/wordUtils.hpp"
+#include "game/Game.hpp"
+#include "spellingBee/spellingBee.hpp"
+#include "utils/inputUtils.hpp"
+#include "utils/wordUtils.hpp"
 #include <vector>
 
 namespace Game {

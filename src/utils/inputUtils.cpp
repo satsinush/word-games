@@ -6,8 +6,8 @@
 #include <sstream>
 #include <string>
 
-#include "inputUtils.hpp"
-#include "wordUtils.hpp"
+#include "utils/inputUtils.hpp"
+#include "utils/wordUtils.hpp"
 
 namespace Utils {
 namespace Input {

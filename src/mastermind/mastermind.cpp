@@ -11,8 +11,8 @@
 #include <unordered_set>
 #include <vector>
 
-#include "../utils/EntSolver.hpp"
-#include "mastermind.hpp"
+#include "mastermind/mastermind.hpp"
+#include "utils/EntSolver.hpp"
 
 namespace Mastermind {
 Feedback parseFeedback(const std::string &input, uint8_t numPegs) {

@@ -5,8 +5,8 @@
 #include <set>
 #include <string>
 
-#include "../utils/inputUtils.hpp"
-#include "SpellingBeeGame.hpp"
+#include "spellingBee/SpellingBeeGame.hpp"
+#include "utils/inputUtils.hpp"
 
 namespace Game {
 SpellingBeeGame::SpellingBeeGame(const std::vector<Utils::Word> &words)

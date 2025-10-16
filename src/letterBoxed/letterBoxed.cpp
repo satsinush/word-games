@@ -11,7 +11,7 @@
 #include <unordered_set>
 #include <vector>
 
-#include "letterBoxed.hpp"
+#include "letterBoxed/letterBoxed.hpp"
 
 namespace LetterBoxed {
 // --- Out-of-class implementations for header-declared operators ---

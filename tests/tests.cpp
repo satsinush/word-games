@@ -4,12 +4,12 @@
 #include <string>
 #include <vector>
 
-#include "../src/letterBoxed/letterBoxed.hpp"
-#include "../src/mastermind/mastermind.hpp"
-#include "../src/spellingBee/spellingBee.hpp"
-#include "../src/utils/inputUtils.hpp"
-#include "../src/utils/wordUtils.hpp"
-#include "../src/wordle/wordle.hpp"
+#include "letterBoxed/letterBoxed.hpp"
+#include "mastermind/mastermind.hpp"
+#include "spellingBee/spellingBee.hpp"
+#include "utils/inputUtils.hpp"
+#include "utils/wordUtils.hpp"
+#include "wordle/wordle.hpp"
 
 // Helper function to load words for testing
 std::vector<Utils::Word> loadTestWords() {

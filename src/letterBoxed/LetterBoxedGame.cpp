@@ -5,8 +5,8 @@
 #include <set>
 #include <string>
 
-#include "../utils/inputUtils.hpp"
-#include "LetterBoxedGame.hpp"
+#include "letterBoxed/LetterBoxedGame.hpp"
+#include "utils/inputUtils.hpp"
 
 namespace Game {
 LetterBoxedGame::LetterBoxedGame(const std::vector<Utils::Word> &words)

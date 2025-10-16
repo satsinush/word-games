@@ -5,8 +5,8 @@
 #include <sstream>
 #include <string>
 
-#include "../utils/inputUtils.hpp"
-#include "MastermindGame.hpp"
+#include "mastermind/MastermindGame.hpp"
+#include "utils/inputUtils.hpp"
 
 namespace Game {
 Mastermind::Config MastermindGame::getConfigFromUser() {
