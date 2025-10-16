@@ -64,6 +64,38 @@
                 "Build (Release)"
             ],
             "dependsOrder": "sequence"
+        },
+        {
+            "label": "Run Tests (Debug)",
+            "type": "shell",
+            "command": "ctest",
+            "args": [
+                "--test-dir",
+                "${workspaceFolder}/build/Debug"
+            ],
+            "problemMatcher": []
+        },
+        {
+            "label": "Run Tests (Release)",
+            "type": "shell",
+            "command": "ctest",
+            "args": [
+                "--test-dir",
+                "${workspaceFolder}/build/Release"
+            ],
+            "problemMatcher": []
+        },
+        {
+            "label": "Benchmark (Debug)",
+            "type": "shell",
+            "command": "echo. && \"${workspaceFolder}/build/Debug/word-games-benchmarks.exe\" --benchmark_time_unit=ms",
+            "problemMatcher": []
+        },
+        {
+            "label": "Benchmark (Release)",
+            "type": "shell",
+            "command": "echo. && \"${workspaceFolder}/build/Release/word-games-benchmarks.exe\" --benchmark_time_unit=ms",
+            "problemMatcher": []
         }
     ]
 }

@@ -22,6 +22,8 @@
 #include "gui/MainWindow.hpp"
 #endif
 
+#include <tracy/Tracy.hpp>
+
 void printUsage(const char *programName) {
   const char *usage_message = R"(Usage:
   %s [OPTIONS] [MODE]
@@ -231,7 +233,8 @@ void runInteractiveMode(const std::vector<Utils::Word> &wordVec) {
   }
 }
 
-int main(int argc, char *argv[]) {
+int run(int argc, char *argv[]) {
+  ZoneScoped;
   // Parse command line arguments
   Utils::Input::CommandArgs cmdArgs =
       Utils::Input::parseCommandArgs(argc, argv);
@@ -290,10 +293,7 @@ int main(int argc, char *argv[]) {
     }
 
     try {
-      Utils::Profiling::g_profiler.start();
       game->runHeadless(cmdArgs);
-      Utils::Profiling::g_profiler.stop();
-      Utils::Profiling::g_profiler.logProfilerData();
     } catch (const std::exception &e) {
       std::cerr << "Error: " << e.what() << "\n";
       return 1;
@@ -306,4 +306,21 @@ int main(int argc, char *argv[]) {
   runInteractiveMode(wordVec);
 
   return 0;
+}
+
+int main(int argc, char *argv[]) {
+#ifdef TRACY_ENABLE
+  std::cout << "Tracy Profiler enabled.\n";
+#endif
+
+  int result = run(argc, argv);
+
+  FrameMark;
+
+#ifdef TRACY_ENABLE
+  std::cout << "\nSolver finished. Press Enter to exit." << std::endl;
+  std::cin.get(); // Pauses the program, waiting for you to press Enter
+#endif
+
+  return result;
 }

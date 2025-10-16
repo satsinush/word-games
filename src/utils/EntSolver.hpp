@@ -10,6 +10,8 @@
 #include <unordered_set>
 #include <vector>
 
+#include <tracy/Tracy.hpp>
+
 namespace Utils {
 /**
  * Abstract base class for ENT-based puzzle solvers.
@@ -50,6 +52,10 @@ public:
   TResultType solve(const std::vector<TCandidateType> &allCandidates,
                     const std::vector<TFeedbackType> &feedbackHistory,
                     const TConfigType &config) {
+#ifdef TRACY_ENABLE
+    std::cout << "Tracy enabled in " << __FILE__ << " at line " << __LINE__
+              << std::endl;
+#endif
     // Filter candidates based on feedback history
     std::vector<TCandidateType> possibleCandidates;
 
@@ -144,7 +150,7 @@ private:
       const std::vector<TCandidateType> &currentCandidates,
       const std::vector<TCandidateType> &allCandidates,
       const int maxDepth) { // Depth limit to prevent infinite recursion
-
+    ZoneScoped;
     // Base Case: If only one candidate left, it has already been found
     if (currentCandidates.size() <= 1)
       return 0.0;
@@ -180,6 +186,8 @@ private:
                          const std::vector<TCandidateType> &currentCandidates,
                          const std::vector<TCandidateType> &allCandidates,
                          const int maxDepth) {
+    ZoneScoped;
+
     // Calculate total score for normalization
     double totalScore = 0.0;
     for (const auto &target : currentCandidates) {

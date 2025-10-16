@@ -12,6 +12,8 @@
 #include "../utils/EntSolver.hpp"
 #include "wordle.hpp"
 
+#include <tracy/Tracy.hpp>
+
 namespace Wordle {
 Feedback parseFeedback(const std::string &input) {
   Feedback fb;
@@ -41,6 +43,7 @@ Feedback parseFeedback(const std::string &input) {
 
 // Helper: Check if a word matches all feedback constraints
 bool matchesFeedback(const Utils::Word &candidate, const Feedback &fb) {
+  ZoneScoped;
   const std::string &guess = fb.word;
   // Use pre-calculated letter count from candidate word
   std::array<uint8_t, 26> candidateLetterCount = candidate.letterCount;
@@ -80,6 +83,7 @@ bool matchesFeedback(const Utils::Word &candidate, const Feedback &fb) {
 
 // Generate feedback for a guess against a target word
 Feedback generateFeedback(const Utils::Word &target, const std::string &guess) {
+  ZoneScoped;
   Feedback fb;
   fb.word = guess;
 
@@ -116,6 +120,7 @@ Feedback generateFeedback(const Utils::Word &target, const std::string &guess) {
 
 std::vector<Utils::Word> filterWords(const std::vector<Utils::Word> &words,
                                      const std::vector<Feedback> &feedbacks) {
+  ZoneScoped;
   std::vector<Utils::Word> filtered;
   for (const auto &w : words) {
     bool ok = true;

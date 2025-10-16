@@ -29,17 +29,6 @@
                 "CMAKE_CXX_COMPILER": "C:/Qt/Tools/mingw1310_64/bin/g++.exe",
                 "CMAKE_PREFIX_PATH": "C:/Qt/6.9.3/mingw_64"
             }
-        },
-        {
-            "name": "x64-RelWithDebInfo",
-            "displayName": "x64 Release for Profiling",
-            "description": "Builds for RelWithDebInfo using the Ninja generator and MSVC compiler.",
-            "generator": "Ninja",
-            "binaryDir": "${sourceDir}/build/${presetName}",
-            "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "RelWithDebInfo",
-                "CMAKE_INSTALL_PREFIX": "${sourceDir}/install/${presetName}"
-            }
         }
     ],
     "buildPresets": [
