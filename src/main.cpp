@@ -11,7 +11,6 @@
 #include "mastermind/MastermindGame.hpp"
 #include "spellingBee/SpellingBeeGame.hpp"
 #include "utils/inputUtils.hpp"
-#include "utils/profilerUtils.hpp"
 #include "utils/wordUtils.hpp"
 
 #include "wordle/WordleGame.hpp"
@@ -321,9 +320,6 @@ int main(int argc, char *argv[]) {
 
 #ifdef TRACY_ENABLE
   FrameMark;
-
-  // std::cout << "\nSolver finished. Press Enter to exit." << std::endl;
-  // std::cin.get(); // Pauses the program, waiting for you to press Enter
 #endif
 
   return result;

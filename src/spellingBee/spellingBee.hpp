@@ -4,7 +4,6 @@
 #include <vector>
 
 #include "utils/inputUtils.hpp"
-#include "utils/profilerUtils.hpp"
 #include "utils/wordUtils.hpp"
 
 namespace SpellingBee {

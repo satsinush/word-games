@@ -7,7 +7,7 @@
             "command": "cmake",
             "args": [
                 "--preset",
-                "mingw-debug"
+                "Debug"
             ],
             "problemMatcher": []
         },
@@ -39,7 +39,7 @@
             "command": "cmake",
             "args": [
                 "--preset",
-                "mingw-release"
+                "Release"
             ],
             "problemMatcher": []
         },
@@ -62,6 +62,38 @@
             "dependsOn": [
                 "Configure (Release)",
                 "Build (Release)"
+            ],
+            "dependsOrder": "sequence"
+        },
+        {
+            "label": "Configure (Core)",
+            "type": "shell",
+            "command": "cmake",
+            "args": [
+                "--preset",
+                "Core"
+            ],
+            "problemMatcher": []
+        },
+        {
+            "label": "Build (Core)",
+            "type": "shell",
+            "command": "cmake",
+            "args": [
+                "--build",
+                "${workspaceFolder}/build/Core",
+                "--config",
+                "Core"
+            ],
+            "problemMatcher": [
+                "$gcc"
+            ]
+        },
+        {
+            "label": "Configure and Build (Core)",
+            "dependsOn": [
+                "Configure (Debug)",
+                "Build (Core)"
             ],
             "dependsOrder": "sequence"
         },

@@ -13,6 +13,10 @@
 
 #include "letterBoxed/letterBoxed.hpp"
 
+#ifdef TRACY_ENABLE
+#include <tracy/Tracy.hpp>
+#endif
+
 namespace LetterBoxed {
 // --- Out-of-class implementations for header-declared operators ---
 
@@ -48,6 +52,9 @@ std::string
 reconstructPrintString(const std::vector<const WordPath *> &wordPathPtrs,
                        const Config &config,
                        const std::vector<int> &allPathIndices) {
+#ifdef TRACY_ENABLE
+  ZoneScoped;
+#endif
   if (wordPathPtrs.empty()) {
     return "";
   }
@@ -81,6 +88,9 @@ void findWordPathsRecursive(const Utils::Word &wordObj, const Config &config,
                             std::vector<int> &currentPathGlobalIndexes,
                             const int lastUsedSide, const uint8_t depth,
                             std::vector<int> &allPathIndices) {
+#ifdef TRACY_ENABLE
+  ZoneScoped;
+#endif
   if (depth == wordObj.wordString.length()) {
     int offset = static_cast<int>(allPathIndices.size());
     allPathIndices.insert(allPathIndices.end(),
@@ -115,6 +125,9 @@ void findWordPathsRecursive(const Utils::Word &wordObj, const Config &config,
 void filterWords(std::vector<WordPath> &allValidWordPaths,
                  const std::vector<Utils::Word> &allDictionaryWords,
                  const Config &config, std::vector<int> &allPathIndices) {
+#ifdef TRACY_ENABLE
+  ZoneScoped;
+#endif
   for (const Utils::Word &wordObj : allDictionaryWords) {
     const std::string &word = wordObj.wordString;
     std::bitset<12> uniqueChars;
@@ -153,6 +166,9 @@ void expandAndStoreSolutions(
     std::vector<const WordPath *> &currentWordChain, const uint8_t depth,
     std::vector<Solution> &finalSolutions, const Config &config,
     const std::vector<int> &allPathIndices) {
+#ifdef TRACY_ENABLE
+  ZoneScoped;
+#endif
   // Base case: We have selected one word for each class in the path.
   if (depth == classPath.size()) {
     double scoreMin =
@@ -192,6 +208,9 @@ void findClassSolutionsRecursive(
     const std::array<CharStartIndexer, 256> &classIndexers,
     const Config &config,
     std::vector<std::vector<const EquivalenceClass *>> &classSolutions) {
+#ifdef TRACY_ENABLE
+  ZoneScoped;
+#endif
   if (currentDepth >= config.maxDepth) {
     return;
   }
@@ -237,6 +256,9 @@ void findClassSolutionsRecursive(
 // --- Prune dominated equivalence classes: remove classes that are strictly
 // dominated by another
 void pruneDominatedClasses(std::vector<EquivalenceClass> &allEqClasses) {
+#ifdef TRACY_ENABLE
+  ZoneScoped;
+#endif
   // Use unordered_map with combined key for faster grouping
   std::unordered_map<long long, std::vector<size_t>> groups;
   for (size_t i = 0; i < allEqClasses.size(); ++i) {
@@ -288,6 +310,9 @@ void pruneDominatedClasses(std::vector<EquivalenceClass> &allEqClasses) {
 std::vector<Solution>
 runLetterBoxedSolver(const Config &config,
                      const std::vector<Utils::Word> &words) {
+#ifdef TRACY_ENABLE
+  ZoneScoped;
+#endif
   // Create a vector to hold all character indices for all valid word paths.
   std::vector<int> allPathIndices;
   allPathIndices.reserve(words.size() / 100); // Reserve space for indices

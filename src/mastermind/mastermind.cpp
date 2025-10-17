@@ -14,6 +14,10 @@
 #include "mastermind/mastermind.hpp"
 #include "utils/EntSolver.hpp"
 
+#ifdef TRACY_ENABLE
+#include <tracy/Tracy.hpp>
+#endif
+
 namespace Mastermind {
 Feedback parseFeedback(const std::string &input, uint8_t numPegs) {
   // Split input by pipe separator
@@ -68,6 +72,9 @@ Feedback parseFeedback(const std::string &input, uint8_t numPegs) {
 
 // Helper: Check if a pattern matches feedback constraints
 bool matchesFeedback(const Pattern &candidate, const Feedback &fb) {
+#ifdef TRACY_ENABLE
+  ZoneScoped;
+#endif
   const Pattern &guess = fb.guess;
   if (candidate.numPegs != guess.numPegs)
     return false;
@@ -110,6 +117,9 @@ bool matchesFeedback(const Pattern &candidate, const Feedback &fb) {
 
 // Generate feedback for a guess against a target pattern
 Feedback generateFeedback(const Pattern &target, const Pattern &guess) {
+#ifdef TRACY_ENABLE
+  ZoneScoped;
+#endif
   Feedback fb;
   fb.guess = guess; // Store the guess in the feedback
 
@@ -148,6 +158,9 @@ Feedback generateFeedback(const Pattern &target, const Pattern &guess) {
 
 // Generate all possible patterns for the given configuration
 std::vector<Pattern> generateAllPatterns(const Config &config) {
+#ifdef TRACY_ENABLE
+  ZoneScoped;
+#endif
   std::vector<Pattern> patterns;
 
   if (config.allowDuplicates) {
@@ -208,6 +221,9 @@ std::vector<Pattern> generateAllPatterns(const Config &config) {
 
 std::vector<Pattern> filterPatterns(const std::vector<Pattern> &patterns,
                                     const std::vector<Feedback> &guessHistory) {
+#ifdef TRACY_ENABLE
+  ZoneScoped;
+#endif
   std::vector<Pattern> filtered;
   for (const auto &pattern : patterns) {
     bool matches = true;
@@ -259,6 +275,9 @@ protected:
 Result runMastermindSolver(const std::vector<Pattern> &allPatterns,
                            const std::vector<Feedback> &guessHistory,
                            const Config &config) {
+#ifdef TRACY_ENABLE
+  ZoneScoped;
+#endif
 
   // Use the specialized Mastermind ENT solver - returns Result directly!
   MastermindEntSolver solver;

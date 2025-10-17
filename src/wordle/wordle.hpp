@@ -7,7 +7,6 @@
 
 #include "utils/EntSolver.hpp"
 #include "utils/inputUtils.hpp"
-#include "utils/profilerUtils.hpp"
 #include "utils/wordUtils.hpp"
 
 namespace Wordle {

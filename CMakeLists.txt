@@ -13,6 +13,13 @@ option(BUILD_TESTING "Build the project's tests" ON)
 option(BUILD_BENCHMARKS "Build the project's benchmarks" ON)
 option(WITH_TRACY "Enable Tracy profiling support" ON)
 
+# Statically link C++ standard library and runtime on Windows with MinGW
+if(WIN32 AND MINGW)
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static-libgcc -static-libstdc++")
+    set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -static-libgcc -static-libstdc++")
+    message(STATUS "Statically linking C++ standard library and runtime")
+endif()
+
 # ===================================================================
 # 2. GATHER CORE SOURCE FILES
 # ===================================================================
@@ -56,12 +63,11 @@ target_include_directories(word-games-core-base PUBLIC
 )
 
 # Add Tracy include path to base library (for IntelliSense), but don't enable it
+# DO NOT define TRACY_ENABLE here - leave it undefined so Tracy macros become no-ops
 if(WITH_TRACY)
     target_include_directories(word-games-core-base PUBLIC
         ${tracy_SOURCE_DIR}/public
     )
-    # Define TRACY_ENABLE=0 so IntelliSense sees Tracy code blocks but Tracy stays disabled
-    target_compile_definitions(word-games-core-base PUBLIC TRACY_ENABLE=0)
 endif()
 
 if(MSVC)
@@ -88,7 +94,7 @@ if(WITH_TRACY)
     endif()
 
     # Apply the Tracy-specific properties to this version
-    target_compile_definitions(word-games-core-profiled PUBLIC TRACY_ENABLE)
+    target_compile_definitions(word-games-core-profiled PUBLIC TRACY_ENABLE=1)
     target_link_libraries(word-games-core-profiled INTERFACE TracyClient)
 else()
     message(STATUS "Tracy profiling disabled.")
@@ -120,9 +126,9 @@ endif()
 # -- Define the main executable once --
 add_executable(word-games src/main.cpp)
 
-# if(WITH_TRACY)
-#     target_compile_definitions(word-games PRIVATE TRACY_ENABLE)
-# endif()
+if(WITH_TRACY)
+    target_compile_definitions(word-games PRIVATE TRACY_ENABLE=1)
+endif()
 
 # -- Link the core game logic (profiled or not) --
 target_link_libraries(word-games PRIVATE

@@ -187,8 +187,6 @@ Result runWordleSolver(const std::vector<Utils::Word> &allWords,
                        const std::vector<Feedback> &feedbacks,
                        const Config &config) {
 #ifdef TRACY_ENABLE
-  std::cout << "Tracy enabled in " << __FILE__ << " at line " << __LINE__
-            << std::endl;
   ZoneScoped;
 #endif
   // Filter words to only 5-letter words

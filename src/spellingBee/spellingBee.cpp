@@ -13,8 +13,15 @@
 
 #include "spellingBee/spellingBee.hpp"
 
+#ifdef TRACY_ENABLE
+#include <tracy/Tracy.hpp>
+#endif
+
 namespace SpellingBee {
 bool isValidWord(Utils::Word &word, const Config &config) {
+#ifdef TRACY_ENABLE
+  ZoneScoped;
+#endif
   if (word.wordString.size() <= 3)
     return false;
 
@@ -28,6 +35,9 @@ bool isValidWord(Utils::Word &word, const Config &config) {
 }
 
 void filterWords(std::vector<Utils::Word> &words, const Config &config) {
+#ifdef TRACY_ENABLE
+  ZoneScoped;
+#endif
   words.erase(std::remove_if(words.begin(), words.end(),
                              [&](Utils::Word &word) {
                                return !isValidWord(word, config);
@@ -38,6 +48,9 @@ void filterWords(std::vector<Utils::Word> &words, const Config &config) {
 std::vector<Utils::Word>
 runSpellingBeeSolver(const std::vector<Utils::Word> &words,
                      const Config &config) {
+#ifdef TRACY_ENABLE
+  ZoneScoped;
+#endif
   std::vector<Utils::Word> wordsCopy = words;
   filterWords(wordsCopy, config);
 
