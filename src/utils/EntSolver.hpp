@@ -4,7 +4,6 @@
 #include <cmath>
 #include <cstdint>
 #include <functional>
-#include <iostream>
 #include <limits>
 #include <map>
 #include <unordered_map>
@@ -55,10 +54,6 @@ public:
   TResultType solve(const std::vector<TCandidateType> &allCandidates,
                     const std::vector<TFeedbackType> &feedbackHistory,
                     const TConfigType &config) {
-#ifdef TRACY_ENABLE
-    std::cout << "Tracy enabled in " << __FILE__ << " at line " << __LINE__
-              << std::endl;
-#endif
     // Filter candidates based on feedback history
     std::vector<TCandidateType> possibleCandidates;
 
