@@ -19,7 +19,7 @@
                 "BUILD_GUI": "ON",
                 "BUILD_TESTING": "ON",
                 "BUILD_BENCHMARKS": "ON",
-                "WITH_TRACY": "ON"
+                "BUILD_TRACY": "ON"
             }
         },
         {
@@ -35,7 +35,7 @@
                 "BUILD_GUI": "ON",
                 "BUILD_TESTING": "ON",
                 "BUILD_BENCHMARKS": "ON",
-                "WITH_TRACY": "OFF"
+                "BUILD_TRACY": "OFF"
             }
         },
         {
@@ -51,7 +51,7 @@
                 "BUILD_GUI": "OFF",
                 "BUILD_TESTING": "OFF",
                 "BUILD_BENCHMARKS": "OFF",
-                "WITH_TRACY": "OFF"
+                "BUILD_TRACY": "OFF"
             }
         }
     ],

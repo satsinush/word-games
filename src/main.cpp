@@ -235,9 +235,6 @@ void runInteractiveMode(const std::vector<Utils::Word> &wordVec) {
 }
 
 int run(int argc, char *argv[]) {
-#ifdef TRACY_ENABLE
-  ZoneScoped;
-#endif
   // Parse command line arguments
   Utils::Input::CommandArgs cmdArgs =
       Utils::Input::parseCommandArgs(argc, argv);
@@ -313,7 +310,8 @@ int run(int argc, char *argv[]) {
 
 int main(int argc, char *argv[]) {
 #ifdef TRACY_ENABLE
-  std::cout << "Tracy Profiler enabled.\n";
+  ZoneScoped;
+  std::cout << "Tracy Profiler enabled." << std::endl;
 #endif
 
   int result = run(argc, argv);
