@@ -15,7 +15,11 @@
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Debug",
                 "CMAKE_CXX_COMPILER": "C:/Qt/Tools/mingw1310_64/bin/g++.exe",
-                "CMAKE_PREFIX_PATH": "C:/Qt/6.9.3/mingw_64"
+                "CMAKE_PREFIX_PATH": "C:/Qt/6.9.3/mingw_64",
+                "BUILD_GUI": "ON",
+                "BUILD_TESTING": "ON",
+                "BUILD_BENCHMARKS": "ON",
+                "WITH_TRACY": "ON"
             }
         },
         {
@@ -27,7 +31,11 @@
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Release",
                 "CMAKE_CXX_COMPILER": "C:/Qt/Tools/mingw1310_64/bin/g++.exe",
-                "CMAKE_PREFIX_PATH": "C:/Qt/6.9.3/mingw_64"
+                "CMAKE_PREFIX_PATH": "C:/Qt/6.9.3/mingw_64",
+                "BUILD_GUI": "ON",
+                "BUILD_TESTING": "ON",
+                "BUILD_BENCHMARKS": "ON",
+                "WITH_TRACY": "OFF"
             }
         },
         {

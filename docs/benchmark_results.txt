@@ -1,4 +1,4 @@
-2025-10-17T01:29:01-00:00
+2025-10-17T02:58:59-00:00
 Running C:\Users\needhama\Local Documents\GitHub\word-games/build/Release/word-games-benchmarks.exe
 Run on (12 X 2496 MHz CPU s)
 CPU Caches:
@@ -9,7 +9,7 @@ CPU Caches:
 -----------------------------------------------------------------
 Benchmark                       Time             CPU   Iterations
 -----------------------------------------------------------------
-BM_Wordle_Runtime             193 ms         66.0 ms            9
-BM_SpellingBee_Runtime       15.9 ms         10.8 ms           90
-BM_LetterBoxed_Runtime       6.93 ms         1.32 ms          627
-BM_Mastermind_Runtime         418 ms         79.7 ms           10
+BM_Wordle_Runtime             179 ms         23.1 ms           21
+BM_SpellingBee_Runtime       16.0 ms         6.41 ms          100
+BM_LetterBoxed_Runtime       6.89 ms        0.715 ms          896
+BM_Mastermind_Runtime         405 ms         56.8 ms           11
