@@ -11,7 +11,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 option(BUILD_GUI "Build the application with the Qt GUI" ON)
 option(BUILD_TESTING "Build the project's tests" ON)
 option(BUILD_BENCHMARKS "Build the project's benchmarks" ON)
-option(WITH_TRACY "Enable Tracy profiling support" ON)
+option(BUILD_TRACY "Enable Tracy profiling support" ON)
 
 # Statically link C++ standard library and runtime on Windows with MinGW
 if(WIN32 AND MINGW)
@@ -44,7 +44,7 @@ add_custom_target(copy_resources ALL
 # 4. SETUP TRACY AND CREATE LIBRARY VARIANTS
 # ===================================================================
 # --- Fetch Tracy first (always, even if not enabled) ---
-if(WITH_TRACY)
+if(BUILD_TRACY)
     message(STATUS "Tracy profiling enabled.")
     include(FetchContent)
     FetchContent_Declare(
@@ -56,46 +56,46 @@ if(WITH_TRACY)
 endif()
 
 # --- Create the standard, non-profiled library ---
-add_library(word-games-core-base STATIC ${CORE_SRCS})
-target_include_directories(word-games-core-base PUBLIC
+add_library(word-games-base STATIC ${CORE_SRCS})
+target_include_directories(word-games-base PUBLIC
     ${CMAKE_SOURCE_DIR}/src
     ${CMAKE_CURRENT_BINARY_DIR}
 )
 
 # Add Tracy include path to base library (for IntelliSense), but don't enable it
 # DO NOT define TRACY_ENABLE here - leave it undefined so Tracy macros become no-ops
-if(WITH_TRACY)
-    target_include_directories(word-games-core-base PUBLIC
+if(BUILD_TRACY)
+    target_include_directories(word-games-base PUBLIC
         ${tracy_SOURCE_DIR}/public
     )
 endif()
 
 if(MSVC)
-    target_compile_options(word-games-core-base PRIVATE /W4 /permissive-)
+    target_compile_options(word-games-base PRIVATE /W4 /permissive-)
 else()
-    target_compile_options(word-games-core-base PRIVATE -Wall -Wextra -fdiagnostics-color=always -Wno-stringop-overread)
+    target_compile_options(word-games-base PRIVATE -Wall -Wextra -fdiagnostics-color=always -Wno-stringop-overread)
 endif()
 
 # --- Conditionally create the profiled library variant ---
-if(WITH_TRACY)
+if(BUILD_TRACY)
     # Create the profiled library from the same sources
-    add_library(word-games-core-profiled STATIC ${CORE_SRCS})
+    add_library(word-games-profiled STATIC ${CORE_SRCS})
 
     # Apply all the same base properties
-    target_include_directories(word-games-core-profiled PUBLIC
+    target_include_directories(word-games-profiled PUBLIC
         ${CMAKE_SOURCE_DIR}/src
         ${CMAKE_CURRENT_BINARY_DIR}
         ${tracy_SOURCE_DIR}/public
     )
     if(MSVC)
-        target_compile_options(word-games-core-profiled PRIVATE /W4 /permissive-)
+        target_compile_options(word-games-profiled PRIVATE /W4 /permissive-)
     else()
-        target_compile_options(word-games-core-profiled PRIVATE -Wall -Wextra -fdiagnostics-color=always -Wno-stringop-overread)
+        target_compile_options(word-games-profiled PRIVATE -Wall -Wextra -fdiagnostics-color=always -Wno-stringop-overread)
     endif()
 
     # Apply the Tracy-specific properties to this version
-    target_compile_definitions(word-games-core-profiled PUBLIC TRACY_ENABLE=1)
-    target_link_libraries(word-games-core-profiled INTERFACE TracyClient)
+    target_compile_definitions(word-games-profiled PUBLIC TRACY_ENABLE=1)
+    target_link_libraries(word-games-profiled INTERFACE TracyClient)
 else()
     message(STATUS "Tracy profiling disabled.")
 endif()
@@ -126,13 +126,13 @@ endif()
 # -- Define the main executable once --
 add_executable(word-games src/main.cpp)
 
-if(WITH_TRACY)
+if(BUILD_TRACY)
     target_compile_definitions(word-games PRIVATE TRACY_ENABLE=1)
 endif()
 
 # -- Link the core game logic (profiled or not) --
 target_link_libraries(word-games PRIVATE
-    $<IF:$<BOOL:${WITH_TRACY}>,word-games-core-profiled,word-games-core-base>
+    $<IF:$<BOOL:${BUILD_TRACY}>,word-games-profiled,word-games-base>
 )
 
 # -- Conditionally link the GUI library and add its dependencies --
@@ -171,7 +171,7 @@ if(BUILD_TESTING)
 
     add_executable(word-games-tests tests/tests.cpp)
     target_link_libraries(word-games-tests PRIVATE
-        word-games-core-base
+        word-games-base
         gtest_main
     )
     add_dependencies(word-games-tests copy_resources)
@@ -208,7 +208,7 @@ if(BUILD_BENCHMARKS)
 
     add_executable(word-games-benchmarks benchmarks/benchmarks.cpp)
     target_link_libraries(word-games-benchmarks PRIVATE
-        word-games-core-base
+        word-games-base
         benchmark::benchmark_main
     )
     add_dependencies(word-games-benchmarks copy_resources)
