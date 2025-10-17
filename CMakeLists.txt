@@ -60,6 +60,8 @@ if(WITH_TRACY)
     target_include_directories(word-games-core-base PUBLIC
         ${tracy_SOURCE_DIR}/public
     )
+    # Define TRACY_ENABLE=0 so IntelliSense sees Tracy code blocks but Tracy stays disabled
+    target_compile_definitions(word-games-core-base PUBLIC TRACY_ENABLE=0)
 endif()
 
 if(MSVC)
