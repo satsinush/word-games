@@ -6,6 +6,9 @@
 #include "wordle/wordle.hpp"
 #include <QLabel>
 #include <QPushButton>
+#include <QScrollArea>
+#include <QTabWidget>
+#include <QTableWidget>
 #include <QVBoxLayout>
 #include <QWidget>
 #include <array>
@@ -86,6 +89,7 @@ private slots:
   void onLetterBoxClicked();
   void onInputChanged(const QString &text);
   void onGuessDeleted();
+  void onTableRowClicked(int row, int column);
 
 private:
   Ui::WordleWidget *ui;
@@ -99,14 +103,23 @@ private:
   QWidget *currentRowWidget;
 
   // Container for past guesses
+  QScrollArea *guessListScrollArea;
   QWidget *guessListWidget;
   QVBoxLayout *guessListLayout;
   std::vector<GuessRow *> guessRows;
+
+  // Result tables
+  QTabWidget *resultsTabWidget;
+  QTableWidget *allResultsTable;
+  QTableWidget *probableWordsTable;
 
   void solveWordle();
   void setupCurrentRow();
   void submitCurrentGuess();
   void rebuildFeedbackHistory();
+  void populateResultTable(QTableWidget *table,
+                           const std::vector<Wordle::WordGuess> &guesses,
+                           int maxRows, int startRank = 1);
 };
 
 #endif // WITH_GUI

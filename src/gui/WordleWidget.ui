@@ -32,14 +32,28 @@
     </widget>
    </item>
    <item>
-    <widget class="QTextEdit" name="outputArea">
-     <property name="readOnly">
-      <bool>true</bool>
-     </property>
-     <property name="placeholderText">
-      <string>Game output will appear here...</string>
-     </property>
-    </widget>
+    <layout class="QHBoxLayout" name="topControlLayout">
+     <item>
+      <widget class="QPushButton" name="newGameBtn">
+       <property name="text">
+        <string>New Game</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <spacer name="topHorizontalSpacer">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>40</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+    </layout>
    </item>
    <item>
     <layout class="QHBoxLayout" name="inputLayout">
@@ -56,25 +70,35 @@
      <item>
       <widget class="QPushButton" name="submitBtn">
        <property name="text">
-        <string>Submit</string>
+        <string>Add word</string>
        </property>
       </widget>
      </item>
     </layout>
    </item>
    <item>
+    <widget class="QTabWidget" name="resultsTabWidget">
+     <property name="currentIndex">
+      <number>0</number>
+     </property>
+     <widget class="QWidget" name="allResultsTab">
+      <attribute name="title">
+       <string>All Suggestions</string>
+      </attribute>
+     </widget>
+     <widget class="QWidget" name="probableWordsTab">
+      <attribute name="title">
+       <string>Possible Solutions</string>
+      </attribute>
+     </widget>
+    </widget>
+   </item>
+   <item>
     <layout class="QHBoxLayout" name="controlLayout">
-     <item>
-      <widget class="QPushButton" name="newGameBtn">
-       <property name="text">
-        <string>New Game</string>
-       </property>
-      </widget>
-     </item>
      <item>
       <widget class="QPushButton" name="hintBtn">
        <property name="text">
-        <string>Get Hint</string>
+        <string>Solve</string>
        </property>
       </widget>
      </item>
