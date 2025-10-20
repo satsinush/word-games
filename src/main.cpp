@@ -249,9 +249,12 @@ int run(int argc, char *argv[]) {
 #ifdef WITH_GUI
   // Check if no arguments are provided
   if (argc == 1) {
+    // Load words for GUI mode
+    std::vector<Utils::Word> wordVec = Utils::loadWords();
+
     QApplication app(argc, argv);
 
-    MainWindow window;
+    MainWindow window(wordVec);
     window.show();
 
     return app.exec();

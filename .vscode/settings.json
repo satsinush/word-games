@@ -91,7 +91,12 @@
         "variant": "cpp",
         "any": "cpp",
         "csignal": "cpp",
-        "climits": "cpp"
+        "climits": "cpp",
+        "cinttypes": "cpp",
+        "complex": "cpp",
+        "ranges": "cpp",
+        "shared_mutex": "cpp",
+        "valarray": "cpp"
     },
     "editor.tabSize": 2,
     "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools"
