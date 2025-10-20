@@ -32,35 +32,17 @@
     </widget>
    </item>
    <item>
-    <widget class="QTextEdit" name="outputArea">
-     <property name="readOnly">
-      <bool>true</bool>
+    <widget class="QLabel" name="configInfoLabel">
+     <property name="text">
+      <string>Click "New Game" to start</string>
      </property>
-     <property name="placeholderText">
-      <string>Game output will appear here...</string>
+     <property name="alignment">
+      <set>Qt::AlignCenter</set>
      </property>
     </widget>
    </item>
    <item>
-    <layout class="QHBoxLayout" name="inputLayout">
-     <item>
-      <widget class="QLineEdit" name="inputField">
-       <property name="placeholderText">
-        <string>Enter guess and feedback (e.g., 1 2 3 4|2 1)...</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QPushButton" name="submitBtn">
-       <property name="text">
-        <string>Submit</string>
-       </property>
-      </widget>
-     </item>
-    </layout>
-   </item>
-   <item>
-    <layout class="QHBoxLayout" name="controlLayout">
+    <layout class="QHBoxLayout" name="topControlLayout">
      <item>
       <widget class="QPushButton" name="newGameBtn">
        <property name="text">
@@ -69,21 +51,7 @@
       </widget>
      </item>
      <item>
-      <widget class="QPushButton" name="hintBtn">
-       <property name="text">
-        <string>Get Hint</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QLabel" name="attemptsLabel">
-       <property name="text">
-        <string>Attempts: 0</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <spacer name="horizontalSpacer">
+      <spacer name="topSpacer">
        <property name="orientation">
         <enum>Qt::Horizontal</enum>
        </property>
@@ -96,6 +64,92 @@
       </spacer>
      </item>
     </layout>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="patternLayout">
+     <item>
+      <widget class="QLabel" name="patternLabel">
+       <property name="text">
+        <string>Pattern:</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLineEdit" name="patternField">
+       <property name="placeholderText">
+        <string>Enter pattern (e.g., 1 2 3 4)...</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="submitBtn">
+       <property name="text">
+        <string>Add</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <widget class="QLabel" name="feedbackListLabel">
+     <property name="font">
+      <font>
+       <weight>75</weight>
+       <bold>true</bold>
+      </font>
+     </property>
+     <property name="text">
+      <string>Feedback History:</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QTabWidget" name="resultsTabWidget">
+     <property name="currentIndex">
+      <number>0</number>
+     </property>
+     <widget class="QWidget" name="allTab">
+      <attribute name="title">
+       <string>All Suggestions</string>
+      </attribute>
+      <layout class="QVBoxLayout" name="allTabLayout">
+       <item>
+        <widget class="QTableWidget" name="allResultsTable">
+         <property name="editTriggers">
+          <set>QAbstractItemView::NoEditTriggers</set>
+         </property>
+         <property name="selectionBehavior">
+          <enum>QAbstractItemView::SelectRows</enum>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+     <widget class="QWidget" name="possibleTab">
+      <attribute name="title">
+       <string>Possible Answers</string>
+      </attribute>
+      <layout class="QVBoxLayout" name="possibleTabLayout">
+       <item>
+        <widget class="QTableWidget" name="possibleResultsTable">
+         <property name="editTriggers">
+          <set>QAbstractItemView::NoEditTriggers</set>
+         </property>
+         <property name="selectionBehavior">
+          <enum>QAbstractItemView::SelectRows</enum>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+    </widget>
+   </item>
+   <item>
+    <widget class="QPushButton" name="solveBtn">
+     <property name="text">
+      <string>Solve</string>
+     </property>
+    </widget>
    </item>
   </layout>
  </widget>

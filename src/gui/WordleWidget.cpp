@@ -484,8 +484,9 @@ void WordleWidget::solveWordle() {
         Wordle::runWordleSolver(wordVec, feedbackHistory, config);
 
     if (!result.sortedGuesses.empty()) {
-      // Populate all results table (up to 100 rows)
-      populateResultTable(allResultsTable, result.sortedGuesses, 100, 1);
+      // Populate all results table (show ALL results)
+      populateResultTable(allResultsTable, result.sortedGuesses,
+                          result.sortedGuesses.size(), 1);
 
       // Filter and populate probable words table, tracking original ranks
       std::vector<Wordle::WordGuess> probableWords;

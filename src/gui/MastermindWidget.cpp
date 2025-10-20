@@ -3,56 +3,214 @@
 #include "gui/MastermindWidget.hpp"
 #include "ui_MastermindWidget.h"
 
+#include <QDialog>
+#include <QDialogButtonBox>
+#include <QFormLayout>
+#include <QHBoxLayout>
+#include <QHeaderView>
 #include <QMessageBox>
+#include <QSpinBox>
+#include <QVBoxLayout>
 #include <sstream>
 
+// FeedbackRow implementation
+FeedbackRow::FeedbackRow(int index, const QString &pattern, int colors,
+                         int positions, int maxPegs, QWidget *parent)
+    : QWidget(parent), rowIndex(index), correctColors(colors),
+      correctPositions(positions), maxPegs(maxPegs) {
+  QHBoxLayout *layout = new QHBoxLayout(this);
+  layout->setContentsMargins(5, 2, 5, 2);
+
+  // Pattern label with monospace font
+  patternLabel = new QLabel(pattern, this);
+  QFont monoFont("Consolas", 10);
+  monoFont.setBold(true);
+  patternLabel->setFont(monoFont);
+  patternLabel->setMinimumWidth(100);
+
+  // Label for "Colors:"
+  QLabel *colorsLabel = new QLabel("Colors:", this);
+
+  // Colors spinbox
+  colorsSpinBox = new QSpinBox(this);
+  colorsSpinBox->setMinimum(0);
+  colorsSpinBox->setMaximum(maxPegs);
+  colorsSpinBox->setValue(colors);
+  colorsSpinBox->setMaximumWidth(60);
+  connect(colorsSpinBox, QOverload<int>::of(&QSpinBox::valueChanged), this,
+          [this](int value) {
+            correctColors = value;
+            if (correctPositions > this->maxPegs - correctColors) {
+              correctPositions = this->maxPegs - correctColors;
+              positionsSpinBox->setValue(correctPositions);
+            }
+            emit feedbackChanged(rowIndex);
+          });
+
+  // Label for "Positions:"
+  QLabel *positionsLabel = new QLabel("Positions:", this);
+
+  // Positions spinbox
+  positionsSpinBox = new QSpinBox(this);
+  positionsSpinBox->setMinimum(0);
+  positionsSpinBox->setMaximum(maxPegs);
+  positionsSpinBox->setValue(positions);
+  positionsSpinBox->setMaximumWidth(60);
+  connect(positionsSpinBox, QOverload<int>::of(&QSpinBox::valueChanged), this,
+          [this](int value) {
+            correctPositions = value;
+            if (correctColors > this->maxPegs - correctPositions) {
+              correctColors = this->maxPegs - correctPositions;
+              colorsSpinBox->setValue(correctColors);
+            }
+            emit feedbackChanged(rowIndex);
+          });
+
+  // Delete button
+  deleteButton = new QPushButton("Delete", this);
+  deleteButton->setMaximumWidth(60);
+  connect(deleteButton, &QPushButton::clicked, this,
+          [this]() { emit deleteRequested(rowIndex); });
+
+  layout->addWidget(patternLabel);
+  layout->addWidget(colorsLabel);
+  layout->addWidget(colorsSpinBox);
+  layout->addWidget(positionsLabel);
+  layout->addWidget(positionsSpinBox);
+  layout->addStretch();
+  layout->addWidget(deleteButton);
+
+  setLayout(layout);
+}
+
+void FeedbackRow::updateFeedback(int colors, int positions) {
+  correctColors = colors;
+  correctPositions = positions;
+}
+
 MastermindWidget::MastermindWidget(QWidget *parent)
-    : QWidget(parent), ui(new Ui::MastermindWidget) {
+    : QWidget(parent), ui(new Ui::MastermindWidget), gameInitialized(false) {
   ui->setupUi(this);
 
-  // Initialize default config
-  config.numPegs = 4;
-  config.numColors = 6;
+  // Initialize config defaults (will be set by dialog)
   config.allowDuplicates = true;
   config.maxDepth = 1;
+
+  // Create scroll area for feedback list
+  feedbackListScrollArea = new QScrollArea(this);
+  feedbackListScrollArea->setWidgetResizable(true);
+  feedbackListScrollArea->setMaximumHeight(200);
+
+  feedbackListContainer = new QWidget(feedbackListScrollArea);
+  feedbackListLayout = new QVBoxLayout(feedbackListContainer);
+  feedbackListLayout->setAlignment(Qt::AlignTop | Qt::AlignHCenter);
+  feedbackListContainer->setLayout(feedbackListLayout);
+  feedbackListScrollArea->setWidget(feedbackListContainer);
+
+  // Add scroll area to the main layout
+  QVBoxLayout *mainLayout = qobject_cast<QVBoxLayout *>(this->layout());
+  if (mainLayout) {
+    // Find the feedback list label and insert scroll area after it
+    int labelIndex = mainLayout->indexOf(ui->feedbackListLabel);
+    if (labelIndex >= 0) {
+      mainLayout->insertWidget(labelIndex + 1, feedbackListScrollArea);
+    }
+  }
+
+  // Setup result tables
+  QStringList headers = {"Rank", "Pattern", "ENT", "Probability"};
+
+  ui->allResultsTable->setColumnCount(4);
+  ui->allResultsTable->setHorizontalHeaderLabels(headers);
+  ui->allResultsTable->horizontalHeader()->setStretchLastSection(true);
+  ui->allResultsTable->horizontalHeader()->setSectionResizeMode(
+      QHeaderView::Stretch);
+
+  ui->possibleResultsTable->setColumnCount(4);
+  ui->possibleResultsTable->setHorizontalHeaderLabels(headers);
+  ui->possibleResultsTable->horizontalHeader()->setStretchLastSection(true);
+  ui->possibleResultsTable->horizontalHeader()->setSectionResizeMode(
+      QHeaderView::Stretch);
 
   // Connect signals
   connect(ui->submitBtn, &QPushButton::clicked, this,
           &MastermindWidget::onSubmit);
   connect(ui->newGameBtn, &QPushButton::clicked, this,
           &MastermindWidget::onNewGame);
-  connect(ui->hintBtn, &QPushButton::clicked, this, &MastermindWidget::onHint);
-  connect(ui->inputField, &QLineEdit::returnPressed, this,
+  connect(ui->solveBtn, &QPushButton::clicked, this,
+          &MastermindWidget::onSolve);
+  connect(ui->patternField, &QLineEdit::returnPressed, this,
           &MastermindWidget::onSubmit);
 
-  newGame();
+  connect(ui->allResultsTable, &QTableWidget::cellClicked, this,
+          &MastermindWidget::onTableRowClicked);
+  connect(ui->possibleResultsTable, &QTableWidget::cellClicked, this,
+          &MastermindWidget::onTableRowClicked);
+
+  // Store reference to config info label
+  configInfoLabel = ui->configInfoLabel;
+
+  // Hide UI elements until game is configured
+  setUIEnabled(false);
 }
 
 MastermindWidget::~MastermindWidget() { delete ui; }
 
 void MastermindWidget::newGame() { onNewGame(); }
 
+bool MastermindWidget::showConfigDialog() {
+  QDialog dialog(this);
+  dialog.setWindowTitle("Game Configuration");
+
+  QVBoxLayout *mainLayout = new QVBoxLayout(&dialog);
+
+  QFormLayout *formLayout = new QFormLayout();
+
+  QSpinBox *numPegsSpinBox = new QSpinBox(&dialog);
+  numPegsSpinBox->setMinimum(1);
+  numPegsSpinBox->setMaximum(8);
+  numPegsSpinBox->setValue(4);
+  formLayout->addRow("Number of Pegs:", numPegsSpinBox);
+
+  QSpinBox *numColorsSpinBox = new QSpinBox(&dialog);
+  numColorsSpinBox->setMinimum(2);
+  numColorsSpinBox->setMaximum(10);
+  numColorsSpinBox->setValue(6);
+  formLayout->addRow("Number of Colors:", numColorsSpinBox);
+
+  mainLayout->addLayout(formLayout);
+
+  QDialogButtonBox *buttonBox = new QDialogButtonBox(
+      QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
+  connect(buttonBox, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
+  connect(buttonBox, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+  mainLayout->addWidget(buttonBox);
+
+  if (dialog.exec() == QDialog::Accepted) {
+    config.numPegs = numPegsSpinBox->value();
+    config.numColors = numColorsSpinBox->value();
+    return true;
+  }
+
+  return false;
+}
+
 void MastermindWidget::onSubmit() {
-  QString input = ui->inputField->text().trimmed();
-  if (input.isEmpty()) {
-    QMessageBox::information(this, "Input Required",
-                             "Please enter guess and feedback!");
+  if (!gameInitialized) {
+    QMessageBox::information(this, "No Game Started",
+                             "Please start a new game first!");
+    return;
+  }
+
+  QString patternInput = ui->patternField->text().trimmed();
+  if (patternInput.isEmpty()) {
+    QMessageBox::information(this, "Input Required", "Please enter a pattern!");
     return;
   }
 
   try {
-    // Parse input format: "1 2 3 4|2 1"
-    std::string inputStr = input.toStdString();
-    size_t pipePos = inputStr.find('|');
-    if (pipePos == std::string::npos) {
-      throw std::invalid_argument("Missing '|' separator. Use: 1 2 3 4|2 1");
-    }
-
-    std::string patternStr = inputStr.substr(0, pipePos);
-    std::string feedbackStr = inputStr.substr(pipePos + 1);
-
     // Parse pattern
-    std::istringstream patternIss(patternStr);
+    std::istringstream patternIss(patternInput.toStdString());
     Mastermind::Pattern pattern;
     pattern.numPegs = 0;
     std::string token;
@@ -69,91 +227,246 @@ void MastermindWidget::onSubmit() {
       throw std::invalid_argument("Wrong number of pegs");
     }
 
-    // Parse feedback
-    std::istringstream feedbackIss(feedbackStr);
-    int correctPos, correctCol;
-    if (!(feedbackIss >> correctPos >> correctCol)) {
-      throw std::invalid_argument("Invalid feedback format");
-    }
-
+    // Default feedback to 0, 0 (user will edit it afterward)
     Mastermind::Feedback feedback;
     feedback.guess = pattern;
-    feedback.correctPosition = static_cast<uint8_t>(correctPos);
-    feedback.correctColor = static_cast<uint8_t>(correctCol);
+    feedback.correctPosition = 0;
+    feedback.correctColor = 0;
 
     feedbackHistory.push_back(feedback);
 
-    ui->outputArea->append(QString("Added: %1 with feedback %2 %3")
-                               .arg(QString::fromStdString(pattern.toString()))
-                               .arg(correctPos)
-                               .arg(correctCol));
+    // Rebuild the feedback list to show the new entry
+    rebuildFeedbackList();
 
-    ui->attemptsLabel->setText(
-        QString("Attempts: %1").arg(feedbackHistory.size()));
-    ui->inputField->clear();
-
-    // Check if solved
-    if (correctPos == static_cast<int>(config.numPegs)) {
-      ui->outputArea->append("\n🎉 Congratulations! You solved it!");
-    }
+    ui->patternField->clear();
   } catch (const std::exception &e) {
     QMessageBox::warning(this, "Invalid Input",
-                         QString("Error: %1\n\nFormat: 1 2 3 4|2 "
-                                 "1\n(pattern|correct_pos correct_color)")
+                         QString("Error: %1\n\nFormat: 1 2 3 4\n(space-"
+                                 "separated color numbers)")
                              .arg(e.what()));
   }
 }
 
-void MastermindWidget::onNewGame() { initGame(); }
+void MastermindWidget::onNewGame() {
+  if (showConfigDialog()) {
+    initGame();
+    gameInitialized = true;
+    setUIEnabled(true);
+    updateConfigInfo();
+  }
+}
 
-void MastermindWidget::onHint() { solveMastermind(); }
+void MastermindWidget::onSolve() {
+  if (!gameInitialized) {
+    QMessageBox::information(this, "No Game Started",
+                             "Please start a new game first!");
+    return;
+  }
+  solveMastermind();
+}
+
+void MastermindWidget::onTableRowClicked(int row, int column) {
+  Q_UNUSED(column);
+
+  QTableWidget *table = qobject_cast<QTableWidget *>(sender());
+  if (!table) {
+    return;
+  }
+
+  // Extract pattern from the Pattern column (column 1)
+  QTableWidgetItem *patternItem = table->item(row, 1);
+  if (!patternItem) {
+    return;
+  }
+
+  QString pattern = patternItem->text();
+
+  // Set the pattern in the input field
+  ui->patternField->setText(pattern);
+  ui->patternField->setFocus();
+}
 
 void MastermindWidget::initGame() {
+  // Config is already set by showConfigDialog()
   feedbackHistory.clear();
-  ui->outputArea->clear();
-  ui->inputField->clear();
-  ui->attemptsLabel->setText("Attempts: 0");
 
-  // Generate all possible patterns
+  // Clear feedback list
+  QLayoutItem *item;
+  while ((item = feedbackListLayout->takeAt(0)) != nullptr) {
+    delete item->widget();
+    delete item;
+  }
+
+  ui->patternField->clear();
+
+  // Clear result tables
+  ui->allResultsTable->setRowCount(0);
+  ui->possibleResultsTable->setRowCount(0);
+
+  // Reset tab titles
+  ui->resultsTabWidget->setTabText(0, "All Suggestions");
+  ui->resultsTabWidget->setTabText(1, "Possible Answers");
+
+  // Update placeholder text with current configuration
+  QString examplePattern;
+  for (unsigned int i = 1; i <= config.numPegs; ++i) {
+    if (i > 1)
+      examplePattern += " ";
+    examplePattern += QString::number(i);
+  }
+  ui->patternField->setPlaceholderText(
+      QString("Enter pattern (e.g., %1)...").arg(examplePattern));
+
+  // Generate all possible patterns with new configuration
   allPatterns = Mastermind::generateAllPatterns(config);
+}
 
-  ui->outputArea->append("New Mastermind game started!");
-  ui->outputArea->append(QString("\nSettings: %1 pegs, %2 colors")
-                             .arg(config.numPegs)
-                             .arg(config.numColors));
-  ui->outputArea->append(
-      QString("Total possible patterns: %1\n").arg(allPatterns.size()));
-  ui->outputArea->append("Enter your guesses and feedback:");
-  ui->outputArea->append(
-      "Format: 1 2 3 4|2 1 (pattern|correct_pos correct_color)\n");
+void MastermindWidget::populateResultTable(
+    QTableWidget *table, const std::vector<Mastermind::PatternGuess> &guesses,
+    bool filterPossible) {
+  table->setRowCount(0);
+
+  int rank = 0;
+  for (const auto &guess : guesses) {
+    // Skip if filtering for possible and this has 0 probability
+    if (filterPossible && guess.probability <= 0.0) {
+      continue;
+    }
+
+    rank++;
+    int row = table->rowCount();
+    table->insertRow(row);
+
+    // Rank
+    QTableWidgetItem *rankItem = new QTableWidgetItem(QString::number(rank));
+    rankItem->setTextAlignment(Qt::AlignCenter);
+    table->setItem(row, 0, rankItem);
+
+    // Pattern (uppercase monospace)
+    QString patternStr =
+        QString::fromStdString(guess.pattern.toString()).toUpper();
+    QTableWidgetItem *patternItem = new QTableWidgetItem(patternStr);
+    QFont monoFont("Consolas", 10);
+    monoFont.setBold(true);
+    patternItem->setFont(monoFont);
+    patternItem->setTextAlignment(Qt::AlignCenter);
+    table->setItem(row, 1, patternItem);
+
+    // ENT
+    QTableWidgetItem *entItem =
+        new QTableWidgetItem(QString::number(guess.ent, 'f', 3));
+    entItem->setTextAlignment(Qt::AlignCenter);
+    table->setItem(row, 2, entItem);
+
+    // Probability
+    QString probStr = QString::number(guess.probability * 100.0, 'f', 2) + "%";
+    QTableWidgetItem *probItem = new QTableWidgetItem(probStr);
+    probItem->setTextAlignment(Qt::AlignCenter);
+    table->setItem(row, 3, probItem);
+
+    // Color coding
+    if (guess.probability >= 1.0) {
+      // Green for 100% probability
+      QColor bgColor(144, 238, 144);
+      for (int col = 0; col < 4; ++col) {
+        if (table->item(row, col)) {
+          table->item(row, col)->setBackground(bgColor);
+          table->item(row, col)->setForeground(Qt::black);
+        }
+      }
+    } else if (guess.probability > 0.0) {
+      // Yellow for 0% < probability < 100%
+      QColor bgColor(255, 255, 153);
+      for (int col = 0; col < 4; ++col) {
+        if (table->item(row, col)) {
+          table->item(row, col)->setBackground(bgColor);
+          table->item(row, col)->setForeground(Qt::black);
+        }
+      }
+    }
+  }
 }
 
 void MastermindWidget::solveMastermind() {
-  ui->outputArea->append("\n--- Calculating best guesses ---");
-
   try {
     Mastermind::Result result =
         Mastermind::runMastermindSolver(allPatterns, feedbackHistory, config);
 
-    ui->outputArea->append(QString("\nPossible patterns remaining: %1\n")
-                               .arg(result.totalPossiblePatterns));
+    // Populate both tables
+    populateResultTable(ui->allResultsTable, result.sortedGuesses, false);
+    populateResultTable(ui->possibleResultsTable, result.sortedGuesses, true);
 
-    if (!result.sortedGuesses.empty()) {
-      ui->outputArea->append("=== Top 10 Suggestions ===");
+    // Update tab titles with counts
+    ui->resultsTabWidget->setTabText(
+        0, QString("All Suggestions (%1)").arg(result.sortedGuesses.size()));
+    ui->resultsTabWidget->setTabText(
+        1, QString("Possible Answers (%1)").arg(result.totalPossiblePatterns));
 
-      int limit = std::min(10, static_cast<int>(result.sortedGuesses.size()));
-      for (int i = 0; i < limit; ++i) {
-        const auto &guess = result.sortedGuesses[i];
-        ui->outputArea->append(
-            QString("%1. %2 (ENT: %3)")
-                .arg(i + 1)
-                .arg(QString::fromStdString(guess.pattern.toString()))
-                .arg(guess.ent, 0, 'f', 2));
-      }
-    }
   } catch (const std::exception &e) {
     QMessageBox::critical(this, "Solver Error",
                           QString("Error running solver: %1").arg(e.what()));
+  }
+}
+
+void MastermindWidget::setUIEnabled(bool enabled) {
+  // Show/hide all UI elements except title, config info, and new game button
+  ui->patternField->setVisible(enabled);
+  ui->patternLabel->setVisible(enabled);
+  ui->submitBtn->setVisible(enabled);
+  ui->feedbackListLabel->setVisible(enabled);
+  feedbackListScrollArea->setVisible(enabled);
+  ui->resultsTabWidget->setVisible(enabled);
+  ui->solveBtn->setVisible(enabled);
+}
+
+void MastermindWidget::updateConfigInfo() {
+  configInfoLabel->setText(QString("Game: %1 pegs, %2 colors")
+                               .arg(config.numPegs)
+                               .arg(config.numColors));
+}
+
+void MastermindWidget::rebuildFeedbackList() {
+  // Clear existing widgets
+  QLayoutItem *item;
+  while ((item = feedbackListLayout->takeAt(0)) != nullptr) {
+    delete item->widget();
+    delete item;
+  }
+
+  // Rebuild from feedbackHistory
+  for (size_t i = 0; i < feedbackHistory.size(); ++i) {
+    const auto &fb = feedbackHistory[i];
+    QString displayPattern =
+        QString::fromStdString(fb.guess.toString()).toUpper();
+    FeedbackRow *row =
+        new FeedbackRow(i, displayPattern, fb.correctColor, fb.correctPosition,
+                        config.numPegs, this);
+    connect(row, &FeedbackRow::deleteRequested, this,
+            &MastermindWidget::onDeleteFeedback);
+    connect(row, &FeedbackRow::feedbackChanged, this,
+            &MastermindWidget::onFeedbackChanged);
+    feedbackListLayout->addWidget(row);
+  }
+}
+
+void MastermindWidget::onDeleteFeedback(int index) {
+  if (index >= 0 && index < static_cast<int>(feedbackHistory.size())) {
+    feedbackHistory.erase(feedbackHistory.begin() + index);
+    rebuildFeedbackList();
+  }
+}
+
+void MastermindWidget::onFeedbackChanged(int index) {
+  if (index < 0 || index >= static_cast<int>(feedbackHistory.size())) {
+    return;
+  }
+
+  // Get the updated values from the FeedbackRow
+  FeedbackRow *row =
+      qobject_cast<FeedbackRow *>(feedbackListLayout->itemAt(index)->widget());
+  if (row) {
+    feedbackHistory[index].correctColor = row->getCorrectColors();
+    feedbackHistory[index].correctPosition = row->getCorrectPositions();
   }
 }
 

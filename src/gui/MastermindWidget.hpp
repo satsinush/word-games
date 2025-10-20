@@ -3,12 +3,48 @@
 #pragma once
 
 #include "mastermind/mastermind.hpp"
+#include <QLabel>
+#include <QPushButton>
+#include <QScrollArea>
+#include <QSpinBox>
+#include <QTableWidget>
+#include <QVBoxLayout>
 #include <QWidget>
 #include <vector>
 
 namespace Ui {
 class MastermindWidget;
 }
+
+// FeedbackRow: Display a submitted pattern with its feedback
+class FeedbackRow : public QWidget {
+  Q_OBJECT
+
+public:
+  explicit FeedbackRow(int index, const QString &pattern, int correctColors,
+                       int correctPositions, int maxPegs,
+                       QWidget *parent = nullptr);
+
+  int getIndex() const { return rowIndex; }
+  void setIndex(int index) { rowIndex = index; }
+  int getCorrectColors() const { return correctColors; }
+  int getCorrectPositions() const { return correctPositions; }
+  void updateFeedback(int colors, int positions);
+
+signals:
+  void deleteRequested(int index);
+  void feedbackChanged(int index);
+
+private:
+  int rowIndex;
+  int correctColors;
+  int correctPositions;
+  int maxPegs;
+  QLabel *patternLabel;
+  QSpinBox *colorsSpinBox;
+  QSpinBox *positionsSpinBox;
+  QPushButton *deleteButton;
+};
 
 class MastermindWidget : public QWidget {
   Q_OBJECT
@@ -23,7 +59,10 @@ public slots:
 private slots:
   void onSubmit();
   void onNewGame();
-  void onHint();
+  void onSolve();
+  void onTableRowClicked(int row, int column);
+  void onDeleteFeedback(int index);
+  void onFeedbackChanged(int index);
 
 private:
   Ui::MastermindWidget *ui;
@@ -31,9 +70,22 @@ private:
   Mastermind::Config config;
   std::vector<Mastermind::Pattern> allPatterns;
   std::vector<Mastermind::Feedback> feedbackHistory;
+  bool gameInitialized;
 
+  QScrollArea *feedbackListScrollArea;
+  QWidget *feedbackListContainer;
+  QVBoxLayout *feedbackListLayout;
+  QLabel *configInfoLabel;
+
+  bool showConfigDialog();
   void initGame();
+  void setUIEnabled(bool enabled);
+  void updateConfigInfo();
+  void rebuildFeedbackList();
   void solveMastermind();
+  void populateResultTable(QTableWidget *table,
+                           const std::vector<Mastermind::PatternGuess> &guesses,
+                           bool filterPossible);
 };
 
 #endif // WITH_GUI
