@@ -5,7 +5,9 @@
 #include "letterBoxed/letterBoxed.hpp"
 #include "utils/wordUtils.hpp"
 #include <QLabel>
+#include <QProgressDialog>
 #include <QTableWidget>
+#include <QThread>
 #include <QWidget>
 #include <array>
 #include <bitset>
@@ -45,6 +47,28 @@ private slots:
   void onNewGame();
   void onSolve();
   void onSettings();
+  void onSolverFinished();
+
+private:
+  // Worker thread for solving
+  class SolverThread : public QThread {
+  public:
+    SolverThread(const LetterBoxed::Config &cfg,
+                 const std::vector<Utils::Word> &words)
+        : config(cfg), wordVec(words) {}
+
+    std::vector<LetterBoxed::Solution> getResult() const { return solutions; }
+
+  protected:
+    void run() override {
+      solutions = LetterBoxed::runLetterBoxedSolver(config, wordVec);
+    }
+
+  private:
+    LetterBoxed::Config config;
+    const std::vector<Utils::Word> &wordVec;
+    std::vector<LetterBoxed::Solution> solutions;
+  };
 
 private:
   Ui::LetterBoxedWidget *ui;
@@ -53,10 +77,14 @@ private:
   LetterBoxed::Config config;
   std::vector<LetterBoxed::Solution> solutions;
   bool gameInitialized;
+  int currentPreset; // Track selected preset: 1=Default, 2=Fast, 3=Thorough,
+                     // 0=Custom
 
   QLabel *configInfoLabel;
   QTableWidget *resultsTable;
   LetterBoxDisplay *boxDisplay;
+  QProgressDialog *progressDialog;
+  SolverThread *solverThread;
 
   bool showConfigDialog();
   void initGame();

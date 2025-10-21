@@ -4,10 +4,12 @@
 
 #include "mastermind/mastermind.hpp"
 #include <QLabel>
+#include <QProgressDialog>
 #include <QPushButton>
 #include <QScrollArea>
 #include <QSpinBox>
 #include <QTableWidget>
+#include <QThread>
 #include <QVBoxLayout>
 #include <QWidget>
 #include <vector>
@@ -64,6 +66,31 @@ private slots:
   void onDeleteFeedback(int index);
   void onFeedbackChanged(int index);
   void onSettings();
+  void onSolverFinished();
+
+private:
+  // Worker thread for solving
+  class SolverThread : public QThread {
+  public:
+    SolverThread(const std::vector<Mastermind::Pattern> &patterns,
+                 const std::vector<Mastermind::Feedback> &feedback,
+                 const Mastermind::Config &cfg)
+        : allPatterns(patterns), feedbackHistory(feedback), config(cfg) {}
+
+    Mastermind::Result getResult() const { return result; }
+
+  protected:
+    void run() override {
+      result =
+          Mastermind::runMastermindSolver(allPatterns, feedbackHistory, config);
+    }
+
+  private:
+    std::vector<Mastermind::Pattern> allPatterns;
+    std::vector<Mastermind::Feedback> feedbackHistory;
+    Mastermind::Config config;
+    Mastermind::Result result;
+  };
 
 private:
   Ui::MastermindWidget *ui;
@@ -77,6 +104,8 @@ private:
   QWidget *feedbackListContainer;
   QVBoxLayout *feedbackListLayout;
   QLabel *configInfoLabel;
+  QProgressDialog *progressDialog;
+  SolverThread *solverThread;
 
   bool showConfigDialog();
   void initGame();

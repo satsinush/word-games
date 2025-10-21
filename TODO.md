@@ -1,7 +1,4 @@
 - Create presentation
 - Add function descriptions and inline comments for confusing lines of code
-- Update GUI components for all games to they match native styles for each game
-- Update Wordle to allow for any number of letters (not just 5)
 - Add Strands (solver) get all possible words that can be created
 - Add Dungleon solver?
-- Run computations on a different thread to avoid GUI freezing?

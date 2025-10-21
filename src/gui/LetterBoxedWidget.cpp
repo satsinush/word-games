@@ -20,6 +20,7 @@
 #include <QSpinBox>
 #include <QVBoxLayout>
 #include <algorithm>
+#include <iostream>
 #include <random>
 #include <set>
 
@@ -152,7 +153,8 @@ void LetterBoxDisplay::paintEvent(QPaintEvent *event) {
 LetterBoxedWidget::LetterBoxedWidget(const std::vector<Utils::Word> &words,
                                      QWidget *parent)
     : QWidget(parent), ui(new Ui::LetterBoxedWidget), wordVec(words),
-      gameInitialized(false) {
+      gameInitialized(false), currentPreset(1), progressDialog(nullptr),
+      solverThread(nullptr) {
   ui->setupUi(this);
 
   // Limit input to 12 characters
@@ -218,7 +220,17 @@ LetterBoxedWidget::LetterBoxedWidget(const std::vector<Utils::Word> &words,
   updateConfigInfo();
 }
 
-LetterBoxedWidget::~LetterBoxedWidget() { delete ui; }
+LetterBoxedWidget::~LetterBoxedWidget() {
+  if (solverThread) {
+    solverThread->quit();
+    solverThread->wait();
+    delete solverThread;
+  }
+  if (progressDialog) {
+    delete progressDialog;
+  }
+  delete ui;
+}
 
 void LetterBoxedWidget::newGame() { onNewGame(); }
 
@@ -241,22 +253,7 @@ bool LetterBoxedWidget::showConfigDialog() {
       "Thorough: Find ALL solutions up to 3 words (slow)", &dialog);
   QRadioButton *preset0 = new QRadioButton("Custom configuration", &dialog);
 
-  // Determine current preset
-  int currentPreset = 1; // Default to Default
-  if (config.maxDepth == 2 && config.minWordLength == 3 &&
-      config.minUniqueLetters == 2 && config.pruneRedundantPaths &&
-      !config.pruneDominatedClasses) {
-    currentPreset = 1; // Default
-  } else if (config.maxDepth == 3 && config.minWordLength == 3 &&
-             config.minUniqueLetters == 2 && config.pruneRedundantPaths &&
-             !config.pruneDominatedClasses) {
-    currentPreset = 3; // Thorough
-  } else if (config.maxDepth != 2 || config.minWordLength != 4 ||
-             config.minUniqueLetters != 3 || !config.pruneRedundantPaths ||
-             !config.pruneDominatedClasses) {
-    currentPreset = 0; // Custom
-  }
-
+  // Use saved preset value
   QButtonGroup *presetGroup = new QButtonGroup(&dialog);
   presetGroup->addButton(preset1, 1);
   presetGroup->addButton(preset2, 2);
@@ -354,6 +351,9 @@ bool LetterBoxedWidget::showConfigDialog() {
   mainLayout->addWidget(buttonBox);
 
   if (dialog.exec() == QDialog::Accepted) {
+    // Save the selected preset
+    currentPreset = presetGroup->checkedId();
+
     // Always read from the spinboxes/checkboxes
     config.maxDepth = maxDepthSpin->value();
     config.minWordLength = minWordLengthSpin->value();
@@ -388,9 +388,14 @@ void LetterBoxedWidget::setUIEnabled(bool enabled) {
 
 void LetterBoxedWidget::updateConfigInfo() {
   QString info;
-  info =
-      QString("<span style='color:#666; font-size:11pt;'>Max depth: %1</span>")
-          .arg(config.maxDepth);
+  info = QString("<span style='color:#666; font-size:11pt;'>Max depth: %1 | "
+                 "Prune paths: %2 | Prune classes: %3 | Min unique letters: %4 "
+                 "| Min word length: %5</span>")
+             .arg(config.maxDepth)
+             .arg(config.pruneRedundantPaths ? "Yes" : "No")
+             .arg(config.pruneDominatedClasses ? "Yes" : "No")
+             .arg(config.minUniqueLetters)
+             .arg(config.minWordLength);
   configInfoLabel->setText(info);
 }
 
@@ -546,7 +551,10 @@ void LetterBoxedWidget::onInputSubmit() {
 
 void LetterBoxedWidget::onNewGame() { initGame(); }
 
-void LetterBoxedWidget::onSettings() { showConfigDialog(); }
+void LetterBoxedWidget::onSettings() {
+  showConfigDialog();
+  updateConfigInfo();
+}
 
 void LetterBoxedWidget::onSolve() {
   if (config.allLetters[0] == '*') {
@@ -555,10 +563,77 @@ void LetterBoxedWidget::onSolve() {
     return;
   }
 
-  // Run solver and show results. Make the Solve button large and placed
-  // above the results when possible (UI placement handled in .ui -> layout)
-  solutions = LetterBoxed::runLetterBoxedSolver(config, wordVec);
+  // Clean up any existing thread
+  if (solverThread) {
+    solverThread->quit();
+    solverThread->wait();
+    delete solverThread;
+    solverThread = nullptr;
+  }
+
+  // Create progress dialog
+  if (!progressDialog) {
+    progressDialog =
+        new QProgressDialog("Solving Letter Boxed...", "Cancel", 0, 0, this);
+    progressDialog->setWindowModality(Qt::WindowModal);
+    progressDialog->setMinimumDuration(500);
+    progressDialog->setWindowFlags(progressDialog->windowFlags() &
+                                   ~Qt::WindowCloseButtonHint);
+    // Connect cancel button to stop the solver
+    connect(progressDialog, &QProgressDialog::canceled, this, [this]() {
+      if (solverThread && solverThread->isRunning()) {
+        solverThread->requestInterruption();
+        disconnect(solverThread, &QThread::finished, this,
+                   &LetterBoxedWidget::onSolverFinished);
+        // Connect to deleteLater when thread actually finishes
+        connect(solverThread, &QThread::finished, solverThread,
+                &QObject::deleteLater);
+        solverThread = nullptr;
+        progressDialog->hide();
+        ui->solveBtn->setEnabled(true);
+        ui->inputField->setEnabled(true);
+      }
+    });
+  }
+  progressDialog->setValue(0);
+  progressDialog->setLabelText("Finding word combinations...");
+  progressDialog->show();
+
+  // Disable UI during solve
+  ui->solveBtn->setEnabled(false);
+  ui->inputField->setEnabled(false);
+
+  // Create and start solver thread
+  solverThread = new SolverThread(config, wordVec);
+  connect(solverThread, &QThread::finished, this,
+          &LetterBoxedWidget::onSolverFinished);
+  solverThread->start();
+}
+
+void LetterBoxedWidget::onSolverFinished() {
+  if (!solverThread) {
+    return;
+  }
+
+  // Check if thread was interrupted (cancelled)
+  if (solverThread->isInterruptionRequested()) {
+    solverThread->deleteLater();
+    solverThread = nullptr;
+    return;
+  }
+
+  solutions = solverThread->getResult();
   populateResultTable();
+
+  // Clean up
+  if (progressDialog) {
+    progressDialog->hide();
+  }
+  ui->solveBtn->setEnabled(true);
+  ui->inputField->setEnabled(true);
+
+  solverThread->deleteLater();
+  solverThread = nullptr;
 }
 
 #endif // WITH_GUI

@@ -5,10 +5,12 @@
 #include "utils/wordUtils.hpp"
 #include "wordle/wordle.hpp"
 #include <QLabel>
+#include <QProgressDialog>
 #include <QPushButton>
 #include <QScrollArea>
 #include <QTabWidget>
 #include <QTableWidget>
+#include <QThread>
 #include <QVBoxLayout>
 #include <QWidget>
 #include <array>
@@ -92,6 +94,30 @@ private slots:
   void onGuessDeleted();
   void onTableRowClicked(int row, int column);
   void onSettings();
+  void onSolverFinished();
+
+private:
+  // Worker thread for solving
+  class SolverThread : public QThread {
+  public:
+    SolverThread(const std::vector<Utils::Word> &words,
+                 const std::vector<Wordle::Feedback> &feedback,
+                 const Wordle::Config &cfg)
+        : wordVec(words), feedbackHistory(feedback), config(cfg) {}
+
+    Wordle::Result getResult() const { return result; }
+
+  protected:
+    void run() override {
+      result = Wordle::runWordleSolver(wordVec, feedbackHistory, config);
+    }
+
+  private:
+    const std::vector<Utils::Word> &wordVec;
+    std::vector<Wordle::Feedback> feedbackHistory;
+    Wordle::Config config;
+    Wordle::Result result;
+  };
 
 private:
   Ui::WordleWidget *ui;
@@ -117,6 +143,8 @@ private:
   QTableWidget *probableWordsTable;
 
   QLabel *configInfoLabel;
+  QProgressDialog *progressDialog;
+  SolverThread *solverThread;
 
   bool showConfigDialog();
   void initGame();

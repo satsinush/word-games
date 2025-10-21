@@ -89,7 +89,8 @@ void FeedbackRow::updateFeedback(int colors, int positions) {
 }
 
 MastermindWidget::MastermindWidget(QWidget *parent)
-    : QWidget(parent), ui(new Ui::MastermindWidget), gameInitialized(true) {
+    : QWidget(parent), ui(new Ui::MastermindWidget), gameInitialized(true),
+      progressDialog(nullptr), solverThread(nullptr) {
   ui->setupUi(this);
 
   // Initialize config defaults
@@ -163,7 +164,17 @@ MastermindWidget::MastermindWidget(QWidget *parent)
   updateConfigInfo();
 }
 
-MastermindWidget::~MastermindWidget() { delete ui; }
+MastermindWidget::~MastermindWidget() {
+  if (solverThread) {
+    solverThread->quit();
+    solverThread->wait();
+    delete solverThread;
+  }
+  if (progressDialog) {
+    delete progressDialog;
+  }
+  delete ui;
+}
 
 void MastermindWidget::newGame() { onNewGame(); }
 
@@ -277,7 +288,10 @@ void MastermindWidget::onNewGame() {
 
 void MastermindWidget::onSolve() { solveMastermind(); }
 
-void MastermindWidget::onSettings() { showConfigDialog(); }
+void MastermindWidget::onSettings() {
+  showConfigDialog();
+  updateConfigInfo();
+}
 
 void MastermindWidget::onTableRowClicked(int row, int column) {
   Q_UNUSED(column);
@@ -406,9 +420,67 @@ void MastermindWidget::populateResultTable(
 }
 
 void MastermindWidget::solveMastermind() {
+  // Clean up any existing thread
+  if (solverThread) {
+    solverThread->quit();
+    solverThread->wait();
+    delete solverThread;
+    solverThread = nullptr;
+  }
+
+  // Create progress dialog
+  if (!progressDialog) {
+    progressDialog =
+        new QProgressDialog("Solving Mastermind...", "Cancel", 0, 0, this);
+    progressDialog->setWindowModality(Qt::WindowModal);
+    progressDialog->setMinimumDuration(500);
+    progressDialog->setWindowFlags(progressDialog->windowFlags() &
+                                   ~Qt::WindowCloseButtonHint);
+    // Connect cancel button to stop the solver
+    connect(progressDialog, &QProgressDialog::canceled, this, [this]() {
+      if (solverThread && solverThread->isRunning()) {
+        solverThread->requestInterruption();
+        disconnect(solverThread, &QThread::finished, this,
+                   &MastermindWidget::onSolverFinished);
+        // Connect to deleteLater when thread actually finishes
+        connect(solverThread, &QThread::finished, solverThread,
+                &QObject::deleteLater);
+        solverThread = nullptr;
+        progressDialog->hide();
+        ui->solveBtn->setEnabled(true);
+        ui->submitBtn->setEnabled(true);
+      }
+    });
+  }
+  progressDialog->setValue(0);
+  progressDialog->setLabelText("Analyzing pattern combinations...");
+  progressDialog->show();
+
+  // Disable UI during solve
+  ui->solveBtn->setEnabled(false);
+  ui->submitBtn->setEnabled(false);
+
+  // Create and start solver thread
+  solverThread = new SolverThread(allPatterns, feedbackHistory, config);
+  connect(solverThread, &QThread::finished, this,
+          &MastermindWidget::onSolverFinished);
+  solverThread->start();
+}
+
+void MastermindWidget::onSolverFinished() {
+  if (!solverThread) {
+    return;
+  }
+
+  // Check if thread was interrupted (cancelled)
+  if (solverThread->isInterruptionRequested()) {
+    solverThread->deleteLater();
+    solverThread = nullptr;
+    return;
+  }
+
   try {
-    Mastermind::Result result =
-        Mastermind::runMastermindSolver(allPatterns, feedbackHistory, config);
+    Mastermind::Result result = solverThread->getResult();
 
     // Populate both tables
     populateResultTable(ui->allResultsTable, result.sortedGuesses, false);
@@ -424,6 +496,16 @@ void MastermindWidget::solveMastermind() {
     QMessageBox::critical(this, "Solver Error",
                           QString("Error running solver: %1").arg(e.what()));
   }
+
+  // Clean up
+  if (progressDialog) {
+    progressDialog->hide();
+  }
+  ui->solveBtn->setEnabled(true);
+  ui->submitBtn->setEnabled(true);
+
+  solverThread->deleteLater();
+  solverThread = nullptr;
 }
 
 void MastermindWidget::setUIEnabled(bool enabled) {
