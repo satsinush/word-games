@@ -32,12 +32,7 @@
     </widget>
    </item>
    <item>
-    <widget class="QLabel" name="boxLabel">
-     <property name="font">
-      <font>
-       <pointsize>12</pointsize>
-      </font>
-     </property>
+    <widget class="QLabel" name="configInfoLabel">
      <property name="text">
       <string>Enter 12 letters below</string>
      </property>
@@ -52,6 +47,13 @@
       <widget class="QPushButton" name="newGameBtn">
        <property name="text">
         <string>New Game</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="settingsBtn">
+       <property name="text">
+        <string>⚙</string>
        </property>
       </widget>
      </item>

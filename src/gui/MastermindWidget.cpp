@@ -149,27 +149,11 @@ MastermindWidget::MastermindWidget(QWidget *parent)
   connect(ui->possibleResultsTable, &QTableWidget::cellClicked, this,
           &MastermindWidget::onTableRowClicked);
 
-  // Add settings button next to New Game button
-  QPushButton *settingsBtn = new QPushButton("⚙", this);
-  settingsBtn->setToolTip("Game Settings");
-  settingsBtn->setMaximumWidth(40);
-  connect(settingsBtn, &QPushButton::clicked, this,
+  // Connect settings button
+  ui->settingsBtn->setToolTip("Game Settings");
+  ui->settingsBtn->setMaximumWidth(40);
+  connect(ui->settingsBtn, &QPushButton::clicked, this,
           &MastermindWidget::onSettings);
-
-  // Find the top control layout and add settings button after New Game
-  QHBoxLayout *topLayout =
-      ui->newGameBtn->parentWidget()->findChild<QHBoxLayout *>(
-          "topControlLayout");
-  if (!topLayout) {
-    topLayout =
-        qobject_cast<QHBoxLayout *>(ui->newGameBtn->parentWidget()->layout());
-  }
-  if (topLayout) {
-    int index = topLayout->indexOf(ui->newGameBtn);
-    if (index >= 0) {
-      topLayout->insertWidget(index + 1, settingsBtn);
-    }
-  }
 
   // Store reference to config info label
   configInfoLabel = ui->configInfoLabel;
@@ -203,6 +187,12 @@ bool MastermindWidget::showConfigDialog() {
   numColorsSpinBox->setValue(config.numColors);
   formLayout->addRow("Number of Colors:", numColorsSpinBox);
 
+  QSpinBox *maxDepthSpinBox = new QSpinBox(&dialog);
+  maxDepthSpinBox->setMinimum(0);
+  maxDepthSpinBox->setMaximum(2);
+  maxDepthSpinBox->setValue(config.maxDepth);
+  formLayout->addRow("Search Depth:", maxDepthSpinBox);
+
   mainLayout->addLayout(formLayout);
 
   QDialogButtonBox *buttonBox = new QDialogButtonBox(
@@ -212,8 +202,18 @@ bool MastermindWidget::showConfigDialog() {
   mainLayout->addWidget(buttonBox);
 
   if (dialog.exec() == QDialog::Accepted) {
+    uint8_t oldNumPegs = config.numPegs;
+    uint8_t oldNumColors = config.numColors;
+
     config.numPegs = numPegsSpinBox->value();
     config.numColors = numColorsSpinBox->value();
+    config.maxDepth = maxDepthSpinBox->value();
+
+    // Clear feedback history if pegs or colors changed
+    if (oldNumPegs != config.numPegs || oldNumColors != config.numColors) {
+      feedbackHistory.clear();
+      ui->patternField->clear();
+    }
 
     // Regenerate patterns and reinitialize game with new configuration
     initGame();
@@ -340,19 +340,23 @@ void MastermindWidget::populateResultTable(
     bool filterPossible) {
   table->setRowCount(0);
 
-  int rank = 0;
-  for (const auto &guess : guesses) {
+  int displayedRank = 0;
+  for (size_t i = 0; i < guesses.size(); ++i) {
+    const auto &guess = guesses[i];
+
     // Skip if filtering for possible and this has 0 probability
     if (filterPossible && guess.probability <= 0.0) {
       continue;
     }
 
-    rank++;
+    displayedRank++;
     int row = table->rowCount();
     table->insertRow(row);
 
-    // Rank
-    QTableWidgetItem *rankItem = new QTableWidgetItem(QString::number(rank));
+    // Rank - use actual position in full list (i+1), not displayedRank
+    int actualRank = static_cast<int>(i) + 1;
+    QTableWidgetItem *rankItem =
+        new QTableWidgetItem(QString::number(actualRank));
     rankItem->setTextAlignment(Qt::AlignCenter);
     table->setItem(row, 0, rankItem);
 
@@ -425,7 +429,6 @@ void MastermindWidget::solveMastermind() {
 void MastermindWidget::setUIEnabled(bool enabled) {
   // Show/hide all UI elements except title, config info, and new game button
   ui->patternField->setVisible(enabled);
-  ui->patternLabel->setVisible(enabled);
   ui->submitBtn->setVisible(enabled);
   ui->feedbackListLabel->setVisible(enabled);
   feedbackListScrollArea->setVisible(enabled);
@@ -434,9 +437,12 @@ void MastermindWidget::setUIEnabled(bool enabled) {
 }
 
 void MastermindWidget::updateConfigInfo() {
-  configInfoLabel->setText(QString("Game: %1 pegs, %2 colors")
-                               .arg(config.numPegs)
-                               .arg(config.numColors));
+  QString info = QString("<span style='color:#666; font-size:11pt;'>%1 pegs | "
+                         "%2 colors | Depth: %3</span>")
+                     .arg(config.numPegs)
+                     .arg(config.numColors)
+                     .arg(config.maxDepth);
+  configInfoLabel->setText(info);
 }
 
 void MastermindWidget::rebuildFeedbackList() {

@@ -108,7 +108,7 @@ SpellingBeeWidget::SpellingBeeWidget(const std::vector<Utils::Word> &words,
   hexButtons.fill(nullptr);
 
   // Store reference to config info label
-  configInfoLabel = ui->lettersLabel;
+  configInfoLabel = ui->configInfoLabel;
 
   // Create results table
   resultsTable = new QTableWidget(this);
@@ -139,13 +139,13 @@ SpellingBeeWidget::SpellingBeeWidget(const std::vector<Utils::Word> &words,
           &SpellingBeeWidget::onInputSubmit);
   connect(ui->inputField, &QLineEdit::textChanged, this,
           &SpellingBeeWidget::onInputChanged);
-  connect(ui->submitBtn, &QPushButton::clicked, this,
+  connect(ui->solveBtn, &QPushButton::clicked, this,
           &SpellingBeeWidget::onInputSubmit);
 
   // Settings button (repurposed shuffle button)
-  ui->shuffleBtn->setToolTip("Solver Settings");
-  ui->shuffleBtn->setMaximumWidth(40);
-  connect(ui->shuffleBtn, &QPushButton::clicked, this,
+  ui->settingsBtn->setToolTip("Solver Settings");
+  ui->settingsBtn->setMaximumWidth(40);
+  connect(ui->settingsBtn, &QPushButton::clicked, this,
           &SpellingBeeWidget::onSettings);
 
   // Create the hexagon visualization
@@ -187,12 +187,17 @@ void SpellingBeeWidget::setUIEnabled(bool enabled) {
 }
 
 void SpellingBeeWidget::updateConfigInfo() {
+  QString info;
   if (config.allLetters[0] == '\0') {
-    configInfoLabel->setText("Enter 7 letters below (first is center)");
+    info = "<span style='color:#666; font-size:11pt;'>Enter 7 unique letters "
+           "(first is "
+           "center)</span>";
     ui->scoreLabel->setText("");
   } else {
-    configInfoLabel->setText("Spelling Bee Puzzle");
+    info =
+        "<span style='color:#666; font-size:11pt;'>7 letters configured</span>";
   }
+  configInfoLabel->setText(info);
 }
 
 void SpellingBeeWidget::createHexagons() {

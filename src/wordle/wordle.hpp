@@ -13,12 +13,14 @@ namespace Wordle {
 struct Config {
   uint8_t maxDepth = 1; // How many moves ahead to calculate ENT
   bool excludeUncommonWords = false;
+  uint8_t wordLength = 5; // Length of words to use (default 5)
 };
 
 struct Feedback {
-  std::string word;       // 5-letter guess
-  std::bitset<10> colors; // Optimized: bits 0,2,4,6,8 = letter in word, bits
-                          // 1,3,5,7,9 = correct position
+  std::string word;       // Variable-length guess
+  std::bitset<64> colors; // Support up to 32-letter words (32*2=64 bits)
+                          // bits 0,2,4,... = letter in word
+                          // bits 1,3,5,... = correct position
 
   bool operator==(const Feedback &other) const {
     return word == other.word && colors == other.colors;
@@ -27,7 +29,7 @@ struct Feedback {
   bool operator<(const Feedback &other) const {
     if (word != other.word)
       return word < other.word;
-    return colors.to_ulong() < other.colors.to_ulong();
+    return colors.to_ullong() < other.colors.to_ullong();
   }
 
   // Helper methods to get/set feedback for position i
@@ -111,7 +113,7 @@ template <> struct hash<Wordle::Feedback> {
   size_t operator()(const Wordle::Feedback &fb) const noexcept {
     // Combine hash of the word string and the bitset colors
     size_t h1 = std::hash<std::string>{}(fb.word);
-    size_t h2 = std::hash<unsigned long>{}(fb.colors.to_ulong());
+    size_t h2 = std::hash<unsigned long long>{}(fb.colors.to_ullong());
 
     // Use a simple but effective hash combiner
     return h1 ^ (h2 + 0x9e3779b9 + (h1 << 6) + (h1 >> 2));

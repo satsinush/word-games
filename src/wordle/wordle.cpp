@@ -22,14 +22,18 @@ Feedback parseFeedback(const std::string &input) {
   std::string word;
   std::string colors;
   size_t space = input.find(' ');
-  if (space == std::string::npos || space + 6 > input.size())
+  if (space == std::string::npos)
     throw std::runtime_error("Invalid feedback format");
   word = input.substr(0, space);
-  colors = input.substr(space + 1, 5);
-  if (word.size() != 5 || colors.size() != 5)
-    throw std::runtime_error("Word or colors wrong length");
+  colors = input.substr(space + 1);
+  if (word.size() != colors.size())
+    throw std::runtime_error("Word and colors must have same length");
+  if (word.size() < 1 || word.size() > 16)
+    throw std::runtime_error("Word length must be between 1 and 16");
   fb.word = Utils::trimToLower(word);
-  for (int i = 0; i < 5; ++i) {
+  if (word.size() > 32)
+    throw std::runtime_error("Word length must be at most 32");
+  for (size_t i = 0; i < word.size(); ++i) {
     if (colors[i] < '0' || colors[i] > '2')
       throw std::runtime_error("Invalid color digit");
     int color = colors[i] - '0';
@@ -49,11 +53,18 @@ bool matchesFeedback(const Utils::Word &candidate, const Feedback &fb) {
   ZoneScoped;
 #endif
   const std::string &guess = fb.word;
+  size_t wordLen = guess.size();
+
+  // Words must be same length to match
+  if (candidate.wordString.size() != wordLen) {
+    return false;
+  }
+
   // Use pre-calculated letter count from candidate word
   std::array<uint8_t, 26> candidateLetterCount = candidate.letterCount;
 
   // Check greens first, and adjust counts
-  for (int i = 0; i < 5; ++i) {
+  for (size_t i = 0; i < wordLen; ++i) {
     if (fb.colors[i * 2 + 1]) // Green
     {                         // Green
       if (candidate.wordString[i] != guess[i]) {
@@ -63,7 +74,7 @@ bool matchesFeedback(const Utils::Word &candidate, const Feedback &fb) {
     }
   }
 
-  for (int i = 0; i < 5; ++i) {
+  for (size_t i = 0; i < wordLen; ++i) {
     char guessChar = guess[i];
     if (fb.colors[i * 2 + 1]) { // Green (already checked)
       continue;
@@ -93,12 +104,18 @@ Feedback generateFeedback(const Utils::Word &target, const std::string &guess) {
   Feedback fb;
   fb.word = guess;
 
+  size_t wordLen = guess.size();
+  if (target.wordString.size() != wordLen) {
+    // Mismatched lengths - return all grey
+    return fb;
+  }
+
   // The bitset is already initialized to all zeros (all grey)
   std::array<uint8_t, 26> letterCount = target.letterCount;
 
   // First pass: Mark greens. A green is represented by setting both bits for a
   // position to 1. Example for position i: bit (i*2) = 1, bit (i*2 + 1) = 1.
-  for (int i = 0; i < 5; ++i) {
+  for (size_t i = 0; i < wordLen; ++i) {
     if (target.wordString[i] == guess[i]) {
       // Direct manipulation: Set the 'green' bit and the 'yellow' bit.
       fb.colors[i * 2 + 1] = 1; // This bit signals "correct position" (Green).
@@ -110,7 +127,7 @@ Feedback generateFeedback(const Utils::Word &target, const std::string &guess) {
 
   // Second pass: Mark yellows. A yellow is when the "in word" bit is 1 but
   // "correct position" is 0.
-  for (int i = 0; i < 5; ++i) {
+  for (size_t i = 0; i < wordLen; ++i) {
     if (!fb.colors[i * 2 + 1]) // If it's NOT green...
     {
       int guessCharIndex = guess[i] - 'a';
@@ -189,11 +206,11 @@ Result runWordleSolver(const std::vector<Utils::Word> &allWords,
 #ifdef TRACY_ENABLE
   ZoneScoped;
 #endif
-  // Filter words to only 5-letter words
+  // Filter words to only words of the specified length
   std::vector<Utils::Word> availableWords;
   for (const auto &word : allWords) {
     bool exclude = config.excludeUncommonWords && (!word.is_scrabble);
-    if (word.wordString.length() == 5 && !exclude) {
+    if (word.wordString.length() == config.wordLength && !exclude) {
       availableWords.push_back(word);
     }
   }

@@ -3,14 +3,17 @@
 #include "gui/WordleWidget.hpp"
 #include "ui_WordleWidget.h"
 
+#include <QCheckBox>
 #include <QDialog>
 #include <QDialogButtonBox>
+#include <QFormLayout>
 #include <QHBoxLayout>
 #include <QHeaderView>
 #include <QLabel>
 #include <QMessageBox>
 #include <QMouseEvent>
 #include <QSizePolicy>
+#include <QSpinBox>
 #include <QTableWidgetItem>
 #include <QVBoxLayout>
 #include <algorithm>
@@ -19,10 +22,10 @@
 
 LetterBox::LetterBox(QWidget *parent)
     : QLabel(parent), currentLetter('\0'), currentColor(0) {
-  setFixedSize(60, 60);
+  setFixedSize(40, 40);
   setAlignment(Qt::AlignCenter);
   QFont font;
-  font.setPointSize(24);
+  font.setPointSize(18);
   font.setBold(true);
   setFont(font);
   setCursor(Qt::PointingHandCursor);
@@ -105,8 +108,10 @@ GuessRow::GuessRow(const Wordle::Feedback &feedback, QWidget *parent)
   layout->setSpacing(5);
   layout->setContentsMargins(0, 5, 0, 5);
 
-  // Create 5 letter boxes
-  for (int i = 0; i < 5; ++i) {
+  // Create letter boxes based on word length
+  size_t wordLen = feedback.word.size();
+  boxes.resize(wordLen);
+  for (size_t i = 0; i < wordLen; ++i) {
     boxes[i] = new LetterBox(this);
     boxes[i]->setLetter(feedback.word[i]);
     boxes[i]->setColor(feedback.getColor(i));
@@ -132,7 +137,7 @@ GuessRow::GuessRow(const Wordle::Feedback &feedback, QWidget *parent)
 Wordle::Feedback GuessRow::getFeedback() const {
   Wordle::Feedback fb;
   fb.word = "";
-  for (int i = 0; i < 5; ++i) {
+  for (size_t i = 0; i < boxes.size(); ++i) {
     fb.word += std::tolower(boxes[i]->getLetter());
     int color = boxes[i]->getColor();
     switch (color) {
@@ -152,7 +157,7 @@ Wordle::Feedback GuessRow::getFeedback() const {
 
 void GuessRow::setEditable(bool editable) {
   isEditable = editable;
-  for (int i = 0; i < 5; ++i) {
+  for (size_t i = 0; i < boxes.size(); ++i) {
     boxes[i]->setCursor(editable ? Qt::PointingHandCursor : Qt::ArrowCursor);
   }
 }
@@ -193,7 +198,7 @@ WordleWidget::WordleWidget(const std::vector<Utils::Word> &words,
   guessListScrollArea = new QScrollArea(this);
   guessListScrollArea->setWidget(guessListWidget);
   guessListScrollArea->setWidgetResizable(true);
-  guessListScrollArea->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+  // guessListScrollArea->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
   guessListScrollArea->setMaximumHeight(
       200); // Limit height to make it scrollable
   guessListScrollArea->setFrameShape(QFrame::NoFrame);
@@ -201,9 +206,9 @@ WordleWidget::WordleWidget(const std::vector<Utils::Word> &words,
   // Add scroll area to main layout after input row and before Solve button
   QVBoxLayout *mainLayout = qobject_cast<QVBoxLayout *>(layout());
   if (mainLayout) {
-    int hintBtnIndex = mainLayout->indexOf(ui->hintBtn);
-    if (hintBtnIndex >= 0) {
-      mainLayout->insertWidget(hintBtnIndex, guessListScrollArea);
+    int solveBtnIndex = mainLayout->indexOf(ui->solveBtn);
+    if (solveBtnIndex >= 0) {
+      mainLayout->insertWidget(solveBtnIndex, guessListScrollArea);
     }
   }
 
@@ -211,35 +216,20 @@ WordleWidget::WordleWidget(const std::vector<Utils::Word> &words,
   connect(ui->submitBtn, &QPushButton::clicked, this, &WordleWidget::onSubmit);
   connect(ui->newGameBtn, &QPushButton::clicked, this,
           &WordleWidget::onNewGame);
-  connect(ui->hintBtn, &QPushButton::clicked, this, &WordleWidget::onHint);
+  connect(ui->solveBtn, &QPushButton::clicked, this, &WordleWidget::onHint);
   connect(ui->inputField, &QLineEdit::textChanged, this,
           &WordleWidget::onInputChanged);
   connect(ui->inputField, &QLineEdit::returnPressed, this,
           &WordleWidget::onSubmit);
 
-  // Set input field to max 5 characters
-  ui->inputField->setMaxLength(5);
+  // Set input field to max word length (default 5, configurable up to 32)
+  ui->inputField->setMaxLength(config.wordLength);
 
-  // Add settings button next to New Game button
-  QPushButton *settingsBtn = new QPushButton("⚙", this);
-  settingsBtn->setToolTip("Solver Settings");
-  settingsBtn->setMaximumWidth(40);
-  connect(settingsBtn, &QPushButton::clicked, this, &WordleWidget::onSettings);
-
-  // Find the top control layout and add settings button after New Game
-  QHBoxLayout *topLayout =
-      ui->newGameBtn->parentWidget()->findChild<QHBoxLayout *>(
-          "topControlLayout");
-  if (!topLayout) {
-    topLayout =
-        qobject_cast<QHBoxLayout *>(ui->newGameBtn->parentWidget()->layout());
-  }
-  if (topLayout) {
-    int index = topLayout->indexOf(ui->newGameBtn);
-    if (index >= 0) {
-      topLayout->insertWidget(index + 1, settingsBtn);
-    }
-  }
+  // Connect settings button
+  ui->settingsBtn->setToolTip("Solver Settings");
+  ui->settingsBtn->setMaximumWidth(40);
+  connect(ui->settingsBtn, &QPushButton::clicked, this,
+          &WordleWidget::onSettings);
 
   // Create result tables
   allResultsTable = new QTableWidget(this);
@@ -275,8 +265,8 @@ WordleWidget::WordleWidget(const std::vector<Utils::Word> &words,
   probableWordsLayout->addWidget(probableWordsTable);
   ui->resultsTabWidget->widget(1)->setLayout(probableWordsLayout);
 
-  // Store reference to config info label (we'll use the title)
-  configInfoLabel = ui->titleLabel;
+  // Store reference to config info label
+  configInfoLabel = ui->configInfoLabel;
 
   // Initialize game immediately with default configuration
   initGame();
@@ -286,34 +276,79 @@ WordleWidget::WordleWidget(const std::vector<Utils::Word> &words,
 WordleWidget::~WordleWidget() { delete ui; }
 
 bool WordleWidget::showConfigDialog() {
-  // Show current configuration
+  // Show configuration dialog
   QDialog dialog(this);
   dialog.setWindowTitle("Wordle Solver Configuration");
   dialog.setMinimumWidth(400);
 
   QVBoxLayout *layout = new QVBoxLayout(&dialog);
+  QFormLayout *formLayout = new QFormLayout();
 
-  QLabel *infoLabel = new QLabel(
-      "<b>Current Configuration:</b><br><br>"
-      "• Max Search Depth: " +
-          QString::number(config.maxDepth) +
-          "<br>"
-          "• Exclude Uncommon Words: " +
-          QString(config.excludeUncommonWords ? "Yes" : "No") +
-          "<br><br>"
-          "<i>Note: Full configuration options (word length, etc.) will be "
-          "available in a future update.</i>",
-      &dialog);
-  infoLabel->setWordWrap(true);
-  layout->addWidget(infoLabel);
+  // Word Length
+  QSpinBox *wordLengthSpinner = new QSpinBox(&dialog);
+  wordLengthSpinner->setRange(1, 32);
+  wordLengthSpinner->setValue(config.wordLength);
+  formLayout->addRow("Word Length:", wordLengthSpinner);
 
-  QDialogButtonBox *buttonBox =
-      new QDialogButtonBox(QDialogButtonBox::Ok, &dialog);
+  // Max Depth
+  QSpinBox *maxDepthSpinner = new QSpinBox(&dialog);
+  maxDepthSpinner->setRange(0, 2);
+  maxDepthSpinner->setValue(config.maxDepth);
+  formLayout->addRow("Search Depth:", maxDepthSpinner);
+
+  // Exclude Uncommon Words
+  QCheckBox *excludeCheckbox = new QCheckBox(&dialog);
+  excludeCheckbox->setChecked(config.excludeUncommonWords);
+  formLayout->addRow("Exclude Uncommon Words:", excludeCheckbox);
+
+  layout->addLayout(formLayout);
+
+  QDialogButtonBox *buttonBox = new QDialogButtonBox(
+      QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
   connect(buttonBox, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
+  connect(buttonBox, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
   layout->addWidget(buttonBox);
 
-  dialog.exec();
-  return false; // No changes made
+  if (dialog.exec() == QDialog::Accepted) {
+    uint8_t oldWordLength = config.wordLength;
+
+    config.wordLength = wordLengthSpinner->value();
+    config.maxDepth = maxDepthSpinner->value();
+    config.excludeUncommonWords = excludeCheckbox->isChecked();
+
+    // Update input field max length
+    ui->inputField->setMaxLength(config.wordLength);
+
+    // Clear feedback history if word length changed
+    if (oldWordLength != config.wordLength) {
+      feedbackHistory.clear();
+
+      // Delete all GuessRow widgets
+      for (GuessRow *row : guessRows) {
+        guessListLayout->removeWidget(row);
+        row->deleteLater();
+      }
+      guessRows.clear();
+
+      // Remove current row if it exists
+      if (currentRowWidget) {
+        guessListLayout->removeWidget(currentRowWidget);
+        currentRowWidget->deleteLater();
+      }
+
+      // Clear result tables
+      allResultsTable->setRowCount(0);
+      probableWordsTable->setRowCount(0);
+
+      // Setup fresh current row
+      setupCurrentRow();
+      ui->inputField->clear();
+    }
+
+    updateConfigInfo();
+    return true;
+  }
+  return false;
 }
 
 void WordleWidget::initGame() {
@@ -352,13 +387,19 @@ void WordleWidget::initGame() {
 void WordleWidget::setUIEnabled(bool enabled) {
   ui->inputField->setVisible(enabled);
   ui->submitBtn->setVisible(enabled);
-  ui->hintBtn->setVisible(enabled);
+  ui->solveBtn->setVisible(enabled);
   guessListScrollArea->setVisible(enabled);
   ui->resultsTabWidget->setVisible(enabled);
 }
 
 void WordleWidget::updateConfigInfo() {
-  configInfoLabel->setText("Wordle Solver");
+  QString info =
+      QString("<span style='color:#666; font-size:11pt;'>%1 letters | Depth: "
+              "%2 | %3</span>")
+          .arg(config.wordLength)
+          .arg(config.maxDepth)
+          .arg(config.excludeUncommonWords ? "Common words" : "All words");
+  configInfoLabel->setText(info);
 }
 
 void WordleWidget::setupCurrentRow() {
@@ -369,10 +410,8 @@ void WordleWidget::setupCurrentRow() {
   rowLayout->setSpacing(5);
   rowLayout->setContentsMargins(0, 5, 0, 5);
 
-  // Initialize currentBoxes to nullptr
-  for (int i = 0; i < 5; ++i) {
-    currentBoxes[i] = nullptr;
-  }
+  // Clear currentBoxes
+  currentBoxes.clear();
 
   rowLayout->addStretch();
 
@@ -448,9 +487,10 @@ void WordleWidget::onSubmit() { submitCurrentGuess(); }
 void WordleWidget::submitCurrentGuess() {
   // Get word from input field
   QString inputText = ui->inputField->text().trimmed();
-  if (inputText.length() != 5) {
-    QMessageBox::information(this, "Incomplete Word",
-                             "Please enter a 5-letter word!");
+  if (inputText.length() != config.wordLength) {
+    QMessageBox::information(
+        this, "Incomplete Word",
+        QString("Please enter a %1-letter word!").arg(config.wordLength));
     return;
   }
 
@@ -461,7 +501,7 @@ void WordleWidget::submitCurrentGuess() {
   fb.word = word;
 
   // Set all letters to grey initially
-  for (int i = 0; i < 5; ++i) {
+  for (size_t i = 0; i < word.length(); ++i) {
     fb.setGrey(i);
   }
 

@@ -162,7 +162,7 @@ LetterBoxedWidget::LetterBoxedWidget(const std::vector<Utils::Word> &words,
   config.allLetters.fill('*');
 
   // Store reference to config info label
-  configInfoLabel = ui->boxLabel;
+  configInfoLabel = ui->configInfoLabel;
 
   // Create results table
   resultsTable = new QTableWidget(this);
@@ -196,27 +196,11 @@ LetterBoxedWidget::LetterBoxedWidget(const std::vector<Utils::Word> &words,
   connect(ui->solveBtn, &QPushButton::clicked, this,
           &LetterBoxedWidget::onSolve);
 
-  // Add settings button next to New Game
-  QPushButton *settingsBtn = new QPushButton("⚙", this);
-  settingsBtn->setToolTip("Solver Settings");
-  settingsBtn->setMaximumWidth(40);
-  connect(settingsBtn, &QPushButton::clicked, this,
+  // Connect settings button
+  ui->settingsBtn->setToolTip("Solver Settings");
+  ui->settingsBtn->setMaximumWidth(40);
+  connect(ui->settingsBtn, &QPushButton::clicked, this,
           &LetterBoxedWidget::onSettings);
-
-  // Find the top control layout and add settings button after New Game
-  QHBoxLayout *topLayout =
-      ui->newGameBtn->parentWidget()->findChild<QHBoxLayout *>(
-          "topControlLayout");
-  if (!topLayout) {
-    topLayout =
-        qobject_cast<QHBoxLayout *>(ui->newGameBtn->parentWidget()->layout());
-  }
-  if (topLayout) {
-    int index = topLayout->indexOf(ui->newGameBtn);
-    if (index >= 0) {
-      topLayout->insertWidget(index + 1, settingsBtn);
-    }
-  }
 
   // Set initial state
   gameInitialized = true;
@@ -258,7 +242,7 @@ bool LetterBoxedWidget::showConfigDialog() {
   QRadioButton *preset0 = new QRadioButton("Custom configuration", &dialog);
 
   // Determine current preset
-  int currentPreset = 2; // Default to Fast
+  int currentPreset = 1; // Default to Default
   if (config.maxDepth == 2 && config.minWordLength == 3 &&
       config.minUniqueLetters == 2 && config.pruneRedundantPaths &&
       !config.pruneDominatedClasses) {
@@ -403,11 +387,11 @@ void LetterBoxedWidget::setUIEnabled(bool enabled) {
 }
 
 void LetterBoxedWidget::updateConfigInfo() {
-  if (config.allLetters[0] == '*') {
-    configInfoLabel->setText("Enter 12 letters below");
-  } else {
-    configInfoLabel->setText("Letter Box Puzzle");
-  }
+  QString info;
+  info =
+      QString("<span style='color:#666; font-size:11pt;'>Max depth: %1</span>")
+          .arg(config.maxDepth);
+  configInfoLabel->setText(info);
 }
 
 void LetterBoxedWidget::createLetterBox() {

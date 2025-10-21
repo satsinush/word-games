@@ -16,6 +16,7 @@ Wordle::Config WordleGame::getConfigFromUser() {
   Wordle::Config config;
 
   std::cout << "Configure Wordle solver:\n";
+  config.wordLength = Utils::Input::promptInt("Word length (1-32)", 5, 1, 32);
   config.maxDepth = Utils::Input::promptInt(
       "Search depth for ENT calculation (0-2)", 1, 0, 2);
   config.excludeUncommonWords = Utils::Input::promptBool(
@@ -27,6 +28,7 @@ Wordle::Config WordleGame::getConfigFromUser() {
 Wordle::Config
 WordleGame::getConfigFromArgs(const std::map<std::string, std::string> &args) {
   Wordle::Config config;
+  config.wordLength = Utils::Input::getArgValue(args, "word-length", 5);
   config.maxDepth = Utils::Input::getArgValue(args, "max-depth", 0);
   config.excludeUncommonWords =
       Utils::Input::getArgValue(args, "exclude-uncommon-words", false);
@@ -39,6 +41,7 @@ std::vector<Wordle::Feedback> WordleGame::getFeedbackFromUser() {
   std::cout << "\n=== WORDLE SOLVER ===\n";
   std::cout << "Enter your guesses and their feedback patterns.\n";
   std::cout << "Format: WORD 01201 (0=grey, 1=yellow, 2=green)\n";
+  std::cout << "Word and pattern must be same length.\n";
   std::cout << "Enter 'done' when finished entering feedback.\n\n";
 
   while (true) {
@@ -56,13 +59,13 @@ std::vector<Wordle::Feedback> WordleGame::getFeedbackFromUser() {
       Wordle::Feedback fb = Wordle::parseFeedback(input);
       feedbackHistory.push_back(fb);
       std::cout << "Added: " << fb.word << " with pattern ";
-      for (int i = 0; i < 5; ++i) {
+      for (size_t i = 0; i < fb.word.size(); ++i) {
         std::cout << fb.getColor(i);
       }
       std::cout << "\n";
     } catch (const std::exception &e) {
       std::cout << "Error parsing feedback: " << e.what() << "\n";
-      std::cout << "Please use format: WORD 01201\n";
+      std::cout << "Please use format: WORD 01201 (same length)\n";
     }
   }
 
@@ -204,18 +207,30 @@ void WordleGame::saveResults(const Wordle::Result &result,
 
 void WordleGame::runCLI() {
   std::vector<Wordle::Feedback> feedbackHistory;
+  Wordle::Config config;
+
+  // Get word length configuration upfront
+  std::cout << "\n=== WORDLE SOLVER SETUP ===\n";
+  config.wordLength = Utils::Input::promptInt("Word length (1-32)", 5, 1, 32);
+
+  std::cout << "\nWord length set to: " << static_cast<int>(config.wordLength)
+            << " letters\n";
 
   while (true) {
     try {
       std::cout << "\n=== WORDLE SOLVER ===\n";
-      std::cout << "Commands: 's' (solve), 'c' (clear)\n";
-      std::cout << "Format: WORD 01201 (0=grey, 1=yellow, 2=green)\n\n";
+      std::cout << "Commands: 's' (solve), 'c' (clear), 'config' (change word "
+                   "length)\n";
+      std::cout << "Format: WORD " << std::string(config.wordLength, '0')
+                << " (0=grey, 1=yellow, 2=green)\n";
+      std::cout << "Word and pattern must be "
+                << static_cast<int>(config.wordLength) << " characters.\n\n";
 
       if (!feedbackHistory.empty()) {
         std::cout << "Current feedback history:\n";
         for (const auto &fb : feedbackHistory) {
           std::cout << "  " << fb.word << " -> ";
-          for (int i = 0; i < 5; ++i) {
+          for (size_t i = 0; i < fb.word.size(); ++i) {
             std::cout << fb.getColor(i);
           }
           std::cout << "\n";
@@ -245,9 +260,29 @@ void WordleGame::runCLI() {
         continue;
       }
 
+      if (input == "config" || input == "reconfigure") {
+        std::cout << "\n=== CHANGE WORD LENGTH ===\n";
+        config.wordLength = Utils::Input::promptInt("Word length (1-32)",
+                                                    config.wordLength, 1, 32);
+
+        std::cout << "\nWord length updated to: "
+                  << static_cast<int>(config.wordLength) << " letters\n";
+
+        // Clear feedback history when changing word length
+        if (!feedbackHistory.empty()) {
+          feedbackHistory.clear();
+          std::cout << "Feedback history cleared due to word length change.\n";
+        }
+        continue;
+      }
+
       if (input == "s" || input == "solve") {
         try {
-          Wordle::Config config = getConfigFromUser();
+          // Ask for solver options each time
+          config.maxDepth = Utils::Input::promptInt(
+              "Search depth for ENT calculation (0-2)", 1, 0, 2);
+          config.excludeUncommonWords = Utils::Input::promptBool(
+              "Exclude uncommon words from suggestions?", true);
 
           std::cout << "Calculating best guesses...\n";
           Wordle::Result result =
@@ -263,11 +298,21 @@ void WordleGame::runCLI() {
       // Try to parse as feedback
       try {
         Wordle::Feedback fb = Wordle::parseFeedback(input);
+
+        // Validate word length matches config
+        if (fb.word.size() != config.wordLength) {
+          std::cout << "Error: Word must be exactly "
+                    << static_cast<int>(config.wordLength) << " letters (got "
+                    << fb.word.size() << ").\n";
+          continue;
+        }
+
         feedbackHistory.push_back(fb);
         std::cout << "Added feedback for " << fb.word << "\n";
       } catch (const std::exception &e) {
         std::cout << "Error: " << e.what() << "\n";
-        std::cout << "Use format: WORD 01201 or commands: s, c\n";
+        std::cout << "Use format: WORD " << std::string(config.wordLength, '0')
+                  << " or commands: s, c, config\n";
       }
     } catch (const Utils::Input::UserCancelledException &) {
       // User pressed EOF at main input, return to game menu

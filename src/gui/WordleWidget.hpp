@@ -45,7 +45,8 @@ private:
   void updateStyle();
 };
 
-// Widget representing one complete guess (5 boxes + delete button)
+// Widget representing one complete guess (variable-length boxes + delete
+// button)
 class GuessRow : public QWidget {
   Q_OBJECT
 
@@ -65,7 +66,7 @@ private slots:
   void onDeleteClicked();
 
 private:
-  std::array<LetterBox *, 5> boxes;
+  std::vector<LetterBox *> boxes;
   QPushButton *deleteBtn;
   QPushButton *editBtn;
   bool isEditable;
@@ -101,7 +102,7 @@ private:
   bool gameInitialized;
 
   // Current guess row
-  std::array<LetterBox *, 5> currentBoxes;
+  std::vector<LetterBox *> currentBoxes;
   QWidget *currentRowWidget;
 
   // Container for past guesses
