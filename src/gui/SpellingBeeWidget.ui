@@ -35,13 +35,66 @@
     <widget class="QLabel" name="lettersLabel">
      <property name="font">
       <font>
-       <pointsize>24</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
+       <pointsize>12</pointsize>
       </font>
      </property>
      <property name="text">
-      <string>A B C D E F G</string>
+      <string>Enter 7 letters below (first is center)</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignCenter</set>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="topControlLayout">
+     <item>
+      <widget class="QPushButton" name="newGameBtn">
+       <property name="text">
+        <string>New Game</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="shuffleBtn">
+       <property name="text">
+        <string>⚙</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <spacer name="topHorizontalSpacer">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>40</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <widget class="QLineEdit" name="inputField">
+     <property name="placeholderText">
+      <string>Enter 7 letters (e.g., abcdefg) and press Enter...</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QPushButton" name="submitBtn">
+     <property name="text">
+      <string>Solve</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QLabel" name="scoreLabel">
+     <property name="text">
+      <string></string>
      </property>
      <property name="alignment">
       <set>Qt::AlignCenter</set>
@@ -57,62 +110,6 @@
       <string>Solutions will appear here...</string>
      </property>
     </widget>
-   </item>
-   <item>
-    <layout class="QHBoxLayout" name="inputLayout">
-     <item>
-      <widget class="QLineEdit" name="inputField">
-       <property name="placeholderText">
-        <string>Enter 7 letters (e.g., abcdefg)...</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QPushButton" name="submitBtn">
-       <property name="text">
-        <string>Solve</string>
-       </property>
-      </widget>
-     </item>
-    </layout>
-   </item>
-   <item>
-    <layout class="QHBoxLayout" name="controlLayout">
-     <item>
-      <widget class="QPushButton" name="newGameBtn">
-       <property name="text">
-        <string>New Game</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QPushButton" name="shuffleBtn">
-       <property name="text">
-        <string>Shuffle</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QLabel" name="scoreLabel">
-       <property name="text">
-        <string>Score: 0</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <spacer name="horizontalSpacer">
-       <property name="orientation">
-        <enum>Qt::Horizontal</enum>
-       </property>
-       <property name="sizeHint" stdset="0">
-        <size>
-         <width>40</width>
-         <height>20</height>
-        </size>
-       </property>
-      </spacer>
-     </item>
-    </layout>
    </item>
   </layout>
  </widget>

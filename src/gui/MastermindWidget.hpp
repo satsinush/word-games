@@ -63,6 +63,7 @@ private slots:
   void onTableRowClicked(int row, int column);
   void onDeleteFeedback(int index);
   void onFeedbackChanged(int index);
+  void onSettings();
 
 private:
   Ui::MastermindWidget *ui;

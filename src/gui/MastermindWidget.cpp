@@ -89,10 +89,12 @@ void FeedbackRow::updateFeedback(int colors, int positions) {
 }
 
 MastermindWidget::MastermindWidget(QWidget *parent)
-    : QWidget(parent), ui(new Ui::MastermindWidget), gameInitialized(false) {
+    : QWidget(parent), ui(new Ui::MastermindWidget), gameInitialized(true) {
   ui->setupUi(this);
 
-  // Initialize config defaults (will be set by dialog)
+  // Initialize config defaults
+  config.numPegs = 4;
+  config.numColors = 6;
   config.allowDuplicates = true;
   config.maxDepth = 1;
 
@@ -107,13 +109,13 @@ MastermindWidget::MastermindWidget(QWidget *parent)
   feedbackListContainer->setLayout(feedbackListLayout);
   feedbackListScrollArea->setWidget(feedbackListContainer);
 
-  // Add scroll area to the main layout
+  // Add scroll area to the main layout after feedback list label and before
+  // Solve button
   QVBoxLayout *mainLayout = qobject_cast<QVBoxLayout *>(this->layout());
   if (mainLayout) {
-    // Find the feedback list label and insert scroll area after it
-    int labelIndex = mainLayout->indexOf(ui->feedbackListLabel);
-    if (labelIndex >= 0) {
-      mainLayout->insertWidget(labelIndex + 1, feedbackListScrollArea);
+    int solveBtnIndex = mainLayout->indexOf(ui->solveBtn);
+    if (solveBtnIndex >= 0) {
+      mainLayout->insertWidget(solveBtnIndex, feedbackListScrollArea);
     }
   }
 
@@ -147,11 +149,34 @@ MastermindWidget::MastermindWidget(QWidget *parent)
   connect(ui->possibleResultsTable, &QTableWidget::cellClicked, this,
           &MastermindWidget::onTableRowClicked);
 
+  // Add settings button next to New Game button
+  QPushButton *settingsBtn = new QPushButton("⚙", this);
+  settingsBtn->setToolTip("Game Settings");
+  settingsBtn->setMaximumWidth(40);
+  connect(settingsBtn, &QPushButton::clicked, this,
+          &MastermindWidget::onSettings);
+
+  // Find the top control layout and add settings button after New Game
+  QHBoxLayout *topLayout =
+      ui->newGameBtn->parentWidget()->findChild<QHBoxLayout *>(
+          "topControlLayout");
+  if (!topLayout) {
+    topLayout =
+        qobject_cast<QHBoxLayout *>(ui->newGameBtn->parentWidget()->layout());
+  }
+  if (topLayout) {
+    int index = topLayout->indexOf(ui->newGameBtn);
+    if (index >= 0) {
+      topLayout->insertWidget(index + 1, settingsBtn);
+    }
+  }
+
   // Store reference to config info label
   configInfoLabel = ui->configInfoLabel;
 
-  // Hide UI elements until game is configured
-  setUIEnabled(false);
+  // Initialize game immediately with default configuration
+  initGame();
+  updateConfigInfo();
 }
 
 MastermindWidget::~MastermindWidget() { delete ui; }
@@ -169,13 +194,13 @@ bool MastermindWidget::showConfigDialog() {
   QSpinBox *numPegsSpinBox = new QSpinBox(&dialog);
   numPegsSpinBox->setMinimum(1);
   numPegsSpinBox->setMaximum(8);
-  numPegsSpinBox->setValue(4);
+  numPegsSpinBox->setValue(config.numPegs);
   formLayout->addRow("Number of Pegs:", numPegsSpinBox);
 
   QSpinBox *numColorsSpinBox = new QSpinBox(&dialog);
   numColorsSpinBox->setMinimum(2);
   numColorsSpinBox->setMaximum(10);
-  numColorsSpinBox->setValue(6);
+  numColorsSpinBox->setValue(config.numColors);
   formLayout->addRow("Number of Colors:", numColorsSpinBox);
 
   mainLayout->addLayout(formLayout);
@@ -189,6 +214,10 @@ bool MastermindWidget::showConfigDialog() {
   if (dialog.exec() == QDialog::Accepted) {
     config.numPegs = numPegsSpinBox->value();
     config.numColors = numColorsSpinBox->value();
+
+    // Regenerate patterns and reinitialize game with new configuration
+    initGame();
+    updateConfigInfo();
     return true;
   }
 
@@ -196,12 +225,6 @@ bool MastermindWidget::showConfigDialog() {
 }
 
 void MastermindWidget::onSubmit() {
-  if (!gameInitialized) {
-    QMessageBox::information(this, "No Game Started",
-                             "Please start a new game first!");
-    return;
-  }
-
   QString patternInput = ui->patternField->text().trimmed();
   if (patternInput.isEmpty()) {
     QMessageBox::information(this, "Input Required", "Please enter a pattern!");
@@ -248,22 +271,13 @@ void MastermindWidget::onSubmit() {
 }
 
 void MastermindWidget::onNewGame() {
-  if (showConfigDialog()) {
-    initGame();
-    gameInitialized = true;
-    setUIEnabled(true);
-    updateConfigInfo();
-  }
+  initGame();
+  updateConfigInfo();
 }
 
-void MastermindWidget::onSolve() {
-  if (!gameInitialized) {
-    QMessageBox::information(this, "No Game Started",
-                             "Please start a new game first!");
-    return;
-  }
-  solveMastermind();
-}
+void MastermindWidget::onSolve() { solveMastermind(); }
+
+void MastermindWidget::onSettings() { showConfigDialog(); }
 
 void MastermindWidget::onTableRowClicked(int row, int column) {
   Q_UNUSED(column);

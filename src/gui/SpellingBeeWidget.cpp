@@ -3,42 +3,317 @@
 #include "gui/SpellingBeeWidget.hpp"
 #include "ui_SpellingBeeWidget.h"
 
+#include <QDialog>
+#include <QDialogButtonBox>
+#include <QFormLayout>
+#include <QGridLayout>
+#include <QHeaderView>
+#include <QLineEdit>
 #include <QMessageBox>
+#include <QPainter>
+#include <QPainterPath>
+#include <QPolygonF>
+#include <QPushButton>
+#include <QSizePolicy>
+#include <QVBoxLayout>
 #include <algorithm>
+#include <cmath>
 #include <random>
 #include <set>
 
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
+
+// ============ HexagonButton Implementation ============
+
+HexagonButton::HexagonButton(bool isCenter, QWidget *parent)
+    : QPushButton(parent), isCenterHex(isCenter), currentLetter('\0') {
+  setFixedSize(70, 70);
+  QFont font;
+  font.setPointSize(24);
+  font.setBold(true);
+  setFont(font);
+  setFlat(true);
+}
+
+void HexagonButton::setLetter(char letter) {
+  currentLetter = letter;
+  if (letter == '\0') {
+    setText("");
+  } else {
+    setText(QString(QChar(letter).toUpper()));
+  }
+  update();
+}
+
+void HexagonButton::paintEvent(QPaintEvent *event) {
+  Q_UNUSED(event);
+
+  QPainter painter(this);
+  painter.setRenderHint(QPainter::Antialiasing);
+
+  // Draw hexagon
+  QPolygonF hexagon;
+  double centerX = width() / 2.0;
+  double centerY = height() / 2.0;
+  double radius = 35.0;
+
+  for (int i = 0; i < 6; ++i) {
+    double angle = M_PI / 3.0 * i;
+    double x = centerX + radius * cos(angle);
+    double y = centerY + radius * sin(angle);
+    hexagon << QPointF(x, y);
+  }
+
+  // Fill hexagon
+  QPainterPath path;
+  path.addPolygon(hexagon);
+
+  if (isCenterHex) {
+    painter.fillPath(path, QColor("#f7da21")); // Yellow for center
+  } else {
+    painter.fillPath(path, QColor("#e6e6e6")); // Light gray for outer
+  }
+
+  // Draw border
+  painter.setPen(QPen(QColor("#3a3a3c"), 2));
+  painter.drawPolygon(hexagon);
+
+  // Draw letter
+  if (currentLetter != '\0') {
+    painter.setPen(Qt::black);
+    painter.setFont(font());
+    painter.drawText(rect(), Qt::AlignCenter,
+                     QString(QChar(currentLetter).toUpper()));
+  }
+}
+
+// ============ SpellingBeeWidget Implementation ============
+
 SpellingBeeWidget::SpellingBeeWidget(const std::vector<Utils::Word> &words,
                                      QWidget *parent)
-    : QWidget(parent), ui(new Ui::SpellingBeeWidget), wordVec(words) {
+    : QWidget(parent), ui(new Ui::SpellingBeeWidget), wordVec(words),
+      gameInitialized(false) {
   ui->setupUi(this);
+
+  // Limit input to 7 characters
+  ui->inputField->setMaxLength(7);
 
   // Initialize config
   config.allLetters.fill('\0');
   config.validLettersMap.fill(false);
 
+  // Initialize hex buttons
+  hexButtons.fill(nullptr);
+
+  // Store reference to config info label
+  configInfoLabel = ui->lettersLabel;
+
+  // Create results table
+  resultsTable = new QTableWidget(this);
+  resultsTable->setColumnCount(2);
+  resultsTable->setHorizontalHeaderLabels({"Word", "Unique Letters"});
+  resultsTable->horizontalHeader()->setStretchLastSection(true);
+  resultsTable->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
+  resultsTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
+  resultsTable->setSelectionBehavior(QAbstractItemView::SelectRows);
+  resultsTable->setAlternatingRowColors(true);
+
+  // Replace output area with results table
+  QVBoxLayout *mainLayout = qobject_cast<QVBoxLayout *>(this->layout());
+  if (mainLayout) {
+    int outputIndex = mainLayout->indexOf(ui->outputArea);
+    if (outputIndex >= 0) {
+      mainLayout->removeWidget(ui->outputArea);
+      ui->outputArea->setVisible(false);
+      mainLayout->insertWidget(outputIndex, resultsTable);
+    }
+  }
+
   // Connect signals
-  connect(ui->submitBtn, &QPushButton::clicked, this,
-          &SpellingBeeWidget::onSubmit);
   connect(ui->newGameBtn, &QPushButton::clicked, this,
           &SpellingBeeWidget::onNewGame);
-  connect(ui->shuffleBtn, &QPushButton::clicked, this,
-          &SpellingBeeWidget::onShuffle);
+  // Enter should trigger solve immediately
   connect(ui->inputField, &QLineEdit::returnPressed, this,
-          &SpellingBeeWidget::onSubmit);
+          &SpellingBeeWidget::onInputSubmit);
+  connect(ui->inputField, &QLineEdit::textChanged, this,
+          &SpellingBeeWidget::onInputChanged);
+  connect(ui->submitBtn, &QPushButton::clicked, this,
+          &SpellingBeeWidget::onInputSubmit);
+
+  // Settings button (repurposed shuffle button)
+  ui->shuffleBtn->setToolTip("Solver Settings");
+  ui->shuffleBtn->setMaximumWidth(40);
+  connect(ui->shuffleBtn, &QPushButton::clicked, this,
+          &SpellingBeeWidget::onSettings);
+
+  // Create the hexagon visualization
+  createHexagons();
 
   // Set initial state
-  ui->lettersLabel->setText("Enter 7 letters above");
-  ui->outputArea->append("Enter 7 unique letters (e.g., 'abcdefg')");
-  ui->outputArea->append(
-      "The first letter will be the required center letter.");
+  gameInitialized = true;
+  updateConfigInfo();
 }
 
 SpellingBeeWidget::~SpellingBeeWidget() { delete ui; }
 
 void SpellingBeeWidget::newGame() { onNewGame(); }
 
-void SpellingBeeWidget::onSubmit() {
+bool SpellingBeeWidget::showConfigDialog() {
+  // No longer used - configuration happens inline
+  return true;
+}
+
+void SpellingBeeWidget::initGame() {
+  solutions.clear();
+  resultsTable->setRowCount(0);
+  config.allLetters.fill('\0');
+  config.validLettersMap.fill(false);
+
+  // Clear all hexagons
+  for (int i = 0; i < 7; ++i) {
+    if (hexButtons[i]) {
+      hexButtons[i]->setLetter('\0');
+    }
+  }
+
+  updateConfigInfo();
+}
+
+void SpellingBeeWidget::setUIEnabled(bool enabled) {
+  Q_UNUSED(enabled);
+  // All UI elements are always enabled now
+}
+
+void SpellingBeeWidget::updateConfigInfo() {
+  if (config.allLetters[0] == '\0') {
+    configInfoLabel->setText("Enter 7 letters below (first is center)");
+    ui->scoreLabel->setText("");
+  } else {
+    configInfoLabel->setText("Spelling Bee Puzzle");
+  }
+}
+
+void SpellingBeeWidget::createHexagons() {
+  // Create a widget to hold the hexagons
+  hexWidget = new QWidget(this);
+
+  // Use absolute positioning for perfect hexagon
+  hexWidget->setFixedSize(220, 250);
+
+  // Create 7 hexagon buttons
+  for (int i = 0; i < 7; ++i) {
+    hexButtons[i] = new HexagonButton(i == 0, hexWidget);
+  }
+
+  // Position them in perfect hexagon pattern
+  // Calculate positions based on hexagon geometry
+  int centerX = 110;
+  int centerY = 125;
+  int radius = 65; // Distance from center to outer hexagons (increased for gap)
+
+  // Center hexagon (index 0)
+  hexButtons[0]->move(centerX - 35, centerY - 35);
+
+  // Outer hexagons arranged in a circle
+  // Top (index 1)
+  hexButtons[1]->move(centerX - 35, centerY - radius - 35);
+
+  // Top-right (index 2)
+  hexButtons[2]->move(centerX + radius * 0.866 - 35,
+                      centerY - radius * 0.5 - 35);
+
+  // Bottom-right (index 3)
+  hexButtons[3]->move(centerX + radius * 0.866 - 35,
+                      centerY + radius * 0.5 - 35);
+
+  // Bottom (index 4)
+  hexButtons[4]->move(centerX - 35, centerY + radius - 35);
+
+  // Bottom-left (index 5)
+  hexButtons[5]->move(centerX - radius * 0.866 - 35,
+                      centerY + radius * 0.5 - 35);
+
+  // Top-left (index 6)
+  hexButtons[6]->move(centerX - radius * 0.866 - 35,
+                      centerY - radius * 0.5 - 35);
+
+  hexWidget->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+
+  // Insert the hex widget after the config label
+  QVBoxLayout *mainLayout = qobject_cast<QVBoxLayout *>(this->layout());
+  if (mainLayout) {
+    int labelIndex = mainLayout->indexOf(configInfoLabel);
+    if (labelIndex >= 0) {
+      mainLayout->insertWidget(labelIndex + 1, hexWidget, 0, Qt::AlignCenter);
+    }
+  }
+}
+
+void SpellingBeeWidget::updateHexagonsFromInput(const QString &text) {
+  QString cleaned = text.trimmed().toLower();
+  cleaned.remove(' ');
+
+  // Update each hexagon based on input
+  for (int i = 0; i < 7; ++i) {
+    if (i < cleaned.length()) {
+      hexButtons[i]->setLetter(cleaned[i].toLatin1());
+    } else {
+      hexButtons[i]->setLetter('\0');
+    }
+  }
+}
+
+void SpellingBeeWidget::onInputChanged(const QString &text) {
+  updateHexagonsFromInput(text);
+}
+
+void SpellingBeeWidget::populateResultTable() {
+  resultsTable->setRowCount(0);
+
+  if (solutions.empty()) {
+    return;
+  }
+
+  resultsTable->setRowCount(solutions.size());
+
+  for (int i = 0; i < static_cast<int>(solutions.size()); ++i) {
+    const auto &word = solutions[i];
+
+    // Word column
+    QTableWidgetItem *wordItem =
+        new QTableWidgetItem(QString::fromStdString(word.wordString).toUpper());
+    QFont monoFont("Consolas", 10);
+    monoFont.setBold(true);
+    wordItem->setFont(monoFont);
+    wordItem->setTextAlignment(Qt::AlignCenter);
+    resultsTable->setItem(i, 0, wordItem);
+
+    // Unique Letters column
+    QTableWidgetItem *lettersItem =
+        new QTableWidgetItem(QString::number(word.uniqueLetters));
+    lettersItem->setTextAlignment(Qt::AlignCenter);
+    resultsTable->setItem(i, 1, lettersItem);
+
+    // Color code by unique letters
+    QColor bgColor;
+    if (word.uniqueLetters == 7) {
+      bgColor = QColor(106, 170, 100); // Green
+    } else if (word.uniqueLetters >= 5) {
+      bgColor = QColor(201, 180, 88); // Yellow
+    } else {
+      bgColor = QColor(120, 124, 126); // Grey
+    }
+
+    for (int col = 0; col < 2; ++col) {
+      resultsTable->item(i, col)->setBackground(bgColor);
+      resultsTable->item(i, col)->setForeground(Qt::white);
+    }
+  }
+}
+
+void SpellingBeeWidget::onInputSubmit() {
   QString lettersInput = ui->inputField->text().trimmed().toLower();
   if (lettersInput.isEmpty()) {
     QMessageBox::information(this, "Input Required", "Please enter 7 letters!");
@@ -82,66 +357,32 @@ void SpellingBeeWidget::onSubmit() {
     config.validLettersMap[static_cast<unsigned char>(c)] = true;
   }
 
-  // Display letters
-  QString lettersDisplay;
-  for (size_t i = 0; i < 7; ++i) {
-    lettersDisplay += QString("%1 ").arg(QChar(config.allLetters[i]).toUpper());
+  // Update the visual hexagons
+  for (int i = 0; i < 7; ++i) {
+    hexButtons[i]->setLetter(config.allLetters[i]);
   }
-  ui->lettersLabel->setText(lettersDisplay.trimmed());
+
+  updateConfigInfo();
 
   // Solve
   solutions = SpellingBee::runSpellingBeeSolver(wordVec, config);
 
   // Display results
-  ui->outputArea->clear();
-  ui->outputArea->append(QString("Center letter: %1 (must be used)")
-                             .arg(QChar(config.allLetters[0]).toUpper()));
-  ui->outputArea->append(
-      QString("\nFound %1 valid words:\n").arg(solutions.size()));
+  populateResultTable();
 
-  // Show top 100 solutions
-  int limit = std::min(100, static_cast<int>(solutions.size()));
-  int lastUniqueLetters = 0;
-
-  for (int i = limit - 1; i >= 0; --i) {
-    const auto &word = solutions[i];
-    if (word.uniqueLetters != lastUniqueLetters) {
-      ui->outputArea->append(
-          QString("\n--- %1 unique letters ---").arg(word.uniqueLetters));
-      lastUniqueLetters = word.uniqueLetters;
-    }
-    ui->outputArea->append(QString::fromStdString(word.wordString));
-  }
-
-  ui->inputField->clear();
+  ui->scoreLabel->setText(QString("Found: %1 words").arg(solutions.size()));
 }
 
-void SpellingBeeWidget::onNewGame() {
-  ui->outputArea->clear();
-  ui->inputField->clear();
-  ui->lettersLabel->setText("Enter 7 letters above");
-  ui->scoreLabel->setText("");
-  solutions.clear();
-}
+void SpellingBeeWidget::onNewGame() { initGame(); }
 
-void SpellingBeeWidget::onShuffle() {
-  if (config.allLetters[0] == '\0') {
-    QMessageBox::information(this, "No Puzzle",
-                             "Enter letters first to create a puzzle!");
-    return;
-  }
-
-  // Shuffle the display order of letters (keeping first letter fixed as center)
-  std::array<char, 7> shuffled = config.allLetters;
-  std::random_device rd;
-  std::mt19937 g(rd());
-  std::shuffle(shuffled.begin() + 1, shuffled.end(), g);
-
-  QString lettersDisplay;
-  for (size_t i = 0; i < 7; ++i) {
-    lettersDisplay += QString("%1 ").arg(QChar(shuffled[i]).toUpper());
-  }
-  ui->lettersLabel->setText(lettersDisplay.trimmed());
+void SpellingBeeWidget::onSettings() {
+  QMessageBox::information(
+      this, "Spelling Bee Settings",
+      "Spelling Bee solver has no configurable settings.\n\n"
+      "It finds all valid words that:\n"
+      "- Are at least 4 letters long\n"
+      "- Use only the 7 provided letters\n"
+      "- Include the center letter (first letter entered)");
 }
 
 #endif // WITH_GUI

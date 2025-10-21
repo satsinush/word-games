@@ -34,7 +34,7 @@
    <item>
     <widget class="QLabel" name="configInfoLabel">
      <property name="text">
-      <string>Click "New Game" to start</string>
+      <string>Game: 4 pegs, 6 colors</string>
      </property>
      <property name="alignment">
       <set>Qt::AlignCenter</set>
@@ -84,7 +84,7 @@
      <item>
       <widget class="QPushButton" name="submitBtn">
        <property name="text">
-        <string>Add</string>
+        <string>Add Pattern</string>
        </property>
       </widget>
      </item>
@@ -100,6 +100,13 @@
      </property>
      <property name="text">
       <string>Feedback History:</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QPushButton" name="solveBtn">
+     <property name="text">
+      <string>Solve</string>
      </property>
     </widget>
    </item>
@@ -142,13 +149,6 @@
        </item>
       </layout>
      </widget>
-    </widget>
-   </item>
-   <item>
-    <widget class="QPushButton" name="solveBtn">
-     <property name="text">
-      <string>Solve</string>
-     </property>
     </widget>
    </item>
   </layout>

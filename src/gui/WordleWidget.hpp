@@ -90,6 +90,7 @@ private slots:
   void onInputChanged(const QString &text);
   void onGuessDeleted();
   void onTableRowClicked(int row, int column);
+  void onSettings();
 
 private:
   Ui::WordleWidget *ui;
@@ -97,6 +98,7 @@ private:
 
   std::vector<Wordle::Feedback> feedbackHistory;
   Wordle::Config config;
+  bool gameInitialized;
 
   // Current guess row
   std::array<LetterBox *, 5> currentBoxes;
@@ -113,6 +115,12 @@ private:
   QTableWidget *allResultsTable;
   QTableWidget *probableWordsTable;
 
+  QLabel *configInfoLabel;
+
+  bool showConfigDialog();
+  void initGame();
+  void setUIEnabled(bool enabled);
+  void updateConfigInfo();
   void solveWordle();
   void setupCurrentRow();
   void submitCurrentGuess();

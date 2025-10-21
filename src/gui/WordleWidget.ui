@@ -70,11 +70,18 @@
      <item>
       <widget class="QPushButton" name="submitBtn">
        <property name="text">
-        <string>Add word</string>
+        <string>Add Word</string>
        </property>
       </widget>
      </item>
     </layout>
+   </item>
+   <item>
+    <widget class="QPushButton" name="hintBtn">
+     <property name="text">
+      <string>Solve</string>
+     </property>
+    </widget>
    </item>
    <item>
     <widget class="QTabWidget" name="resultsTabWidget">
@@ -91,13 +98,6 @@
        <string>Possible Solutions</string>
       </attribute>
      </widget>
-    </widget>
-   </item>
-   <item>
-    <widget class="QPushButton" name="hintBtn">
-     <property name="text">
-      <string>Solve</string>
-     </property>
     </widget>
    </item>
   </layout>

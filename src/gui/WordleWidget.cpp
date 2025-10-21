@@ -3,11 +3,16 @@
 #include "gui/WordleWidget.hpp"
 #include "ui_WordleWidget.h"
 
+#include <QDialog>
+#include <QDialogButtonBox>
 #include <QHBoxLayout>
 #include <QHeaderView>
+#include <QLabel>
 #include <QMessageBox>
 #include <QMouseEvent>
+#include <QSizePolicy>
 #include <QTableWidgetItem>
+#include <QVBoxLayout>
 #include <algorithm>
 
 // ============ LetterBox Implementation ============
@@ -169,7 +174,7 @@ void GuessRow::onDeleteClicked() { emit deleteRequested(); }
 WordleWidget::WordleWidget(const std::vector<Utils::Word> &words,
                            QWidget *parent)
     : QWidget(parent), ui(new Ui::WordleWidget), wordVec(words),
-      currentRowWidget(nullptr) {
+      currentRowWidget(nullptr), gameInitialized(true) {
   ui->setupUi(this);
 
   // Initialize config
@@ -193,11 +198,13 @@ WordleWidget::WordleWidget(const std::vector<Utils::Word> &words,
       200); // Limit height to make it scrollable
   guessListScrollArea->setFrameShape(QFrame::NoFrame);
 
-  // Add scroll area to main layout
+  // Add scroll area to main layout after input row and before Solve button
   QVBoxLayout *mainLayout = qobject_cast<QVBoxLayout *>(layout());
   if (mainLayout) {
-    // Insert after title and input, before output area (index 2)
-    mainLayout->insertWidget(2, guessListScrollArea);
+    int hintBtnIndex = mainLayout->indexOf(ui->hintBtn);
+    if (hintBtnIndex >= 0) {
+      mainLayout->insertWidget(hintBtnIndex, guessListScrollArea);
+    }
   }
 
   // Connect signals
@@ -212,6 +219,27 @@ WordleWidget::WordleWidget(const std::vector<Utils::Word> &words,
 
   // Set input field to max 5 characters
   ui->inputField->setMaxLength(5);
+
+  // Add settings button next to New Game button
+  QPushButton *settingsBtn = new QPushButton("⚙", this);
+  settingsBtn->setToolTip("Solver Settings");
+  settingsBtn->setMaximumWidth(40);
+  connect(settingsBtn, &QPushButton::clicked, this, &WordleWidget::onSettings);
+
+  // Find the top control layout and add settings button after New Game
+  QHBoxLayout *topLayout =
+      ui->newGameBtn->parentWidget()->findChild<QHBoxLayout *>(
+          "topControlLayout");
+  if (!topLayout) {
+    topLayout =
+        qobject_cast<QHBoxLayout *>(ui->newGameBtn->parentWidget()->layout());
+  }
+  if (topLayout) {
+    int index = topLayout->indexOf(ui->newGameBtn);
+    if (index >= 0) {
+      topLayout->insertWidget(index + 1, settingsBtn);
+    }
+  }
 
   // Create result tables
   allResultsTable = new QTableWidget(this);
@@ -235,8 +263,6 @@ WordleWidget::WordleWidget(const std::vector<Utils::Word> &words,
   probableWordsTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
   probableWordsTable->setSelectionBehavior(QAbstractItemView::SelectRows);
   probableWordsTable->setAlternatingRowColors(true);
-  // probableWordsTable->setStyleSheet(
-  //     "QHeaderView::section { background-color: #6aaa64; color: white; }");
   connect(probableWordsTable, &QTableWidget::cellClicked, this,
           &WordleWidget::onTableRowClicked);
 
@@ -249,10 +275,91 @@ WordleWidget::WordleWidget(const std::vector<Utils::Word> &words,
   probableWordsLayout->addWidget(probableWordsTable);
   ui->resultsTabWidget->widget(1)->setLayout(probableWordsLayout);
 
-  newGame();
+  // Store reference to config info label (we'll use the title)
+  configInfoLabel = ui->titleLabel;
+
+  // Initialize game immediately with default configuration
+  initGame();
+  updateConfigInfo();
 }
 
 WordleWidget::~WordleWidget() { delete ui; }
+
+bool WordleWidget::showConfigDialog() {
+  // Show current configuration
+  QDialog dialog(this);
+  dialog.setWindowTitle("Wordle Solver Configuration");
+  dialog.setMinimumWidth(400);
+
+  QVBoxLayout *layout = new QVBoxLayout(&dialog);
+
+  QLabel *infoLabel = new QLabel(
+      "<b>Current Configuration:</b><br><br>"
+      "• Max Search Depth: " +
+          QString::number(config.maxDepth) +
+          "<br>"
+          "• Exclude Uncommon Words: " +
+          QString(config.excludeUncommonWords ? "Yes" : "No") +
+          "<br><br>"
+          "<i>Note: Full configuration options (word length, etc.) will be "
+          "available in a future update.</i>",
+      &dialog);
+  infoLabel->setWordWrap(true);
+  layout->addWidget(infoLabel);
+
+  QDialogButtonBox *buttonBox =
+      new QDialogButtonBox(QDialogButtonBox::Ok, &dialog);
+  connect(buttonBox, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
+  layout->addWidget(buttonBox);
+
+  dialog.exec();
+  return false; // No changes made
+}
+
+void WordleWidget::initGame() {
+  // Clear feedback history
+  feedbackHistory.clear();
+
+  // Delete all GuessRow widgets
+  for (GuessRow *row : guessRows) {
+    guessListLayout->removeWidget(row);
+    row->deleteLater();
+  }
+  guessRows.clear();
+
+  // Remove current row if it exists
+  if (currentRowWidget) {
+    guessListLayout->removeWidget(currentRowWidget);
+    currentRowWidget->deleteLater();
+  }
+
+  // Clear result tables
+  allResultsTable->setRowCount(0);
+  probableWordsTable->setRowCount(0);
+
+  // Reset tab texts to default
+  ui->resultsTabWidget->setTabText(0, "All Suggestions");
+  ui->resultsTabWidget->setTabText(1, "Possible Solutions");
+
+  // Setup fresh current row
+  setupCurrentRow();
+  ui->inputField->clear();
+  ui->inputField->setFocus();
+
+  updateConfigInfo();
+}
+
+void WordleWidget::setUIEnabled(bool enabled) {
+  ui->inputField->setVisible(enabled);
+  ui->submitBtn->setVisible(enabled);
+  ui->hintBtn->setVisible(enabled);
+  guessListScrollArea->setVisible(enabled);
+  ui->resultsTabWidget->setVisible(enabled);
+}
+
+void WordleWidget::updateConfigInfo() {
+  configInfoLabel->setText("Wordle Solver");
+}
 
 void WordleWidget::setupCurrentRow() {
   // Don't create letter boxes until word is submitted
@@ -383,37 +490,13 @@ void WordleWidget::submitCurrentGuess() {
 }
 
 void WordleWidget::onNewGame() {
-  // Clear feedback history
-  feedbackHistory.clear();
-
-  // Delete all GuessRow widgets
-  for (GuessRow *row : guessRows) {
-    guessListLayout->removeWidget(row);
-    row->deleteLater();
-  }
-  guessRows.clear();
-
-  // Remove current row if it exists
-  if (currentRowWidget) {
-    guessListLayout->removeWidget(currentRowWidget);
-    currentRowWidget->deleteLater();
-  }
-
-  // Clear result tables
-  allResultsTable->setRowCount(0);
-  probableWordsTable->setRowCount(0);
-
-  // Reset tab texts to default
-  ui->resultsTabWidget->setTabText(0, "All Suggestions");
-  ui->resultsTabWidget->setTabText(1, "Possible Solutions");
-
-  // Setup fresh current row
-  setupCurrentRow();
-  ui->inputField->clear();
-  ui->inputField->setFocus();
+  initGame();
+  updateConfigInfo();
 }
 
 void WordleWidget::onHint() { solveWordle(); }
+
+void WordleWidget::onSettings() { showConfigDialog(); }
 
 void WordleWidget::populateResultTable(
     QTableWidget *table, const std::vector<Wordle::WordGuess> &guesses,
