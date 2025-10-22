@@ -82,7 +82,7 @@ TEST(WordleTest, SolverWithGuesses) {
 TEST(MastermindTest, PatternGeneration) {
   Mastermind::Config config;
   config.numPegs = 4;
-  config.numColors = 6;
+  config.colorChars = "012345";
   config.allowDuplicates = true;
 
   std::vector<Mastermind::Pattern> patterns =
@@ -93,12 +93,12 @@ TEST(MastermindTest, PatternGeneration) {
 }
 
 TEST(MastermindTest, SolverWithGuesses) {
-  // Parse command: mastermind --guesses "1 1 2 2 3|1 2;3 4 5 6 7|1 2"
-  //                --num-pegs 5 --num-colors 8 --allow-duplicates true
+  // Parse command: mastermind --guesses "1122 1 2;2131 2 1"
+  //                --num-pegs 4 --colors 0123456789 --allow-duplicates true
   //                --max-depth 1
   Mastermind::Config config;
   config.numPegs = 4;
-  config.numColors = 6;
+  config.colorChars = "012345"; // 6 colors
   config.allowDuplicates = true;
   config.maxDepth = 1;
 
@@ -107,30 +107,14 @@ TEST(MastermindTest, SolverWithGuesses) {
       Mastermind::generateAllPatterns(config);
   EXPECT_EQ(allPatterns.size(), 1296);
 
-  // Parse guess history
+  // Parse guess history using parseFeedback
   std::vector<Mastermind::Feedback> guessHistory;
 
-  // First guess: "1 1 2 2|1 2"
-  Mastermind::Feedback fb1;
-  fb1.guess.numPegs = 4;
-  fb1.guess.colors[0] = 1;
-  fb1.guess.colors[1] = 1;
-  fb1.guess.colors[2] = 2;
-  fb1.guess.colors[3] = 2;
-  fb1.correctPosition = 1;
-  fb1.correctColor = 2;
-  guessHistory.push_back(fb1);
+  // First guess: "1122 1 2"
+  guessHistory.push_back(Mastermind::parseFeedback("1122 1 2", config));
 
-  // Second guess: "2 1 3 1|2 1"
-  Mastermind::Feedback fb2;
-  fb2.guess.numPegs = 4;
-  fb2.guess.colors[0] = 2;
-  fb2.guess.colors[1] = 1;
-  fb2.guess.colors[2] = 3;
-  fb2.guess.colors[3] = 1;
-  fb2.correctPosition = 2;
-  fb2.correctColor = 1;
-  guessHistory.push_back(fb2);
+  // Second guess: "2131 2 1"
+  guessHistory.push_back(Mastermind::parseFeedback("2131 2 1", config));
 
   // Run solver
   Mastermind::Result result =

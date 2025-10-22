@@ -8,6 +8,7 @@
 #include <QFormLayout>
 #include <QHBoxLayout>
 #include <QHeaderView>
+#include <QLineEdit>
 #include <QMessageBox>
 #include <QSpinBox>
 #include <QVBoxLayout>
@@ -95,7 +96,7 @@ MastermindWidget::MastermindWidget(QWidget *parent)
 
   // Initialize config defaults
   config.numPegs = 4;
-  config.numColors = 6;
+  config.colorChars = "012345"; // Default to 6 colors represented as digits
   config.allowDuplicates = true;
   config.maxDepth = 1;
 
@@ -192,11 +193,10 @@ bool MastermindWidget::showConfigDialog() {
   numPegsSpinBox->setValue(config.numPegs);
   formLayout->addRow("Number of Pegs:", numPegsSpinBox);
 
-  QSpinBox *numColorsSpinBox = new QSpinBox(&dialog);
-  numColorsSpinBox->setMinimum(2);
-  numColorsSpinBox->setMaximum(10);
-  numColorsSpinBox->setValue(config.numColors);
-  formLayout->addRow("Number of Colors:", numColorsSpinBox);
+  QLineEdit *colorCharsLineEdit = new QLineEdit(&dialog);
+  colorCharsLineEdit->setText(QString::fromStdString(config.colorChars));
+  colorCharsLineEdit->setPlaceholderText("e.g., rgbcmyk or 012345");
+  formLayout->addRow("Color Characters:", colorCharsLineEdit);
 
   QSpinBox *maxDepthSpinBox = new QSpinBox(&dialog);
   maxDepthSpinBox->setMinimum(0);
@@ -214,14 +214,17 @@ bool MastermindWidget::showConfigDialog() {
 
   if (dialog.exec() == QDialog::Accepted) {
     uint8_t oldNumPegs = config.numPegs;
-    uint8_t oldNumColors = config.numColors;
+    std::string oldColorChars = config.colorChars;
 
     config.numPegs = numPegsSpinBox->value();
-    config.numColors = numColorsSpinBox->value();
+    config.colorChars = colorCharsLineEdit->text().toStdString();
+    if (config.colorChars.empty()) {
+      config.colorChars = "012345"; // Default if empty
+    }
     config.maxDepth = maxDepthSpinBox->value();
 
     // Clear feedback history if pegs or colors changed
-    if (oldNumPegs != config.numPegs || oldNumColors != config.numColors) {
+    if (oldNumPegs != config.numPegs || oldColorChars != config.colorChars) {
       feedbackHistory.clear();
       ui->patternField->clear();
     }
@@ -243,15 +246,19 @@ void MastermindWidget::onSubmit() {
   }
 
   try {
-    // Parse pattern
-    std::istringstream patternIss(patternInput.toStdString());
+    // Parse pattern string (no spaces between characters)
+    std::string patternStr = patternInput.toStdString();
     Mastermind::Pattern pattern;
     pattern.numPegs = 0;
-    std::string token;
-    while (patternIss >> token && pattern.numPegs < Mastermind::MAX_PEGS) {
-      int color = std::stoi(token);
-      if (color < 0 || color > static_cast<int>(config.numColors)) {
-        throw std::invalid_argument("Color out of range");
+
+    for (char c : patternStr) {
+      if (pattern.numPegs >= Mastermind::MAX_PEGS) {
+        break;
+      }
+      int color = config.charToColor(c);
+      if (color < 0) {
+        throw std::invalid_argument(
+            "Invalid color character. Available colors: " + config.colorChars);
       }
       pattern.colors[pattern.numPegs] = static_cast<uint8_t>(color);
       pattern.numPegs++;
@@ -337,10 +344,11 @@ void MastermindWidget::initGame() {
 
   // Update placeholder text with current configuration
   QString examplePattern;
-  for (unsigned int i = 1; i <= config.numPegs; ++i) {
-    if (i > 1)
+  for (unsigned int i = 0; i < config.numPegs && i < config.colorChars.length();
+       ++i) {
+    if (i > 0)
       examplePattern += " ";
-    examplePattern += QString::number(i);
+    examplePattern += config.colorChars[i];
   }
   ui->patternField->setPlaceholderText(
       QString("Enter pattern (e.g., %1)...").arg(examplePattern));
@@ -376,7 +384,7 @@ void MastermindWidget::populateResultTable(
 
     // Pattern (uppercase monospace)
     QString patternStr =
-        QString::fromStdString(guess.pattern.toString()).toUpper();
+        QString::fromStdString(guess.pattern.toString(config)).toUpper();
     QTableWidgetItem *patternItem = new QTableWidgetItem(patternStr);
     QFont monoFont("Consolas", 10);
     monoFont.setBold(true);
@@ -520,9 +528,9 @@ void MastermindWidget::setUIEnabled(bool enabled) {
 
 void MastermindWidget::updateConfigInfo() {
   QString info = QString("<span style='color:#666; font-size:11pt;'>%1 pegs | "
-                         "%2 colors | Depth: %3</span>")
+                         "Colors: %2 | Depth: %3</span>")
                      .arg(config.numPegs)
-                     .arg(config.numColors)
+                     .arg(QString::fromStdString(config.colorChars))
                      .arg(config.maxDepth);
   configInfoLabel->setText(info);
 }
@@ -539,7 +547,7 @@ void MastermindWidget::rebuildFeedbackList() {
   for (size_t i = 0; i < feedbackHistory.size(); ++i) {
     const auto &fb = feedbackHistory[i];
     QString displayPattern =
-        QString::fromStdString(fb.guess.toString()).toUpper();
+        QString::fromStdString(fb.guess.toString(config)).toUpper();
     FeedbackRow *row =
         new FeedbackRow(i, displayPattern, fb.correctColor, fb.correctPosition,
                         config.numPegs, this);

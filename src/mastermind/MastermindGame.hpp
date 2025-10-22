@@ -17,9 +17,11 @@ private:
   std::vector<Mastermind::Feedback>
   getFeedbackFromArgs(const std::map<std::string, std::string> &args,
                       const Mastermind::Config &config);
-  void printResults(const Mastermind::Result &result);
+  void printResults(const Mastermind::Result &result,
+                    const Mastermind::Config &config);
   void saveResults(const Mastermind::Result &result,
-                   const std::string &outputFile);
+                   const std::string &outputFile,
+                   const Mastermind::Config &config);
 
 public:
   MastermindGame() = default;

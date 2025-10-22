@@ -117,17 +117,17 @@ BENCHMARK(BM_LetterBoxed_Runtime);
 static void BM_Mastermind_Runtime(benchmark::State &state) {
   Mastermind::Config config;
   config.numPegs = 5;
-  config.numColors = 8;
+  config.colorChars = "01234567"; // 8 colors
   config.allowDuplicates = true;
   config.maxDepth = 1;
 
   std::vector<Mastermind::Pattern> allPatterns =
       Mastermind::generateAllPatterns(config);
+
+  // Parse feedback using parseFeedback function
   std::vector<Mastermind::Feedback> feedback;
-  feedback.push_back(
-      Mastermind::Feedback{Mastermind::Pattern({1, 1, 2, 2, 3}, 5), 1, 2});
-  feedback.push_back(
-      Mastermind::Feedback{Mastermind::Pattern({3, 4, 5, 6, 7}, 5), 1, 2});
+  feedback.push_back(Mastermind::parseFeedback("11223 1 2", config));
+  feedback.push_back(Mastermind::parseFeedback("34567 1 2", config));
 
   for (auto _ : state) {
     Mastermind::Result result =

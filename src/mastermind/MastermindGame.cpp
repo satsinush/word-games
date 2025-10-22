@@ -14,8 +14,14 @@ Mastermind::Config MastermindGame::getConfigFromUser() {
 
   std::cout << "=== Mastermind Solver ===\n";
   config.numPegs = Utils::Input::promptInt("Enter number of pegs", 4, 1, 20);
-  config.numColors =
-      Utils::Input::promptInt("Enter number of colors", 6, 1, 20);
+
+  std::cout
+      << "Enter available color characters (e.g., 'rgbcmyk' or '012345'): ";
+  std::getline(std::cin, config.colorChars);
+  if (config.colorChars.empty()) {
+    config.colorChars = "012345"; // Default
+  }
+
   config.allowDuplicates =
       Utils::Input::promptBool("Allow duplicate colors?", true);
 
@@ -26,7 +32,8 @@ Mastermind::Config MastermindGame::getConfigFromArgs(
     const std::map<std::string, std::string> &args) {
   Mastermind::Config config;
   config.numPegs = Utils::Input::getArgValue(args, "num-pegs", 4u);
-  config.numColors = Utils::Input::getArgValue(args, "num-colors", 6u);
+  config.colorChars =
+      Utils::Input::getArgValue(args, "colors", std::string("012345"));
   config.allowDuplicates =
       Utils::Input::getArgValue(args, "allow-duplicates", true);
   config.maxDepth = Utils::Input::getArgValue(args, "max-depth", 1u);
@@ -38,7 +45,8 @@ MastermindGame::getFeedbackFromUser(const Mastermind::Config &config) {
   std::vector<Mastermind::Feedback> guessHistory;
 
   std::cout << "\nEnter your guesses and feedback.\n";
-  std::cout << "Format: 1 2 3 4|2 1 (pattern|correct_position correct_color)\n";
+  std::cout << "Available colors: " << config.colorChars << "\n";
+  std::cout << "Format: rgbc 2 1 (pattern correctPos correctCol)\n";
   std::cout << "Enter 'done' when finished entering feedback.\n\n";
 
   while (true) {
@@ -52,64 +60,16 @@ MastermindGame::getFeedbackFromUser(const Mastermind::Config &config) {
       continue;
 
     try {
-      // Split input by pipe separator
-      size_t pipePos = input.find('|');
-      if (pipePos == std::string::npos) {
-        std::cout << "Error: Missing '|' separator. Use format: 1 2 3 4|2 1\n";
-        continue;
-      }
-
-      std::string patternStr = input.substr(0, pipePos);
-      std::string feedbackStr = input.substr(pipePos + 1);
-
-      // Parse pattern colors directly into Pattern
-      std::istringstream patternIss(patternStr);
-      Mastermind::Pattern pattern;
-      pattern.numPegs = 0;
-      std::string token;
-      while (patternIss >> token && pattern.numPegs < Mastermind::MAX_PEGS) {
-        int color = std::stoi(token);
-        if (color < 0 || color > static_cast<int>(config.numColors)) {
-          throw std::invalid_argument("Color out of range");
-        }
-        pattern.colors[pattern.numPegs] = static_cast<uint8_t>(color);
-        pattern.numPegs++;
-      }
-
-      if (pattern.numPegs != config.numPegs) {
-        std::cout << "Error: Pattern must have exactly " << config.numPegs
-                  << " colors.\n";
-        continue;
-      }
-
-      // Parse feedback
-      std::istringstream feedbackIss(feedbackStr);
-      int correctPos, correctCol;
-      if (!(feedbackIss >> correctPos >> correctCol)) {
-        std::cout << "Error: Invalid feedback format. Use: correct_position "
-                     "correct_color\n";
-        continue;
-      }
-
-      if (correctPos > static_cast<int>(config.numPegs) ||
-          correctCol > static_cast<int>(config.numPegs) || correctPos < 0 ||
-          correctCol < 0 ||
-          (correctPos + correctCol) > static_cast<int>(config.numPegs)) {
-        std::cout << "Error: Invalid feedback values.\n";
-        continue;
-      }
-      Mastermind::Feedback feedback;
-      feedback.guess = pattern;
-      feedback.correctPosition = static_cast<uint8_t>(correctPos);
-      feedback.correctColor = static_cast<uint8_t>(correctCol);
-
+      // Use the parseFeedback function
+      Mastermind::Feedback feedback = Mastermind::parseFeedback(input, config);
       guessHistory.push_back(feedback);
-      std::cout << "Added: " << pattern.toString() << " with feedback "
+      std::cout << "Added: " << feedback.guess.toString(config)
+                << " with feedback "
                 << static_cast<int>(feedback.correctPosition) << " "
                 << static_cast<int>(feedback.correctColor) << "\n";
     } catch (const std::exception &e) {
       std::cout << "Error parsing input: " << e.what() << "\n";
-      std::cout << "Please use format: 1 2 3 4|2 1\n";
+      std::cout << "Please use format: r g b c|2 1\n";
     }
   }
 
@@ -134,43 +94,14 @@ std::vector<Mastermind::Feedback> MastermindGame::getFeedbackFromArgs(
   // Parse each guess separated by semicolons
   while (std::getline(iss, guessStr, ';')) {
     std::string trimmed = Utils::trimToLower(guessStr);
-    if (trimmed.empty() || trimmed.find('|') == std::string::npos)
+    if (trimmed.empty())
       continue;
 
     try {
-      // Split by pipe
-      size_t pipePos = trimmed.find('|');
-      std::string patternStr = trimmed.substr(0, pipePos);
-      std::string feedbackStr = trimmed.substr(pipePos + 1);
-
-      // Parse pattern directly into Pattern
-      std::istringstream patternIss(patternStr);
-      Mastermind::Pattern pattern;
-      pattern.numPegs = 0;
-      std::string token;
-      while (patternIss >> token && pattern.numPegs < Mastermind::MAX_PEGS) {
-        int color = std::stoi(token);
-        if (color < 0 || color > static_cast<int>(config.numColors)) {
-          throw std::invalid_argument("Color out of range");
-        }
-        pattern.colors[pattern.numPegs] = static_cast<uint8_t>(color);
-        pattern.numPegs++;
-      }
-
-      if (pattern.numPegs != config.numPegs) {
-        throw std::invalid_argument("Invalid number of pegs");
-      }
-
-      // Parse feedback
-      std::istringstream feedbackIss(feedbackStr);
-      int correctPos, correctCol;
-      if (feedbackIss >> correctPos >> correctCol) {
-        Mastermind::Feedback feedback;
-        feedback.guess = pattern;
-        feedback.correctPosition = static_cast<uint8_t>(correctPos);
-        feedback.correctColor = static_cast<uint8_t>(correctCol);
-        guessHistory.push_back(feedback);
-      }
+      // Use the parseFeedback function
+      Mastermind::Feedback feedback =
+          Mastermind::parseFeedback(trimmed, config);
+      guessHistory.push_back(feedback);
     } catch (const std::exception &e) {
       std::cerr << "Warning: Could not parse feedback '" << guessStr
                 << "': " << e.what() << "\n";
@@ -180,7 +111,8 @@ std::vector<Mastermind::Feedback> MastermindGame::getFeedbackFromArgs(
   return guessHistory;
 }
 
-void MastermindGame::printResults(const Mastermind::Result &result) {
+void MastermindGame::printResults(const Mastermind::Result &result,
+                                  const Mastermind::Config &config) {
   std::cout << "\n=== SOLVER RESULTS ===\n";
 
   if (result.totalPossiblePatterns == 0) {
@@ -214,7 +146,7 @@ void MastermindGame::printResults(const Mastermind::Result &result) {
       i++;
 
       std::cout << std::setw(10) << (i);
-      std::cout << std::setw(25) << guess.pattern.toString();
+      std::cout << std::setw(25) << guess.pattern.toString(config);
       std::cout << std::setw(12) << std::fixed << std::setprecision(3)
                 << guess.ent;
       std::cout << std::setw(15) << std::fixed << std::setprecision(6)
@@ -235,7 +167,7 @@ void MastermindGame::printResults(const Mastermind::Result &result) {
       possibleCount++;
 
       std::cout << std::setw(10) << (i);
-      std::cout << std::setw(25) << guess.pattern.toString();
+      std::cout << std::setw(25) << guess.pattern.toString(config);
       std::cout << std::setw(12) << std::fixed << std::setprecision(3)
                 << guess.ent;
       std::cout << std::setw(15) << std::fixed << std::setprecision(6)
@@ -247,7 +179,8 @@ void MastermindGame::printResults(const Mastermind::Result &result) {
 }
 
 void MastermindGame::saveResults(const Mastermind::Result &result,
-                                 const std::string &outputFile) {
+                                 const std::string &outputFile,
+                                 const Mastermind::Config &config) {
   // Save to single output file
   std::filesystem::path outputPath(outputFile);
   if (!outputPath.parent_path().empty() &&
@@ -260,11 +193,11 @@ void MastermindGame::saveResults(const Mastermind::Result &result,
     // Write possible patterns first (those with probability > 0)
     for (const auto &guess : result.sortedGuesses) {
       if (guess.probability > 0.0) {
-        out << guess.pattern.toString() << "\n";
+        out << guess.pattern.toString(config) << "\n";
       }
     }
     for (const auto &guess : result.sortedGuesses) {
-      out << guess.pattern.toString() << "," << guess.ent << ","
+      out << guess.pattern.toString(config) << "," << guess.ent << ","
           << guess.probability << "\n";
     }
     out.close();
@@ -292,13 +225,14 @@ void MastermindGame::runCLI() {
     try {
       std::cout << "\n=== MASTERMIND SOLVER ===\n";
       std::cout << "Commands: 's' (solve), 'c' (clear)\n";
-      std::cout << "Format: PATTERN|FEEDBACK (e.g., '1 2 3 4|2 1')\n";
+      std::cout << "Available colors: " << config.colorChars << "\n";
+      std::cout << "Format: PATTERN POS COL (e.g., 'rgbc 2 1')\n";
       std::cout << "  Feedback: <correct_position> <correct_color>\n\n";
 
       if (!guessHistory.empty()) {
         std::cout << "Current guess history:\n";
         for (size_t i = 0; i < guessHistory.size(); ++i) {
-          std::cout << (i + 1) << ". " << guessHistory[i].guess.toString()
+          std::cout << (i + 1) << ". " << guessHistory[i].guess.toString(config)
                     << " -> "
                     << static_cast<int>(guessHistory[i].correctPosition) << " "
                     << static_cast<int>(guessHistory[i].correctColor) << "\n";
@@ -336,7 +270,7 @@ void MastermindGame::runCLI() {
           Mastermind::Result result = Mastermind::runMastermindSolver(
               allPatterns, guessHistory, config);
 
-          printResults(result);
+          printResults(result, config);
           std::cout << "\nSolver completed.\n";
         } catch (const Utils::Input::UserCancelledException &) {
           std::cout << "Solve cancelled.\n";
@@ -351,61 +285,16 @@ void MastermindGame::runCLI() {
 
     // Try to parse as pattern and feedback
     try {
-      size_t pipePos = input.find('|');
-      if (pipePos == std::string::npos) {
-        std::cout << "Error: Missing '|' separator. Use format: 1 2 3 4|2 1\n";
-        continue;
-      }
-
-      std::string patternStr = input.substr(0, pipePos);
-      std::string feedbackStr = input.substr(pipePos + 1);
-
-      // Parse pattern colors directly into Pattern
-      std::istringstream patternIss(patternStr);
-      Mastermind::Pattern pattern;
-      pattern.numPegs = 0;
-      std::string token;
-      while (patternIss >> token && pattern.numPegs < Mastermind::MAX_PEGS) {
-        int color = std::stoi(token);
-        if (color < 0 || color > static_cast<int>(config.numColors)) {
-          throw std::invalid_argument("Color out of range");
-        }
-        pattern.colors[pattern.numPegs] = static_cast<uint8_t>(color);
-        pattern.numPegs++;
-      }
-
-      if (pattern.numPegs != config.numPegs) {
-        std::cout << "Error: Pattern must have exactly " << config.numPegs
-                  << " colors.\n";
-        continue;
-      }
-
-      // Parse feedback
-      std::istringstream feedbackIss(feedbackStr);
-      int correctPos, correctCol;
-      if (!(feedbackIss >> correctPos >> correctCol)) {
-        std::cout << "Error: Invalid feedback format.\n";
-        continue;
-      }
-
-      if (correctPos > static_cast<int>(config.numPegs) ||
-          correctCol > static_cast<int>(config.numPegs) || correctPos < 0 ||
-          correctCol < 0 ||
-          (correctPos + correctCol) > static_cast<int>(config.numPegs)) {
-        std::cout << "Error: Invalid feedback values.\n";
-        continue;
-      }
-      Mastermind::Feedback feedback;
-      feedback.guess = pattern;
-      feedback.correctPosition = static_cast<uint8_t>(correctPos);
-      feedback.correctColor = static_cast<uint8_t>(correctCol);
-
+      // Use the parseFeedback function
+      Mastermind::Feedback feedback = Mastermind::parseFeedback(input, config);
       guessHistory.push_back(feedback);
-      std::cout << "Added guess: " << pattern.toString() << " with feedback "
-                << correctPos << " " << correctCol << "\n\n";
+      std::cout << "Added guess: " << feedback.guess.toString(config)
+                << " with feedback "
+                << static_cast<int>(feedback.correctPosition) << " "
+                << static_cast<int>(feedback.correctColor) << "\n\n";
     } catch (const std::exception &e) {
       std::cout << "Error: " << e.what() << "\n";
-      std::cout << "Please use format: 1 2 3 4|2 1\n\n";
+      std::cout << "Please use format: rgbc 2 1\n\n";
     }
   }
 }
@@ -431,7 +320,7 @@ void MastermindGame::runHeadless(const Utils::Input::CommandArgs &cmdArgs) {
           args, "output", std::string("results/guesses.txt"));
     }
 
-    saveResults(result, outputFile);
+    saveResults(result, outputFile, config);
   } catch (const std::exception &e) {
     std::cerr << "Error: " << e.what() << "\n";
   }

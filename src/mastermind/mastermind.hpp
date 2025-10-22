@@ -12,10 +12,26 @@
 
 namespace Mastermind {
 struct Config {
-  uint8_t numPegs = 4;   // Number of pegs in the pattern
-  uint8_t numColors = 6; // Total number of available colors (0 to numColors-1)
-  bool allowDuplicates = true; // Whether duplicate colors are allowed
-  uint8_t maxDepth = 0;        // How many moves ahead to calculate ENT
+  uint8_t numPegs = 4;               // Number of pegs in the pattern
+  std::string colorChars = "012345"; // Available color characters (max 256)
+  bool allowDuplicates = true;       // Whether duplicate colors are allowed
+  uint8_t maxDepth = 0;              // How many moves ahead to calculate ENT
+
+  // Helper to get number of colors
+  uint8_t numColors() const {
+    return static_cast<uint8_t>(colorChars.length());
+  }
+
+  // Helper to convert character to color index
+  int charToColor(char c) const {
+    size_t pos = colorChars.find(c);
+    return (pos != std::string::npos) ? static_cast<int>(pos) : -1;
+  }
+
+  // Helper to convert color index to character
+  char colorToChar(uint8_t color) const {
+    return (color < colorChars.length()) ? colorChars[color] : '?';
+  }
 };
 
 static constexpr size_t MAX_PEGS = 32; // Maximum number of pegs supported
@@ -52,12 +68,12 @@ struct Pattern {
     return true;
   }
 
-  std::string toString() const {
+  std::string toString(const Config &config) const {
     std::string result;
     for (uint8_t i = 0; i < numPegs; ++i) {
       if (i > 0)
         result += " ";
-      result += std::to_string(colors[i]);
+      result += config.colorToChar(colors[i]);
     }
     return result;
   }
@@ -111,8 +127,8 @@ struct Result {
   int totalPossiblePatterns = 0;
 };
 
-// Parse feedback string like "2 1" (2 correct position, 1 correct color)
-Feedback parseFeedback(const std::string &input, unsigned int numPegs);
+// Parse feedback string like "rgbc 2 1" (pattern correctPos correctCol)
+Feedback parseFeedback(const std::string &input, const Config &config);
 
 // Check if a pattern matches feedback constraints
 bool matchesFeedback(const Pattern &candidate, const Feedback &fb);

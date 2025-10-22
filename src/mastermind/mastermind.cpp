@@ -19,46 +19,43 @@
 #endif
 
 namespace Mastermind {
-Feedback parseFeedback(const std::string &input, uint8_t numPegs) {
-  // Split input by pipe separator
-  size_t pipePos = input.find('|');
-  if (pipePos == std::string::npos) {
+Feedback parseFeedback(const std::string &input, const Config &config) {
+  // Expected format: "abcde 1 2" (pattern as single string, then two numbers)
+  std::istringstream iss(input);
+  std::string patternStr;
+  int correctPos, correctCol;
+
+  // Read pattern string and feedback numbers
+  if (!(iss >> patternStr >> correctPos >> correctCol)) {
     throw std::runtime_error(
-        "Invalid format. Expected: 'pattern|feedback' (e.g., '1 2 3 4|2 1')");
+        "Invalid format. Expected: 'pattern pos col' (e.g., 'rgbc 2 1')");
   }
 
-  std::string patternStr = input.substr(0, pipePos);
-  std::string feedbackStr = input.substr(pipePos + 1);
-
-  // Parse guess pattern
-  std::istringstream patternIss(patternStr);
+  // Parse pattern string (no spaces between characters)
   Pattern guess;
   guess.numPegs = 0;
-  std::string token;
-  while (patternIss >> token && guess.numPegs < MAX_PEGS) {
-    if (token.length() != 1 || !std::isdigit(token[0])) {
-      throw std::runtime_error(
-          "Pattern must contain only single digit numbers");
+
+  for (char c : patternStr) {
+    if (guess.numPegs >= MAX_PEGS) {
+      break;
     }
-    guess.colors[guess.numPegs] = token[0] - '0';
+    int colorIdx = config.charToColor(c);
+    if (colorIdx < 0) {
+      throw std::runtime_error("Invalid color character '" + std::string(1, c) +
+                               "'. Available colors: " + config.colorChars);
+    }
+    guess.colors[guess.numPegs] = static_cast<uint8_t>(colorIdx);
     guess.numPegs++;
   }
 
-  if (guess.numPegs != numPegs) {
+  if (guess.numPegs != config.numPegs) {
     throw std::runtime_error("Pattern must have exactly " +
-                             std::to_string(numPegs) + " colors");
+                             std::to_string(config.numPegs) + " colors");
   }
 
-  // Parse feedback
-  std::istringstream feedbackIss(feedbackStr);
-  int correctPos, correctCol;
-  if (!(feedbackIss >> correctPos >> correctCol)) {
-    throw std::runtime_error("Invalid feedback format. Expected: "
-                             "'correctPosition correctColor' (e.g., '2 1')");
-  }
-
-  if (correctPos < 0 || correctPos > static_cast<int>(numPegs) ||
-      correctCol < 0 || correctCol > static_cast<int>(numPegs)) {
+  // Validate feedback values
+  if (correctPos < 0 || correctPos > static_cast<int>(config.numPegs) ||
+      correctCol < 0 || correctCol > static_cast<int>(config.numPegs)) {
     throw std::runtime_error(
         "Feedback values must be between 0 and number of pegs");
   }
@@ -162,6 +159,7 @@ std::vector<Pattern> generateAllPatterns(const Config &config) {
   ZoneScoped;
 #endif
   std::vector<Pattern> patterns;
+  uint8_t numColors = config.numColors();
 
   if (config.allowDuplicates) {
     // Generate all possible combinations with repetition
@@ -174,7 +172,7 @@ std::vector<Pattern> generateAllPatterns(const Config &config) {
         return;
       }
 
-      for (unsigned int color = 0; color < config.numColors; ++color) {
+      for (unsigned int color = 0; color < numColors; ++color) {
         current.colors[pos] = static_cast<uint8_t>(color);
         generate(pos + 1);
       }
@@ -183,19 +181,19 @@ std::vector<Pattern> generateAllPatterns(const Config &config) {
     generate(0);
   } else {
     // Generate all possible permutations without repetition
-    if (config.numColors < config.numPegs) {
+    if (numColors < config.numPegs) {
       // Not enough colors for the number of pegs
       return patterns;
     }
 
     std::array<uint8_t, 256> availableColors; // Support up to 256 colors
-    for (unsigned int i = 0; i < config.numColors; ++i) {
+    for (unsigned int i = 0; i < numColors; ++i) {
       availableColors[i] = static_cast<uint8_t>(i);
     }
 
     Pattern current;
     current.numPegs = config.numPegs;
-    std::vector<bool> used(config.numColors, false);
+    std::vector<bool> used(numColors, false);
 
     std::function<void(unsigned int)> generate = [&](unsigned int pos) {
       if (pos == config.numPegs) {
@@ -203,7 +201,7 @@ std::vector<Pattern> generateAllPatterns(const Config &config) {
         return;
       }
 
-      for (unsigned int i = 0; i < config.numColors; ++i) {
+      for (unsigned int i = 0; i < numColors; ++i) {
         if (!used[i]) {
           used[i] = true;
           current.colors[pos] = static_cast<uint8_t>(i);
