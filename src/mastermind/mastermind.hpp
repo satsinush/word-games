@@ -71,8 +71,6 @@ struct Pattern {
   std::string toString(const Config &config) const {
     std::string result;
     for (uint8_t i = 0; i < numPegs; ++i) {
-      if (i > 0)
-        result += " ";
       result += config.colorToChar(colors[i]);
     }
     return result;
@@ -138,10 +136,6 @@ Feedback generateFeedback(const Pattern &target, const Pattern &guess);
 
 // Generate all possible patterns for the given configuration
 std::vector<Pattern> generateAllPatterns(const Config &config);
-
-// Filter possible patterns given a list of guesses and feedbacks
-std::vector<Pattern> filterPatterns(const std::vector<Pattern> &patterns,
-                                    const std::vector<Feedback> &guessHistory);
 
 // Generic EntSolver-based version (cleaner implementation)
 Result runMastermindSolver(const std::vector<Pattern> &allPatterns,

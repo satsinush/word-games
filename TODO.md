@@ -2,3 +2,5 @@
 - Add function descriptions and inline comments for confusing lines of code
 - Add Strands (solver) get all possible words that can be created
 - Add Dungleon solver?
+- Fix mastermind, add guess directly to list when clicked on
+- Fix debug heap corruption error

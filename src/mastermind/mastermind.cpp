@@ -76,6 +76,7 @@ bool matchesFeedback(const Pattern &candidate, const Feedback &fb) {
   if (candidate.numPegs != guess.numPegs)
     return false;
 
+  // TODO: Precompute this and store as an attribute in each Pattern
   // Count color occurrences in candidate using vector for better cache
   // performance uint8_t can only have values 0-255, so reserve 256 spots
   std::array<uint8_t, 256> candidateCount = {};
@@ -123,6 +124,7 @@ Feedback generateFeedback(const Pattern &target, const Pattern &guess) {
   if (target.numPegs != guess.numPegs)
     return fb; // Invalid input
 
+  // TODO: optimize this by precomuting character counts in Pattern
   // Count color occurrences in target using vector for better cache performance
   // uint8_t can only have values 0-255, so reserve 256 spots
   std::array<int, 256> targetCount = {};
@@ -215,26 +217,6 @@ std::vector<Pattern> generateAllPatterns(const Config &config) {
   }
 
   return patterns;
-}
-
-std::vector<Pattern> filterPatterns(const std::vector<Pattern> &patterns,
-                                    const std::vector<Feedback> &guessHistory) {
-#ifdef TRACY_ENABLE
-  ZoneScoped;
-#endif
-  std::vector<Pattern> filtered;
-  for (const auto &pattern : patterns) {
-    bool matches = true;
-    for (const Feedback &feedback : guessHistory) {
-      if (!matchesFeedback(pattern, feedback)) {
-        matches = false;
-        break;
-      }
-    }
-    if (matches)
-      filtered.push_back(pattern);
-  }
-  return filtered;
 }
 
 // Mastermind-specific ENT solver implementation

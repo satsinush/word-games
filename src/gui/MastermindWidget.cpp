@@ -303,6 +303,7 @@ void MastermindWidget::onSettings() {
 void MastermindWidget::onTableRowClicked(int row, int column) {
   Q_UNUSED(column);
 
+  // TODO: figure out why it doesn't populate correctly
   QTableWidget *table = qobject_cast<QTableWidget *>(sender());
   if (!table) {
     return;
@@ -314,11 +315,36 @@ void MastermindWidget::onTableRowClicked(int row, int column) {
     return;
   }
 
-  QString pattern = patternItem->text();
+  // Parse pattern string (no spaces between characters)
+  std::string patternStr = patternItem->text().toStdString();
+  Mastermind::Pattern pattern;
+  pattern.numPegs = 0;
+
+  for (char c : patternStr) {
+    if (pattern.numPegs >= Mastermind::MAX_PEGS) {
+      break;
+    }
+    int color = config.charToColor(c);
+    if (color >= 0) {
+      pattern.colors[pattern.numPegs] = static_cast<uint8_t>(color);
+      pattern.numPegs++;
+    }
+  }
+
+  // Default feedback to 0, 0 (user will edit it afterward)
+  Mastermind::Feedback feedback;
+  feedback.guess = pattern;
+  feedback.correctPosition = 0;
+  feedback.correctColor = 0;
+
+  feedbackHistory.push_back(feedback);
+
+  // Rebuild the feedback list to show the new entry
+  rebuildFeedbackList();
 
   // Set the pattern in the input field
-  ui->patternField->setText(pattern);
-  ui->patternField->setFocus();
+  // ui->patternField->setText(pattern);
+  // ui->patternField->setFocus();
 }
 
 void MastermindWidget::initGame() {
@@ -346,8 +372,6 @@ void MastermindWidget::initGame() {
   QString examplePattern;
   for (unsigned int i = 0; i < config.numPegs && i < config.colorChars.length();
        ++i) {
-    if (i > 0)
-      examplePattern += " ";
     examplePattern += config.colorChars[i];
   }
   ui->patternField->setPlaceholderText(
@@ -436,32 +460,40 @@ void MastermindWidget::solveMastermind() {
     solverThread = nullptr;
   }
 
-  // Create progress dialog
-  if (!progressDialog) {
-    progressDialog =
-        new QProgressDialog("Solving Mastermind...", "Cancel", 0, 0, this);
-    progressDialog->setWindowModality(Qt::WindowModal);
-    progressDialog->setMinimumDuration(500);
-    progressDialog->setWindowFlags(progressDialog->windowFlags() &
-                                   ~Qt::WindowCloseButtonHint);
-    // Connect cancel button to stop the solver
-    connect(progressDialog, &QProgressDialog::canceled, this, [this]() {
-      if (solverThread && solverThread->isRunning()) {
-        solverThread->requestInterruption();
-        disconnect(solverThread, &QThread::finished, this,
-                   &MastermindWidget::onSolverFinished);
-        // Connect to deleteLater when thread actually finishes
-        connect(solverThread, &QThread::finished, solverThread,
-                &QObject::deleteLater);
-        solverThread = nullptr;
-        progressDialog->hide();
-        ui->solveBtn->setEnabled(true);
-        ui->submitBtn->setEnabled(true);
-      }
-    });
+  // Clean up any existing progress dialog to avoid signal accumulation
+  if (progressDialog) {
+    progressDialog->disconnect();
+    delete progressDialog;
+    progressDialog = nullptr;
   }
+
+  // Create fresh progress dialog
+  progressDialog =
+      new QProgressDialog("Solving Mastermind...", "Cancel", 0, 0, this);
+  progressDialog->setWindowModality(Qt::WindowModal);
+  progressDialog->setMinimumDuration(500);
+  progressDialog->setWindowFlags(progressDialog->windowFlags() &
+                                 ~Qt::WindowCloseButtonHint);
+
+  // Connect cancel button to stop the solver
+  connect(progressDialog, &QProgressDialog::canceled, this, [this]() {
+    if (solverThread && solverThread->isRunning()) {
+      solverThread->requestInterruption();
+      disconnect(solverThread, &QThread::finished, this,
+                 &MastermindWidget::onSolverFinished);
+      // Connect to deleteLater when thread actually finishes
+      connect(solverThread, &QThread::finished, solverThread,
+              &QObject::deleteLater);
+      solverThread = nullptr;
+      if (progressDialog) {
+        progressDialog->hide();
+      }
+      ui->solveBtn->setEnabled(true);
+      ui->submitBtn->setEnabled(true);
+    }
+  });
+
   progressDialog->setValue(0);
-  progressDialog->setLabelText("Analyzing pattern combinations...");
   progressDialog->show();
 
   // Disable UI during solve

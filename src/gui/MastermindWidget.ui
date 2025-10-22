@@ -75,7 +75,7 @@
    <item>
     <widget class="QLineEdit" name="patternField">
      <property name="placeholderText">
-      <string>Enter pattern (e.g., 1 2 3 4)...</string>
+      <string>Enter pattern (e.g., 1234)...</string>
      </property>
     </widget>
    </item>

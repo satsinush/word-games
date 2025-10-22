@@ -624,32 +624,40 @@ void WordleWidget::solveWordle() {
     solverThread = nullptr;
   }
 
-  // Create progress dialog
-  if (!progressDialog) {
-    progressDialog =
-        new QProgressDialog("Solving Wordle...", "Cancel", 0, 0, this);
-    progressDialog->setWindowModality(Qt::WindowModal);
-    progressDialog->setMinimumDuration(500); // Show after 500ms
-    progressDialog->setWindowFlags(progressDialog->windowFlags() &
-                                   ~Qt::WindowCloseButtonHint);
-    // Connect cancel button to stop the solver
-    connect(progressDialog, &QProgressDialog::canceled, this, [this]() {
-      if (solverThread && solverThread->isRunning()) {
-        solverThread->requestInterruption();
-        disconnect(solverThread, &QThread::finished, this,
-                   &WordleWidget::onSolverFinished);
-        // Connect to deleteLater when thread actually finishes
-        connect(solverThread, &QThread::finished, solverThread,
-                &QObject::deleteLater);
-        solverThread = nullptr;
-        progressDialog->hide();
-        ui->solveBtn->setEnabled(true);
-        ui->submitBtn->setEnabled(true);
-      }
-    });
+  // Clean up any existing progress dialog to avoid signal accumulation
+  if (progressDialog) {
+    progressDialog->disconnect();
+    delete progressDialog;
+    progressDialog = nullptr;
   }
+
+  // Create fresh progress dialog
+  progressDialog =
+      new QProgressDialog("Solving Wordle...", "Cancel", 0, 0, this);
+  progressDialog->setWindowModality(Qt::WindowModal);
+  progressDialog->setMinimumDuration(500); // Show after 500ms
+  progressDialog->setWindowFlags(progressDialog->windowFlags() &
+                                 ~Qt::WindowCloseButtonHint);
+
+  // Connect cancel button to stop the solver
+  connect(progressDialog, &QProgressDialog::canceled, this, [this]() {
+    if (solverThread && solverThread->isRunning()) {
+      solverThread->requestInterruption();
+      disconnect(solverThread, &QThread::finished, this,
+                 &WordleWidget::onSolverFinished);
+      // Connect to deleteLater when thread actually finishes
+      connect(solverThread, &QThread::finished, solverThread,
+              &QObject::deleteLater);
+      solverThread = nullptr;
+      if (progressDialog) {
+        progressDialog->hide();
+      }
+      ui->solveBtn->setEnabled(true);
+      ui->submitBtn->setEnabled(true);
+    }
+  });
+
   progressDialog->setValue(0);
-  progressDialog->setLabelText("Analyzing possible words...");
   progressDialog->show();
 
   // Disable UI during solve
