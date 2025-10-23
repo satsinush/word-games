@@ -8,6 +8,13 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+# Enable AddressSanitizer (ASan) for MSVC Debug builds
+if(MSVC AND CMAKE_BUILD_TYPE STREQUAL "Debug")
+    message(STATUS "MSVC AddressSanitizer (ASan) enabled.")
+    add_compile_options(/fsanitize=address)
+    # add_link_options(/fsanitize=address)
+endif()
+
 option(BUILD_GUI "Build the application with the Qt GUI" ON)
 option(BUILD_TESTING "Build the project's tests" ON)
 option(BUILD_BENCHMARKS "Build the project's benchmarks" ON)
@@ -33,10 +40,13 @@ list(FILTER CORE_SRCS EXCLUDE REGEX ".*/main.cpp")
 # 3. SETUP SHARED RESOURCES
 # ===================================================================
 set(RESOURCE_DIR ${CMAKE_SOURCE_DIR}/resources)
+
+set(COPY_DESTINATION "${CMAKE_BINARY_DIR}/$<IF:$<BOOL:${CMAKE_CONFIGURATION_TYPES}>,$<CONFIG>/,./>resources")
+
 add_custom_target(copy_resources ALL
     COMMAND ${CMAKE_COMMAND} -E copy_directory
             ${RESOURCE_DIR}
-            ${CMAKE_BINARY_DIR}/resources
+            "${COPY_DESTINATION}"
     COMMENT "Copying shared resources..."
 )
 
@@ -177,7 +187,7 @@ if(BUILD_TESTING)
     add_dependencies(word-games-tests copy_resources)
 
     include(GoogleTest)
-    if(WIN32)
+    if(WIN32 AND MINGW)
         get_filename_component(MINGW_BIN_DIR ${CMAKE_CXX_COMPILER} DIRECTORY)
         set(SYSTEM32_PATH "$ENV{SystemRoot}/System32")
         set(TEST_ENVIRONMENT_LIST "PATH=${MINGW_BIN_DIR};${SYSTEM32_PATH}")
@@ -198,6 +208,10 @@ endif()
 if(BUILD_BENCHMARKS)
     message(STATUS "Benchmarks enabled.")
     include(FetchContent)
+
+    # set(BENCHMARK_ENABLE_STATIC_LIB ON CACHE BOOL "Force static build for benchmark" FORCE)
+    # set(BENCHMARK_ENABLE_SHARED_LIB OFF CACHE BOOL "Force static build for benchmark" FORCE)
+
     set(BENCHMARK_ENABLE_TESTING OFF CACHE BOOL "Disable benchmark tests" FORCE)
     FetchContent_Declare(
         googlebenchmark
@@ -209,6 +223,7 @@ if(BUILD_BENCHMARKS)
     add_executable(word-games-benchmarks benchmarks/benchmarks.cpp)
     target_link_libraries(word-games-benchmarks PRIVATE
         word-games-base
+        benchmark::benchmark
         benchmark::benchmark_main
     )
     add_dependencies(word-games-benchmarks copy_resources)

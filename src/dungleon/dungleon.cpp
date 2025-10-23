@@ -212,7 +212,7 @@ std::vector<Pattern> generateAllPossiblePatterns() {
       return;
     }
 
-    for (unsigned int c = 0; c < NUM_CHARACTERS; ++c) {
+    for (uint8_t c = 0; c < NUM_CHARACTERS; ++c) {
       CharacterType cType = getCharacterType(c);
       // Heroes can appear in spots 0 and 1
       if ((cType == HERO || c == ZOMBIE) && !(pos == 0 || pos == 1)) {

@@ -13,7 +13,8 @@ Mastermind::Config MastermindGame::getConfigFromUser() {
   Mastermind::Config config;
 
   std::cout << "=== Mastermind Solver ===\n";
-  config.numPegs = Utils::Input::promptInt("Enter number of pegs", 4, 1, 20);
+  config.numPegs = static_cast<uint8_t>(
+      Utils::Input::promptInt("Enter number of pegs", 4, 1, 20));
 
   std::cout
       << "Enter available color characters (e.g., 'rgbcmyk' or '012345'): ";
@@ -31,12 +32,14 @@ Mastermind::Config MastermindGame::getConfigFromUser() {
 Mastermind::Config MastermindGame::getConfigFromArgs(
     const std::map<std::string, std::string> &args) {
   Mastermind::Config config;
-  config.numPegs = Utils::Input::getArgValue(args, "num-pegs", 4u);
+  config.numPegs =
+      static_cast<uint8_t>(Utils::Input::getArgValue(args, "pegs", 4));
   config.colorChars =
       Utils::Input::getArgValue(args, "colors", std::string("012345"));
   config.allowDuplicates =
       Utils::Input::getArgValue(args, "allow-duplicates", true);
-  config.maxDepth = Utils::Input::getArgValue(args, "max-depth", 1u);
+  config.maxDepth =
+      static_cast<uint8_t>(Utils::Input::getArgValue(args, "max-depth", 1u));
   return config;
 }
 
@@ -263,8 +266,8 @@ void MastermindGame::runCLI() {
 
       if (input == "s" || input == "solve") {
         try {
-          config.maxDepth =
-              Utils::Input::promptInt("Enter search depth (0-2)", 1, 0, 2);
+          config.maxDepth = static_cast<uint8_t>(
+              Utils::Input::promptInt("Enter search depth (0-2)", 1, 0, 2));
 
           std::cout << "Calculating best guesses...\n";
           Mastermind::Result result = Mastermind::runMastermindSolver(

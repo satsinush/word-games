@@ -78,20 +78,20 @@ void readBinary(std::istream &is, Word &word) {
           sizeof(word.letterCount));
 }
 
-// Loads words from a CSV file. If csvPath is empty, uses word_scores.csv.
+// Loads words from a CSV file. If csvFile is empty, uses word_scores.csv.
 // If useBinaryCache is true, tries to load from/save to .bin file.
 // If maxWords is 0, loads all words.
-std::vector<Word> loadWords(const std::string &csvPath, bool useBinaryCache,
+std::vector<Word> loadWords(const std::string &csvFile, bool useBinaryCache,
                             size_t maxWords) {
   std::filesystem::path data_dir = getExecutableDir() / "resources";
   std::filesystem::path csv_file =
-      csvPath.empty() ? (data_dir / "word_scores.csv") : csvPath;
+      csvFile.empty() ? (data_dir / "word_scores.csv") : (data_dir / csvFile);
   std::filesystem::path bin_file = data_dir / "words.bin";
   std::vector<Word> allWordsVec;
 
   // Try to load from binary file first (only if using cache and default CSV)
   bool loadedFromBin = false;
-  if (useBinaryCache && csvPath.empty()) {
+  if (useBinaryCache && csvFile.empty()) {
     std::ifstream in(bin_file, std::ios::binary);
     if (in) {
       try {
@@ -177,7 +177,7 @@ std::vector<Word> loadWords(const std::string &csvPath, bool useBinaryCache,
     file.close();
 
     // Save to binary for next time (only if using cache and default CSV)
-    if (useBinaryCache && csvPath.empty()) {
+    if (useBinaryCache && csvFile.empty()) {
       if (!std::filesystem::exists(data_dir)) {
         std::filesystem::create_directories(data_dir);
       }

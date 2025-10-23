@@ -46,7 +46,7 @@ struct Pattern {
       : numPegs(pegCount) {
     colors = c;
   }
-  Pattern(int pegCount) : numPegs(pegCount) { colors.fill(0); }
+  Pattern(uint8_t pegCount) : numPegs(pegCount) { colors.fill(0); }
 
   bool operator<(const Pattern &other) const {
     if (numPegs != other.numPegs)

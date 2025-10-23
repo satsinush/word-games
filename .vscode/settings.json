@@ -99,5 +99,7 @@
         "valarray": "cpp"
     },
     "editor.tabSize": 2,
-    "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools"
+    "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools",
+    // "cmake.cmakePath": "C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\Common7\\IDE\\CommonExtensions\\Microsoft\\CMake\\CMake\\bin\\cmake.exe",
+    "cmake.cmakePath": "C:\\mingw64\\bin\\cmake.exe",
 }

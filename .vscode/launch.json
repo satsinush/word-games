@@ -1,53 +1,36 @@
 {
     "version": "0.2.0",
-    "inputs": [
-        {
-            "id": "commandLineArgs",
-            "type": "promptString",
-            "description": "Enter command line arguments...",
-            "default": ""
-        }
-    ],
     "configurations": [
         {
-            "name": "Debug",
-            "type": "cppdbg",
+            "name": "Launch (MSVC)",
+            "type": "cppvsdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/build/Debug/word-games.exe",
+            "program": "${command:cmake.launchTargetPath}",
             "args": [],
             "stopAtEntry": false,
-            "cwd": "${workspaceFolder}",
+            "cwd": "${command:cmake.launchTargetDirectory}",
             "environment": [],
-            "externalConsole": false,
-            "MIMode": "gdb",
-            "setupCommands": [
-                {
-                    "description": "Enable pretty-printing for gdb",
-                    "text": "-enable-pretty-printing",
-                    "ignoreFailures": true
-                }
-            ],
-            "preLaunchTask": "Build (Debug)"
+            "console": "integratedTerminal"
         },
         {
-            "name": "Release",
+            "name": "Launch (MinGW)",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/build/Release/word-games.exe",
+            "program": "${command:cmake.launchTargetPath}",
             "args": [],
             "stopAtEntry": false,
-            "cwd": "${workspaceFolder}",
+            "cwd": "${command:cmake.launchTargetDirectory}",
             "environment": [],
             "externalConsole": false,
-            "MIMode": "gdb",
+            // This tells the debugger where to find your mingw gdb
+            "miDebuggerPath": "C:/Qt/Tools/mingw1310_64/bin/gdb.exe",
             "setupCommands": [
                 {
                     "description": "Enable pretty-printing for gdb",
                     "text": "-enable-pretty-printing",
                     "ignoreFailures": true
                 }
-            ],
-            "preLaunchTask": "Build (Release)"
+            ]
         }
     ]
 }

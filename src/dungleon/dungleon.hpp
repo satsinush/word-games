@@ -80,7 +80,6 @@ struct Pattern {
 
   Pattern() { characters.fill(0); }
   Pattern(const std::array<uint8_t, 5> &c) : characters(c) {}
-  Pattern(int pegCount) { characters.fill(0); }
 
   bool operator<(const Pattern &other) const {
     for (uint8_t i = 0; i < 5; ++i) {
@@ -98,7 +97,7 @@ struct Pattern {
     return true;
   }
 
-  std::string toString(const Config &config) const {
+  std::string toString() const {
     std::string result;
     for (uint8_t i = 0; i < 5; ++i) {
       if (i > 0)
@@ -199,12 +198,14 @@ namespace std {
 template <> struct hash<Dungleon::Pattern> {
   size_t operator()(const Dungleon::Pattern &pattern) const noexcept {
     // TODO
+    return 0;
   }
 };
 
 template <> struct hash<Dungleon::Feedback> {
   size_t operator()(const Dungleon::Feedback &fb) const noexcept {
     // TODO
+    return 0;
   }
 };
 } // namespace std

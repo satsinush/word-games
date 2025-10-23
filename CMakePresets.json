@@ -7,11 +7,11 @@
     },
     "configurePresets": [
         {
-            "name": "Debug",
-            "displayName": "Debug",
+            "name": "mingw-debug",
+            "displayName": "mingw-debug",
             "description": "Builds for Debug with the MinGW-w64 compiler.",
             "generator": "Ninja",
-            "binaryDir": "${sourceDir}/build/Debug",
+            "binaryDir": "${sourceDir}/build/mingw-debug",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Debug",
                 "CMAKE_CXX_COMPILER": "C:/Qt/Tools/mingw1310_64/bin/g++.exe",
@@ -23,11 +23,11 @@
             }
         },
         {
-            "name": "Release",
-            "displayName": "Release",
+            "name": "mingw-release",
+            "displayName": "mingw-release",
             "description": "Builds for Release with the MinGW-w64 compiler.",
             "generator": "Ninja",
-            "binaryDir": "${sourceDir}/build/Release",
+            "binaryDir": "${sourceDir}/build/mingw-release",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Release",
                 "CMAKE_CXX_COMPILER": "C:/Qt/Tools/mingw1310_64/bin/g++.exe",
@@ -39,11 +39,11 @@
             }
         },
         {
-            "name": "Core",
-            "displayName": "Core",
+            "name": "mingw-core",
+            "displayName": "mingw-core",
             "description": "Builds a minimal Release executable with all optional features disabled.",
             "generator": "Ninja",
-            "binaryDir": "${sourceDir}/build/Core",
+            "binaryDir": "${sourceDir}/build/mingw-core",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Release",
                 "CMAKE_CXX_COMPILER": "C:/Qt/Tools/mingw1310_64/bin/g++.exe",
@@ -53,20 +53,101 @@
                 "BUILD_BENCHMARKS": "OFF",
                 "BUILD_TRACY": "OFF"
             }
+        },
+        {
+            "name": "msvc-debug",
+            "displayName": "msvc-debug",
+            "description": "Builds for Debug with MSVC and AddressSanitizer.",
+            "generator": "Visual Studio 17 2022",
+            "architecture": "x64",
+            "binaryDir": "${sourceDir}/build/msvc-debug",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug",
+                "CMAKE_PREFIX_PATH": "C:/Qt/6.9.3/msvc2022_64",
+                "BUILD_GUI": "ON",
+                "BUILD_TESTING": "ON",
+                "BUILD_BENCHMARKS": "ON",
+                "BUILD_TRACY": "ON"
+            }
+        },
+        {
+            "name": "msvc-release",
+            "displayName": "msvc-release",
+            "description": "Builds for Release with MSVC.",
+            "generator": "Visual Studio 17 2022",
+            "architecture": "x64",
+            "binaryDir": "${sourceDir}/build/msvc-release",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release",
+                "CMAKE_PREFIX_PATH": "C:/Qt/6.9.3/msvc2022_64",
+                "BUILD_GUI": "ON",
+                "BUILD_TESTING": "ON",
+                "BUILD_BENCHMARKS": "ON",
+                "BUILD_TRACY": "OFF"
+            }
+        },
+        {
+            "name": "msvc-core",
+            "displayName": "msvc-core",
+            "description": "Builds for Release with MSVC.",
+            "generator": "Visual Studio 17 2022",
+            "architecture": "x64",
+            "binaryDir": "${sourceDir}/build/msvc-core",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release",
+                "CMAKE_PREFIX_PATH": "C:/Qt/6.9.3/msvc2022_64",
+                "BUILD_GUI": "OFF",
+                "BUILD_TESTING": "OFF",
+                "BUILD_BENCHMARKS": "OFF",
+                "BUILD_TRACY": "OFF"
+            }
         }
     ],
     "buildPresets": [
         {
-            "name": "Debug",
-            "configurePreset": "Debug"
+            "name": "mingw-debug",
+            "configurePreset": "mingw-debug",
+            "targets": [
+                "all"
+            ]
         },
         {
-            "name": "Release",
-            "configurePreset": "Release"
+            "name": "mingw-release",
+            "configurePreset": "mingw-release",
+            "targets": [
+                "all"
+            ]
         },
         {
-            "name": "Core",
-            "configurePreset": "Core"
+            "name": "mingw-core",
+            "configurePreset": "mingw-core",
+            "targets": [
+                "all"
+            ]
+        },
+        {
+            "name": "msvc-debug",
+            "configurePreset": "msvc-debug",
+            "configuration": "Debug",
+            "targets": [
+                "ALL_BUILD"
+            ]
+        },
+        {
+            "name": "msvc-release",
+            "configurePreset": "msvc-release",
+            "configuration": "Release",
+            "targets": [
+                "ALL_BUILD"
+            ]
+        },
+        {
+            "name": "msvc-core",
+            "configurePreset": "msvc-core",
+            "configuration": "Release",
+            "targets": [
+                "ALL_BUILD"
+            ]
         }
     ]
 }

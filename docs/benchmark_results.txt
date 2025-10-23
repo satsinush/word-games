@@ -13,3 +13,39 @@ BM_Wordle_Runtime             179 ms         23.1 ms           21
 BM_SpellingBee_Runtime       16.0 ms         6.41 ms          100
 BM_LetterBoxed_Runtime       6.89 ms        0.715 ms          896
 BM_Mastermind_Runtime         405 ms         56.8 ms           11
+
+
+C:\Users\needhama\Local Documents\GitHub\word-games\build\msvc-release\Release>word-games-benchmarks.exe --benchmark_time_unit=ms 
+2025-10-23T16:05:49-05:00
+Running word-games-benchmarks.exe
+Run on (12 X 2496 MHz CPU s)
+CPU Caches:
+  L1 Data 48 KiB (x6)
+  L1 Instruction 32 KiB (x6)
+  L2 Unified 1280 KiB (x6)
+  L3 Unified 12288 KiB (x1)
+-----------------------------------------------------------------
+Benchmark                       Time             CPU   Iterations
+-----------------------------------------------------------------
+BM_Wordle_Runtime             251 ms         77.0 ms           14
+BM_SpellingBee_Runtime       18.0 ms         9.21 ms           56
+BM_LetterBoxed_Runtime       7.76 ms         1.00 ms         1000
+BM_Mastermind_Runtime        1129 ms          393 ms            7
+
+
+C:\Users\needhama\Local Documents\GitHub\word-games\build\mingw-release>word-games-benchmarks.exe --benchmark_time_unit=ms
+2025-10-23T21:22:03-00:00
+Running word-games-benchmarks.exe
+Run on (12 X 2496 MHz CPU s)
+CPU Caches:
+  L1 Data 48 KiB (x6)
+  L1 Instruction 32 KiB (x6)
+  L2 Unified 1280 KiB (x6)
+  L3 Unified 12288 KiB (x1)
+-----------------------------------------------------------------
+Benchmark                       Time             CPU   Iterations
+-----------------------------------------------------------------
+BM_Wordle_Runtime             191 ms         44.4 ms           19
+BM_SpellingBee_Runtime       16.0 ms         5.00 ms          100
+BM_LetterBoxed_Runtime       6.93 ms         1.19 ms          498
+BM_Mastermind_Runtime         427 ms         29.7 ms           10

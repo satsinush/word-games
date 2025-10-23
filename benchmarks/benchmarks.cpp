@@ -11,6 +11,8 @@
 #include "wordle/WordleGame.hpp"
 #include "wordle/wordle.hpp"
 
+// Display in ms: --benchmark_time_unit=ms
+
 // Global word list - loaded once for all benchmarks
 static std::vector<Utils::Word> g_wordVec;
 

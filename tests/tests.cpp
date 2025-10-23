@@ -13,9 +13,11 @@
 
 // Helper function to load words for testing
 std::vector<Utils::Word> loadTestWords() {
+  // TODO: fix load words to use path relative to resources directory to prevent
+  // issues
   // Load from test CSV without binary cache, load all words
   std::vector<Utils::Word> words =
-      Utils::loadWords("resources/test_word_scores.csv", false, 0);
+      Utils::loadWords("test_word_scores.csv", false, 0);
   EXPECT_FALSE(words.empty()) << "Failed to load test word list";
   EXPECT_EQ(words.size(), 18)
       << "Test word list should contain exactly 18 words";

@@ -4,3 +4,4 @@
 - Add Dungleon solver?
 - Fix mastermind, add guess directly to list when clicked on
 - Fix debug heap corruption error
+- Fix compiler warnings
