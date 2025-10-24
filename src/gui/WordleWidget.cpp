@@ -178,9 +178,8 @@ void GuessRow::onDeleteClicked() { emit deleteRequested(); }
 
 WordleWidget::WordleWidget(const std::vector<Utils::Word> &words,
                            QWidget *parent)
-    : QWidget(parent), ui(new Ui::WordleWidget), wordVec(words),
-      currentRowWidget(nullptr), gameInitialized(true), progressDialog(nullptr),
-      solverThread(nullptr) {
+    : GameWidget(parent), ui(new Ui::WordleWidget), wordVec(words),
+      currentRowWidget(nullptr) {
   ui->setupUi(this);
 
   // Initialize config
@@ -270,19 +269,13 @@ WordleWidget::WordleWidget(const std::vector<Utils::Word> &words,
   configInfoLabel = ui->configInfoLabel;
 
   // Initialize game immediately with default configuration
+  gameInitialized = true;
   initGame();
   updateConfigInfo();
 }
 
 WordleWidget::~WordleWidget() {
-  if (solverThread) {
-    solverThread->quit();
-    solverThread->wait();
-    delete solverThread;
-  }
-  if (progressDialog) {
-    delete progressDialog;
-  }
+  // Base class destructor handles thread and dialog cleanup
   delete ui;
 }
 
@@ -616,56 +609,23 @@ void WordleWidget::populateResultTable(
 }
 
 void WordleWidget::solveWordle() {
-  // Clean up any existing thread
-  if (solverThread) {
-    solverThread->quit();
-    solverThread->wait();
-    delete solverThread;
-    solverThread = nullptr;
-  }
+  // Clean up any existing thread and dialog using base class methods
+  cleanupSolverThread();
+  cleanupProgressDialog();
 
-  // Clean up any existing progress dialog to avoid signal accumulation
-  if (progressDialog) {
-    progressDialog->disconnect();
-    delete progressDialog;
-    progressDialog = nullptr;
-  }
+  // Reset cancellation flag
+  cancellationRequested.store(false, std::memory_order_release);
 
-  // Create fresh progress dialog
-  progressDialog =
-      new QProgressDialog("Solving Wordle...", "Cancel", 0, 0, this);
-  progressDialog->setWindowModality(Qt::WindowModal);
-  progressDialog->setMinimumDuration(500); // Show after 500ms
-  progressDialog->setWindowFlags(progressDialog->windowFlags() &
-                                 ~Qt::WindowCloseButtonHint);
-
-  // Connect cancel button to stop the solver
-  connect(progressDialog, &QProgressDialog::canceled, this, [this]() {
-    if (solverThread && solverThread->isRunning()) {
-      solverThread->requestInterruption();
-      disconnect(solverThread, &QThread::finished, this,
-                 &WordleWidget::onSolverFinished);
-      // Connect to deleteLater when thread actually finishes
-      connect(solverThread, &QThread::finished, solverThread,
-              &QObject::deleteLater);
-      solverThread = nullptr;
-      if (progressDialog) {
-        progressDialog->hide();
-      }
-      ui->solveBtn->setEnabled(true);
-      ui->submitBtn->setEnabled(true);
-    }
-  });
-
-  progressDialog->setValue(0);
-  progressDialog->show();
+  // Create progress dialog using base class method
+  createProgressDialog("Solving Wordle...", 0, 0);
 
   // Disable UI during solve
   ui->solveBtn->setEnabled(false);
   ui->submitBtn->setEnabled(false);
 
-  // Create and start solver thread
-  solverThread = new SolverThread(wordVec, feedbackHistory, config);
+  // Create and start solver thread with cancellation flag
+  solverThread = new SolverThread(wordVec, feedbackHistory, config,
+                                  &cancellationRequested);
   connect(solverThread, &QThread::finished, this,
           &WordleWidget::onSolverFinished);
   solverThread->start();
@@ -676,15 +636,25 @@ void WordleWidget::onSolverFinished() {
     return;
   }
 
+  // Re-enable UI immediately for responsiveness
+  ui->solveBtn->setEnabled(true);
+  ui->submitBtn->setEnabled(true);
+
+  // Close progress dialog immediately
+  if (progressDialog) {
+    progressDialog->close();
+  }
+
   // Check if thread was interrupted (cancelled)
   if (solverThread->isInterruptionRequested()) {
-    solverThread->deleteLater();
-    solverThread = nullptr;
+    cleanupProgressDialog();
+    cleanupSolverThread();
     return;
   }
 
   try {
-    Wordle::Result result = solverThread->getResult();
+    Wordle::Result result =
+        static_cast<SolverThread *>(solverThread)->getResult();
 
     if (!result.sortedGuesses.empty()) {
       // Populate all results table (show ALL results)
@@ -785,15 +755,9 @@ void WordleWidget::onSolverFinished() {
                           QString("Error running solver: %1").arg(e.what()));
   }
 
-  // Clean up
-  if (progressDialog) {
-    progressDialog->hide();
-  }
-  ui->solveBtn->setEnabled(true);
-  ui->submitBtn->setEnabled(true);
-
-  solverThread->deleteLater();
-  solverThread = nullptr;
+  // Clean up (non-blocking)
+  cleanupProgressDialog();
+  cleanupSolverThread();
 }
 
 #endif // WITH_GUI

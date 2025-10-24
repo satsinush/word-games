@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include "gui/GameWidget.hpp"
 #include "letterBoxed/letterBoxed.hpp"
 #include "utils/wordUtils.hpp"
 #include <QLabel>
@@ -30,32 +31,33 @@ private:
   std::array<char, 12> currentLetters;
 };
 
-class LetterBoxedWidget : public QWidget {
+class LetterBoxedWidget : public GameWidget {
   Q_OBJECT
 
 public:
   explicit LetterBoxedWidget(const std::vector<Utils::Word> &words,
                              QWidget *parent = nullptr);
-  ~LetterBoxedWidget();
+  ~LetterBoxedWidget() override;
 
 public slots:
-  void newGame();
+  void newGame() override;
 
 private slots:
   void onInputSubmit();
   void onInputChanged(const QString &text);
-  void onNewGame();
+  void onNewGame() override;
   void onSolve();
-  void onSettings();
-  void onSolverFinished();
+  void onSettings() override;
+  void onSolverFinished() override;
 
 private:
   // Worker thread for solving
   class SolverThread : public QThread {
   public:
     SolverThread(const LetterBoxed::Config &cfg,
-                 const std::vector<Utils::Word> &words)
-        : config(cfg), wordVec(words) {}
+                 const std::vector<Utils::Word> &words,
+                 std::atomic<bool> *cancelFlag)
+        : config(cfg), wordVec(words), cancellationFlag(cancelFlag) {}
 
     std::vector<LetterBoxed::Solution> getResult() const { return solutions; }
 
@@ -68,6 +70,7 @@ private:
     LetterBoxed::Config config;
     const std::vector<Utils::Word> &wordVec;
     std::vector<LetterBoxed::Solution> solutions;
+    std::atomic<bool> *cancellationFlag;
   };
 
 private:
@@ -76,20 +79,16 @@ private:
 
   LetterBoxed::Config config;
   std::vector<LetterBoxed::Solution> solutions;
-  bool gameInitialized;
   int currentPreset; // Track selected preset: 1=Default, 2=Fast, 3=Thorough,
                      // 0=Custom
 
-  QLabel *configInfoLabel;
   QTableWidget *resultsTable;
   LetterBoxDisplay *boxDisplay;
-  QProgressDialog *progressDialog;
-  SolverThread *solverThread;
 
   bool showConfigDialog();
-  void initGame();
-  void setUIEnabled(bool enabled);
-  void updateConfigInfo();
+  void initGame() override;
+  void setUIEnabled(bool enabled) override;
+  void updateConfigInfo() override;
   void populateResultTable();
   void createLetterBox();
   void updateLetterBoxFromInput(const QString &text);

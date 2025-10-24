@@ -152,9 +152,8 @@ void LetterBoxDisplay::paintEvent(QPaintEvent *event) {
 
 LetterBoxedWidget::LetterBoxedWidget(const std::vector<Utils::Word> &words,
                                      QWidget *parent)
-    : QWidget(parent), ui(new Ui::LetterBoxedWidget), wordVec(words),
-      gameInitialized(false), currentPreset(1), progressDialog(nullptr),
-      solverThread(nullptr) {
+    : GameWidget(parent), ui(new Ui::LetterBoxedWidget), wordVec(words),
+      currentPreset(1) {
   ui->setupUi(this);
 
   // Limit input to 12 characters
@@ -198,6 +197,9 @@ LetterBoxedWidget::LetterBoxedWidget(const std::vector<Utils::Word> &words,
   connect(ui->solveBtn, &QPushButton::clicked, this,
           &LetterBoxedWidget::onSolve);
 
+  // Store reference to config info label
+  configInfoLabel = ui->configInfoLabel;
+
   // Connect settings button
   ui->settingsBtn->setToolTip("Solver Settings");
   ui->settingsBtn->setMaximumWidth(40);
@@ -221,14 +223,7 @@ LetterBoxedWidget::LetterBoxedWidget(const std::vector<Utils::Word> &words,
 }
 
 LetterBoxedWidget::~LetterBoxedWidget() {
-  if (solverThread) {
-    solverThread->quit();
-    solverThread->wait();
-    delete solverThread;
-  }
-  if (progressDialog) {
-    delete progressDialog;
-  }
+  // Base class destructor handles thread and dialog cleanup
   delete ui;
 }
 
@@ -563,56 +558,22 @@ void LetterBoxedWidget::onSolve() {
     return;
   }
 
-  // Clean up any existing thread
-  if (solverThread) {
-    solverThread->quit();
-    solverThread->wait();
-    delete solverThread;
-    solverThread = nullptr;
-  }
+  // Clean up any existing thread and dialog using base class methods
+  cleanupSolverThread();
+  cleanupProgressDialog();
 
-  // Clean up any existing progress dialog to avoid signal accumulation
-  if (progressDialog) {
-    progressDialog->disconnect();
-    delete progressDialog;
-    progressDialog = nullptr;
-  }
+  // Reset cancellation flag
+  cancellationRequested.store(false, std::memory_order_release);
 
-  // Create fresh progress dialog
-  progressDialog =
-      new QProgressDialog("Solving Letter Boxed...", "Cancel", 0, 0, this);
-  progressDialog->setWindowModality(Qt::WindowModal);
-  progressDialog->setMinimumDuration(500);
-  progressDialog->setWindowFlags(progressDialog->windowFlags() &
-                                 ~Qt::WindowCloseButtonHint);
-
-  // Connect cancel button to stop the solver
-  connect(progressDialog, &QProgressDialog::canceled, this, [this]() {
-    if (solverThread && solverThread->isRunning()) {
-      solverThread->requestInterruption();
-      disconnect(solverThread, &QThread::finished, this,
-                 &LetterBoxedWidget::onSolverFinished);
-      // Connect to deleteLater when thread actually finishes
-      connect(solverThread, &QThread::finished, solverThread,
-              &QObject::deleteLater);
-      solverThread = nullptr;
-      if (progressDialog) {
-        progressDialog->hide();
-      }
-      ui->solveBtn->setEnabled(true);
-      ui->inputField->setEnabled(true);
-    }
-  });
-
-  progressDialog->setValue(0);
-  progressDialog->show();
+  // Create progress dialog using base class method
+  createProgressDialog("Solving Letter Boxed...", 0, 0);
 
   // Disable UI during solve
   ui->solveBtn->setEnabled(false);
   ui->inputField->setEnabled(false);
 
-  // Create and start solver thread
-  solverThread = new SolverThread(config, wordVec);
+  // Create and start solver thread with cancellation flag
+  solverThread = new SolverThread(config, wordVec, &cancellationRequested);
   connect(solverThread, &QThread::finished, this,
           &LetterBoxedWidget::onSolverFinished);
   solverThread->start();
@@ -623,25 +584,28 @@ void LetterBoxedWidget::onSolverFinished() {
     return;
   }
 
-  // Check if thread was interrupted (cancelled)
-  if (solverThread->isInterruptionRequested()) {
-    solverThread->deleteLater();
-    solverThread = nullptr;
-    return;
-  }
-
-  solutions = solverThread->getResult();
-  populateResultTable();
-
-  // Clean up
-  if (progressDialog) {
-    progressDialog->hide();
-  }
+  // Re-enable UI immediately for responsiveness
   ui->solveBtn->setEnabled(true);
   ui->inputField->setEnabled(true);
 
-  solverThread->deleteLater();
-  solverThread = nullptr;
+  // Close progress dialog immediately
+  if (progressDialog) {
+    progressDialog->close();
+  }
+
+  // Check if thread was interrupted (cancelled)
+  if (solverThread->isInterruptionRequested()) {
+    cleanupProgressDialog();
+    cleanupSolverThread();
+    return;
+  }
+
+  solutions = static_cast<SolverThread *>(solverThread)->getResult();
+  populateResultTable();
+
+  // Clean up (non-blocking)
+  cleanupProgressDialog();
+  cleanupSolverThread();
 }
 
 #endif // WITH_GUI

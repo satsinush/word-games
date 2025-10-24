@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include "gui/GameWidget.hpp"
 #include "spellingBee/spellingBee.hpp"
 #include "utils/wordUtils.hpp"
 #include <QLabel>
@@ -31,31 +32,32 @@ private:
   char currentLetter;
 };
 
-class SpellingBeeWidget : public QWidget {
+class SpellingBeeWidget : public GameWidget {
   Q_OBJECT
 
 public:
   explicit SpellingBeeWidget(const std::vector<Utils::Word> &words,
                              QWidget *parent = nullptr);
-  ~SpellingBeeWidget();
+  ~SpellingBeeWidget() override;
 
 public slots:
-  void newGame();
+  void newGame() override;
 
 private slots:
   void onInputSubmit();
   void onInputChanged(const QString &text);
-  void onNewGame();
-  void onSettings();
-  void onSolverFinished();
+  void onNewGame() override;
+  void onSettings() override;
+  void onSolverFinished() override;
 
 private:
   // Worker thread for solving
   class SolverThread : public QThread {
   public:
     SolverThread(const SpellingBee::Config &cfg,
-                 const std::vector<Utils::Word> &words)
-        : config(cfg), wordVec(words) {}
+                 const std::vector<Utils::Word> &words,
+                 std::atomic<bool> *cancelFlag)
+        : config(cfg), wordVec(words), cancellationFlag(cancelFlag) {}
 
     std::vector<Utils::Word> getResult() const { return solutions; }
 
@@ -68,6 +70,7 @@ private:
     SpellingBee::Config config;
     const std::vector<Utils::Word> &wordVec;
     std::vector<Utils::Word> solutions;
+    std::atomic<bool> *cancellationFlag;
   };
 
 private:
@@ -76,19 +79,15 @@ private:
 
   SpellingBee::Config config;
   std::vector<Utils::Word> solutions;
-  bool gameInitialized;
 
-  QLabel *configInfoLabel;
   QTableWidget *resultsTable;
   QWidget *hexWidget;
   std::array<HexagonButton *, 7> hexButtons;
-  QProgressDialog *progressDialog;
-  SolverThread *solverThread;
 
   bool showConfigDialog();
-  void initGame();
-  void setUIEnabled(bool enabled);
-  void updateConfigInfo();
+  void initGame() override;
+  void setUIEnabled(bool enabled) override;
+  void updateConfigInfo() override;
   void populateResultTable();
   void createHexagons();
   void updateHexagonsFromInput(const QString &text);

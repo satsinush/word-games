@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include "gui/GameWidget.hpp"
 #include "mastermind/mastermind.hpp"
 #include <QLabel>
 #include <QProgressDialog>
@@ -48,25 +49,25 @@ private:
   QPushButton *deleteButton;
 };
 
-class MastermindWidget : public QWidget {
+class MastermindWidget : public GameWidget {
   Q_OBJECT
 
 public:
   explicit MastermindWidget(QWidget *parent = nullptr);
-  ~MastermindWidget();
+  ~MastermindWidget() override;
 
 public slots:
-  void newGame();
+  void newGame() override;
 
 private slots:
   void onSubmit();
-  void onNewGame();
+  void onNewGame() override;
   void onSolve();
   void onTableRowClicked(int row, int column);
   void onDeleteFeedback(int index);
   void onFeedbackChanged(int index);
-  void onSettings();
-  void onSolverFinished();
+  void onSettings() override;
+  void onSolverFinished() override;
 
 private:
   // Worker thread for solving
@@ -74,8 +75,9 @@ private:
   public:
     SolverThread(const std::vector<Mastermind::Pattern> &patterns,
                  const std::vector<Mastermind::Feedback> &feedback,
-                 const Mastermind::Config &cfg)
-        : allPatterns(patterns), feedbackHistory(feedback), config(cfg) {}
+                 const Mastermind::Config &cfg, std::atomic<bool> *cancelFlag)
+        : allPatterns(patterns), feedbackHistory(feedback), config(cfg),
+          cancellationFlag(cancelFlag) {}
 
     Mastermind::Result getResult() const { return result; }
 
@@ -90,6 +92,7 @@ private:
     std::vector<Mastermind::Feedback> feedbackHistory;
     Mastermind::Config config;
     Mastermind::Result result;
+    std::atomic<bool> *cancellationFlag;
   };
 
 private:
@@ -98,19 +101,15 @@ private:
   Mastermind::Config config;
   std::vector<Mastermind::Pattern> allPatterns;
   std::vector<Mastermind::Feedback> feedbackHistory;
-  bool gameInitialized;
 
   QScrollArea *feedbackListScrollArea;
   QWidget *feedbackListContainer;
   QVBoxLayout *feedbackListLayout;
-  QLabel *configInfoLabel;
-  QProgressDialog *progressDialog;
-  SolverThread *solverThread;
 
   bool showConfigDialog();
-  void initGame();
-  void setUIEnabled(bool enabled);
-  void updateConfigInfo();
+  void initGame() override;
+  void setUIEnabled(bool enabled) override;
+  void updateConfigInfo() override;
   void rebuildFeedbackList();
   void solveMastermind();
   void populateResultTable(QTableWidget *table,

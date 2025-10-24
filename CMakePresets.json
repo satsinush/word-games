@@ -19,7 +19,7 @@
                 "BUILD_GUI": "ON",
                 "BUILD_TESTING": "ON",
                 "BUILD_BENCHMARKS": "ON",
-                "BUILD_TRACY": "ON"
+                "BUILD_TRACY": "OFF"
             }
         },
         {

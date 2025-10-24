@@ -90,8 +90,7 @@ void FeedbackRow::updateFeedback(int colors, int positions) {
 }
 
 MastermindWidget::MastermindWidget(QWidget *parent)
-    : QWidget(parent), ui(new Ui::MastermindWidget), gameInitialized(true),
-      progressDialog(nullptr), solverThread(nullptr) {
+    : GameWidget(parent), ui(new Ui::MastermindWidget) {
   ui->setupUi(this);
 
   // Initialize config defaults
@@ -161,19 +160,13 @@ MastermindWidget::MastermindWidget(QWidget *parent)
   configInfoLabel = ui->configInfoLabel;
 
   // Initialize game immediately with default configuration
+  gameInitialized = true;
   initGame();
   updateConfigInfo();
 }
 
 MastermindWidget::~MastermindWidget() {
-  if (solverThread) {
-    solverThread->quit();
-    solverThread->wait();
-    delete solverThread;
-  }
-  if (progressDialog) {
-    delete progressDialog;
-  }
+  // Base class destructor handles thread and dialog cleanup
   delete ui;
 }
 
@@ -452,56 +445,23 @@ void MastermindWidget::populateResultTable(
 }
 
 void MastermindWidget::solveMastermind() {
-  // Clean up any existing thread
-  if (solverThread) {
-    solverThread->quit();
-    solverThread->wait();
-    delete solverThread;
-    solverThread = nullptr;
-  }
+  // Clean up any existing thread and dialog using base class methods
+  cleanupSolverThread();
+  cleanupProgressDialog();
 
-  // Clean up any existing progress dialog to avoid signal accumulation
-  if (progressDialog) {
-    progressDialog->disconnect();
-    delete progressDialog;
-    progressDialog = nullptr;
-  }
+  // Reset cancellation flag
+  cancellationRequested.store(false, std::memory_order_release);
 
-  // Create fresh progress dialog
-  progressDialog =
-      new QProgressDialog("Solving Mastermind...", "Cancel", 0, 0, this);
-  progressDialog->setWindowModality(Qt::WindowModal);
-  progressDialog->setMinimumDuration(500);
-  progressDialog->setWindowFlags(progressDialog->windowFlags() &
-                                 ~Qt::WindowCloseButtonHint);
-
-  // Connect cancel button to stop the solver
-  connect(progressDialog, &QProgressDialog::canceled, this, [this]() {
-    if (solverThread && solverThread->isRunning()) {
-      solverThread->requestInterruption();
-      disconnect(solverThread, &QThread::finished, this,
-                 &MastermindWidget::onSolverFinished);
-      // Connect to deleteLater when thread actually finishes
-      connect(solverThread, &QThread::finished, solverThread,
-              &QObject::deleteLater);
-      solverThread = nullptr;
-      if (progressDialog) {
-        progressDialog->hide();
-      }
-      ui->solveBtn->setEnabled(true);
-      ui->submitBtn->setEnabled(true);
-    }
-  });
-
-  progressDialog->setValue(0);
-  progressDialog->show();
+  // Create progress dialog using base class method
+  createProgressDialog("Solving Mastermind...", 0, 0);
 
   // Disable UI during solve
   ui->solveBtn->setEnabled(false);
   ui->submitBtn->setEnabled(false);
 
-  // Create and start solver thread
-  solverThread = new SolverThread(allPatterns, feedbackHistory, config);
+  // Create and start solver thread with cancellation flag
+  solverThread = new SolverThread(allPatterns, feedbackHistory, config,
+                                  &cancellationRequested);
   connect(solverThread, &QThread::finished, this,
           &MastermindWidget::onSolverFinished);
   solverThread->start();
@@ -512,15 +472,25 @@ void MastermindWidget::onSolverFinished() {
     return;
   }
 
+  // Re-enable UI immediately for responsiveness
+  ui->solveBtn->setEnabled(true);
+  ui->submitBtn->setEnabled(true);
+
+  // Close progress dialog immediately
+  if (progressDialog) {
+    progressDialog->close();
+  }
+
   // Check if thread was interrupted (cancelled)
   if (solverThread->isInterruptionRequested()) {
-    solverThread->deleteLater();
-    solverThread = nullptr;
+    cleanupProgressDialog();
+    cleanupSolverThread();
     return;
   }
 
   try {
-    Mastermind::Result result = solverThread->getResult();
+    Mastermind::Result result =
+        static_cast<SolverThread *>(solverThread)->getResult();
 
     // Populate both tables
     populateResultTable(ui->allResultsTable, result.sortedGuesses, false);
@@ -537,15 +507,9 @@ void MastermindWidget::onSolverFinished() {
                           QString("Error running solver: %1").arg(e.what()));
   }
 
-  // Clean up
-  if (progressDialog) {
-    progressDialog->hide();
-  }
-  ui->solveBtn->setEnabled(true);
-  ui->submitBtn->setEnabled(true);
-
-  solverThread->deleteLater();
-  solverThread = nullptr;
+  // Clean up (non-blocking)
+  cleanupProgressDialog();
+  cleanupSolverThread();
 }
 
 void MastermindWidget::setUIEnabled(bool enabled) {

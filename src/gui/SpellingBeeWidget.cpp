@@ -93,8 +93,7 @@ void HexagonButton::paintEvent(QPaintEvent *event) {
 
 SpellingBeeWidget::SpellingBeeWidget(const std::vector<Utils::Word> &words,
                                      QWidget *parent)
-    : QWidget(parent), ui(new Ui::SpellingBeeWidget), wordVec(words),
-      gameInitialized(false), progressDialog(nullptr), solverThread(nullptr) {
+    : GameWidget(parent), ui(new Ui::SpellingBeeWidget), wordVec(words) {
   ui->setupUi(this);
 
   // Limit input to 7 characters
@@ -148,6 +147,9 @@ SpellingBeeWidget::SpellingBeeWidget(const std::vector<Utils::Word> &words,
   connect(ui->settingsBtn, &QPushButton::clicked, this,
           &SpellingBeeWidget::onSettings);
 
+  // Store reference to config info label
+  configInfoLabel = ui->configInfoLabel;
+
   // Create the hexagon visualization
   createHexagons();
 
@@ -157,14 +159,7 @@ SpellingBeeWidget::SpellingBeeWidget(const std::vector<Utils::Word> &words,
 }
 
 SpellingBeeWidget::~SpellingBeeWidget() {
-  if (solverThread) {
-    solverThread->quit();
-    solverThread->wait();
-    delete solverThread;
-  }
-  if (progressDialog) {
-    delete progressDialog;
-  }
+  // Base class destructor handles thread and dialog cleanup
   delete ui;
 }
 
@@ -379,56 +374,22 @@ void SpellingBeeWidget::onInputSubmit() {
 
   updateConfigInfo();
 
-  // Clean up any existing thread
-  if (solverThread) {
-    solverThread->quit();
-    solverThread->wait();
-    delete solverThread;
-    solverThread = nullptr;
-  }
+  // Clean up any existing thread and dialog using base class methods
+  cleanupSolverThread();
+  cleanupProgressDialog();
 
-  // Clean up any existing progress dialog to avoid signal accumulation
-  if (progressDialog) {
-    progressDialog->disconnect();
-    delete progressDialog;
-    progressDialog = nullptr;
-  }
+  // Reset cancellation flag
+  cancellationRequested.store(false, std::memory_order_release);
 
-  // Create fresh progress dialog
-  progressDialog =
-      new QProgressDialog("Solving Spelling Bee...", "Cancel", 0, 0, this);
-  progressDialog->setWindowModality(Qt::WindowModal);
-  progressDialog->setMinimumDuration(500);
-  progressDialog->setWindowFlags(progressDialog->windowFlags() &
-                                 ~Qt::WindowCloseButtonHint);
-
-  // Connect cancel button to stop the solver
-  connect(progressDialog, &QProgressDialog::canceled, this, [this]() {
-    if (solverThread && solverThread->isRunning()) {
-      solverThread->requestInterruption();
-      disconnect(solverThread, &QThread::finished, this,
-                 &SpellingBeeWidget::onSolverFinished);
-      // Connect to deleteLater when thread actually finishes
-      connect(solverThread, &QThread::finished, solverThread,
-              &QObject::deleteLater);
-      solverThread = nullptr;
-      if (progressDialog) {
-        progressDialog->hide();
-      }
-      ui->solveBtn->setEnabled(true);
-      ui->inputField->setEnabled(true);
-    }
-  });
-
-  progressDialog->setValue(0);
-  progressDialog->show();
+  // Create progress dialog using base class method
+  createProgressDialog("Solving Spelling Bee...", 0, 0);
 
   // Disable UI during solve
   ui->solveBtn->setEnabled(false);
   ui->inputField->setEnabled(false);
 
-  // Create and start solver thread
-  solverThread = new SolverThread(config, wordVec);
+  // Create and start solver thread with cancellation flag
+  solverThread = new SolverThread(config, wordVec, &cancellationRequested);
   connect(solverThread, &QThread::finished, this,
           &SpellingBeeWidget::onSolverFinished);
   solverThread->start();
@@ -439,29 +400,32 @@ void SpellingBeeWidget::onSolverFinished() {
     return;
   }
 
+  // Re-enable UI immediately for responsiveness
+  ui->solveBtn->setEnabled(true);
+  ui->inputField->setEnabled(true);
+
+  // Close progress dialog immediately
+  if (progressDialog) {
+    progressDialog->close();
+  }
+
   // Check if thread was interrupted (cancelled)
   if (solverThread->isInterruptionRequested()) {
-    solverThread->deleteLater();
-    solverThread = nullptr;
+    cleanupProgressDialog();
+    cleanupSolverThread();
     return;
   }
 
-  solutions = solverThread->getResult();
+  solutions = static_cast<SolverThread *>(solverThread)->getResult();
 
   // Display results
   populateResultTable();
 
   ui->scoreLabel->setText(QString("Found: %1 words").arg(solutions.size()));
 
-  // Clean up
-  if (progressDialog) {
-    progressDialog->hide();
-  }
-  ui->solveBtn->setEnabled(true);
-  ui->inputField->setEnabled(true);
-
-  solverThread->deleteLater();
-  solverThread = nullptr;
+  // Clean up (non-blocking)
+  cleanupProgressDialog();
+  cleanupSolverThread();
 }
 
 void SpellingBeeWidget::onNewGame() { initGame(); }

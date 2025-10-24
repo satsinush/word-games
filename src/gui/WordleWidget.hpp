@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include "gui/GameWidget.hpp"
 #include "utils/wordUtils.hpp"
 #include "wordle/wordle.hpp"
 #include <QLabel>
@@ -74,27 +75,27 @@ private:
   bool isEditable;
 };
 
-class WordleWidget : public QWidget {
+class WordleWidget : public GameWidget {
   Q_OBJECT
 
 public:
   explicit WordleWidget(const std::vector<Utils::Word> &words,
                         QWidget *parent = nullptr);
-  ~WordleWidget();
+  ~WordleWidget() override;
 
 public slots:
-  void newGame();
+  void newGame() override;
 
 private slots:
   void onSubmit();
-  void onNewGame();
+  void onNewGame() override;
   void onHint();
   void onLetterBoxClicked();
   void onInputChanged(const QString &text);
   void onGuessDeleted();
   void onTableRowClicked(int row, int column);
-  void onSettings();
-  void onSolverFinished();
+  void onSettings() override;
+  void onSolverFinished() override;
 
 private:
   // Worker thread for solving
@@ -102,8 +103,9 @@ private:
   public:
     SolverThread(const std::vector<Utils::Word> &words,
                  const std::vector<Wordle::Feedback> &feedback,
-                 const Wordle::Config &cfg)
-        : wordVec(words), feedbackHistory(feedback), config(cfg) {}
+                 const Wordle::Config &cfg, std::atomic<bool> *cancelFlag)
+        : wordVec(words), feedbackHistory(feedback), config(cfg),
+          cancellationFlag(cancelFlag) {}
 
     Wordle::Result getResult() const { return result; }
 
@@ -117,6 +119,7 @@ private:
     std::vector<Wordle::Feedback> feedbackHistory;
     Wordle::Config config;
     Wordle::Result result;
+    std::atomic<bool> *cancellationFlag;
   };
 
 private:
@@ -125,7 +128,6 @@ private:
 
   std::vector<Wordle::Feedback> feedbackHistory;
   Wordle::Config config;
-  bool gameInitialized;
 
   // Current guess row
   std::vector<LetterBox *> currentBoxes;
@@ -142,14 +144,10 @@ private:
   QTableWidget *allResultsTable;
   QTableWidget *probableWordsTable;
 
-  QLabel *configInfoLabel;
-  QProgressDialog *progressDialog;
-  SolverThread *solverThread;
-
   bool showConfigDialog();
-  void initGame();
-  void setUIEnabled(bool enabled);
-  void updateConfigInfo();
+  void initGame() override;
+  void setUIEnabled(bool enabled) override;
+  void updateConfigInfo() override;
   void solveWordle();
   void setupCurrentRow();
   void submitCurrentGuess();
