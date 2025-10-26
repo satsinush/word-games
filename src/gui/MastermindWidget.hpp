@@ -13,6 +13,7 @@
 #include <QThread>
 #include <QVBoxLayout>
 #include <QWidget>
+#include <atomic>
 #include <vector>
 
 namespace Ui {
@@ -83,8 +84,8 @@ private:
 
   protected:
     void run() override {
-      result =
-          Mastermind::runMastermindSolver(allPatterns, feedbackHistory, config);
+      result = Mastermind::runMastermindSolver(allPatterns, feedbackHistory,
+                                               config, cancellationFlag);
     }
 
   private:

@@ -252,15 +252,17 @@ protected:
   }
 };
 
+#include <atomic>
+
 Result runMastermindSolver(const std::vector<Pattern> &allPatterns,
                            const std::vector<Feedback> &guessHistory,
-                           const Config &config) {
+                           const Config &config, std::atomic<bool> *cancel) {
 #ifdef TRACY_ENABLE
   ZoneScoped;
 #endif
 
   // Use the specialized Mastermind ENT solver - returns Result directly!
   MastermindEntSolver solver;
-  return solver.solve(allPatterns, guessHistory, config);
+  return solver.solve(allPatterns, guessHistory, config, cancel);
 }
 } // namespace Mastermind

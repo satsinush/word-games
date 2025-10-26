@@ -15,6 +15,7 @@
 #include <QVBoxLayout>
 #include <QWidget>
 #include <array>
+#include <atomic>
 #include <vector>
 
 namespace Ui {
@@ -104,18 +105,20 @@ private:
     SolverThread(const std::vector<Utils::Word> &words,
                  const std::vector<Wordle::Feedback> &feedback,
                  const Wordle::Config &cfg, std::atomic<bool> *cancelFlag)
-        : wordVec(words), feedbackHistory(feedback), config(cfg),
+        : wordVecCopy(words), feedbackHistory(feedback), config(cfg),
           cancellationFlag(cancelFlag) {}
 
     Wordle::Result getResult() const { return result; }
 
   protected:
     void run() override {
-      result = Wordle::runWordleSolver(wordVec, feedbackHistory, config);
+      result = Wordle::runWordleSolver(wordVecCopy, feedbackHistory, config,
+                                       cancellationFlag);
     }
 
   private:
-    const std::vector<Utils::Word> &wordVec;
+    // Copy locally so the worker doesn't reference GUI-owned storage.
+    std::vector<Utils::Word> wordVecCopy;
     std::vector<Wordle::Feedback> feedbackHistory;
     Wordle::Config config;
     Wordle::Result result;

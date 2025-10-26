@@ -47,12 +47,16 @@ void filterWords(std::vector<Utils::Word> &words, const Config &config) {
 
 std::vector<Utils::Word>
 runSpellingBeeSolver(const std::vector<Utils::Word> &words,
-                     const Config &config) {
+                     const Config &config, std::atomic<bool> *cancel) {
 #ifdef TRACY_ENABLE
   ZoneScoped;
 #endif
   std::vector<Utils::Word> wordsCopy = words;
   filterWords(wordsCopy, config);
+
+  if (cancel && cancel->load()) {
+    return {};
+  }
 
   std::sort(wordsCopy.begin(), wordsCopy.end(),
             [](const Utils::Word &a, const Utils::Word &b) {

@@ -455,9 +455,13 @@ void MastermindWidget::solveMastermind() {
   // Create progress dialog using base class method
   createProgressDialog("Solving Mastermind...", 0, 0);
 
-  // Disable UI during solve
-  ui->solveBtn->setEnabled(false);
+  // Disable UI elements that could interfere with solving
+  ui->patternField->setEnabled(false);
   ui->submitBtn->setEnabled(false);
+  ui->solveBtn->setEnabled(false);
+  ui->newGameBtn->setEnabled(false);
+  ui->settingsBtn->setEnabled(false);
+  ui->resultsTabWidget->setEnabled(false);
 
   // Create and start solver thread with cancellation flag
   solverThread = new SolverThread(allPatterns, feedbackHistory, config,
@@ -468,23 +472,16 @@ void MastermindWidget::solveMastermind() {
 }
 
 void MastermindWidget::onSolverFinished() {
-  if (!solverThread) {
-    return;
-  }
-
-  // Re-enable UI immediately for responsiveness
-  ui->solveBtn->setEnabled(true);
+  // Re-enable UI elements
+  ui->patternField->setEnabled(true);
   ui->submitBtn->setEnabled(true);
+  ui->solveBtn->setEnabled(true);
+  ui->newGameBtn->setEnabled(true);
+  ui->settingsBtn->setEnabled(true);
+  ui->resultsTabWidget->setEnabled(true);
 
-  // Close progress dialog immediately
-  if (progressDialog) {
-    progressDialog->close();
-  }
-
-  // Check if thread was interrupted (cancelled)
-  if (solverThread->isInterruptionRequested()) {
-    cleanupProgressDialog();
-    cleanupSolverThread();
+  // Use common handler - returns false if cancelled
+  if (!handleSolverFinished()) {
     return;
   }
 
@@ -492,15 +489,21 @@ void MastermindWidget::onSolverFinished() {
     Mastermind::Result result =
         static_cast<SolverThread *>(solverThread)->getResult();
 
-    // Populate both tables
-    populateResultTable(ui->allResultsTable, result.sortedGuesses, false);
-    populateResultTable(ui->possibleResultsTable, result.sortedGuesses, true);
+    // If solver returned no suggestions, inform the user
+    if (result.sortedGuesses.empty()) {
+      QMessageBox::information(this, "No Results", "No suggestions available");
+    } else {
+      // Populate both tables
+      populateResultTable(ui->allResultsTable, result.sortedGuesses, false);
+      populateResultTable(ui->possibleResultsTable, result.sortedGuesses, true);
 
-    // Update tab titles with counts
-    ui->resultsTabWidget->setTabText(
-        0, QString("All Suggestions (%1)").arg(result.sortedGuesses.size()));
-    ui->resultsTabWidget->setTabText(
-        1, QString("Possible Answers (%1)").arg(result.totalPossiblePatterns));
+      // Update tab titles with counts
+      ui->resultsTabWidget->setTabText(
+          0, QString("All Suggestions (%1)").arg(result.sortedGuesses.size()));
+      ui->resultsTabWidget->setTabText(
+          1,
+          QString("Possible Answers (%1)").arg(result.totalPossiblePatterns));
+    }
 
   } catch (const std::exception &e) {
     QMessageBox::critical(this, "Solver Error",

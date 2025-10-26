@@ -202,7 +202,7 @@ protected:
 
 Result runWordleSolver(const std::vector<Utils::Word> &allWords,
                        const std::vector<Feedback> &feedbacks,
-                       const Config &config) {
+                       const Config &config, std::atomic<bool> *cancel) {
 #ifdef TRACY_ENABLE
   ZoneScoped;
 #endif
@@ -217,6 +217,6 @@ Result runWordleSolver(const std::vector<Utils::Word> &allWords,
 
   // Use the specialized Wordle ENT solver - returns Result directly!
   WordleEntSolver solver;
-  return solver.solve(availableWords, feedbacks, config);
+  return solver.solve(availableWords, feedbacks, config, cancel);
 }
 } // namespace Wordle

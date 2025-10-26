@@ -11,6 +11,7 @@
 #include <QThread>
 #include <QWidget>
 #include <array>
+#include <atomic>
 #include <bitset>
 #include <vector>
 
@@ -54,21 +55,28 @@ private:
   // Worker thread for solving
   class SolverThread : public QThread {
   public:
+    // Take the word vector by const-ref but store a copy internally so the
+    // worker thread does not hold references to data owned by the GUI thread.
     SolverThread(const LetterBoxed::Config &cfg,
                  const std::vector<Utils::Word> &words,
                  std::atomic<bool> *cancelFlag)
-        : config(cfg), wordVec(words), cancellationFlag(cancelFlag) {}
+        : config(cfg), wordVecCopy(words), cancellationFlag(cancelFlag) {}
 
     std::vector<LetterBoxed::Solution> getResult() const { return solutions; }
 
   protected:
     void run() override {
-      solutions = LetterBoxed::runLetterBoxedSolver(config, wordVec);
+      // Call solver with our local copy and pass cancellation pointer so the
+      // solver can stop cooperatively.
+      solutions = LetterBoxed::runLetterBoxedSolver(config, wordVecCopy,
+                                                    cancellationFlag);
     }
 
   private:
     LetterBoxed::Config config;
-    const std::vector<Utils::Word> &wordVec;
+    // Store a copy so the GUI may modify or destroy its vector without
+    // affecting the running worker.
+    std::vector<Utils::Word> wordVecCopy;
     std::vector<LetterBoxed::Solution> solutions;
     std::atomic<bool> *cancellationFlag;
   };

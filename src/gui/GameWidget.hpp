@@ -56,6 +56,10 @@ protected:
   // Check if solver is currently running
   bool isSolverRunning() const;
 
+  // Common handler for solver finished - handles UI re-enable and early returns
+  // Returns true if processing should continue, false if cancelled
+  bool handleSolverFinished();
+
   // Members that all game widgets use
   QLabel *configInfoLabel;
   QProgressDialog *progressDialog;

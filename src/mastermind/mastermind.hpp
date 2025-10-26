@@ -9,6 +9,7 @@
 #include "utils/EntSolver.hpp"
 #include "utils/inputUtils.hpp"
 #include "utils/wordUtils.hpp"
+#include <atomic>
 
 namespace Mastermind {
 struct Config {
@@ -140,7 +141,8 @@ std::vector<Pattern> generateAllPatterns(const Config &config);
 // Generic EntSolver-based version (cleaner implementation)
 Result runMastermindSolver(const std::vector<Pattern> &allPatterns,
                            const std::vector<Feedback> &guessHistory,
-                           const Config &config = Config{});
+                           const Config &config = Config{},
+                           std::atomic<bool> *cancel = nullptr);
 } // namespace Mastermind
 
 // Provide std::hash specializations for Mastermind types so they can be used as

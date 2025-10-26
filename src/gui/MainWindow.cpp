@@ -14,7 +14,7 @@ MainWindow::MainWindow(const std::vector<Utils::Word> &words, QWidget *parent)
   ui->setupUi(this);
 
   // Set window title
-  setWindowTitle("Word Games Suite");
+  setWindowTitle("Puzzle++");
 
   // Create button group for sidebar (exclusive selection)
   sidebarButtonGroup = new QButtonGroup(this);
@@ -43,7 +43,7 @@ MainWindow::MainWindow(const std::vector<Utils::Word> &words, QWidget *parent)
   setupConnections();
 
   // Initialize status bar
-  statusBar()->showMessage("Welcome to Word Games Suite!");
+  // statusBar()->showMessage("Welcome to Word Games Suite!");
 }
 
 MainWindow::~MainWindow() { delete ui; }
@@ -109,8 +109,8 @@ void MainWindow::onMenuExit() { close(); }
 
 void MainWindow::onMenuAbout() {
   QMessageBox::about(
-      this, "About Word Games Suite",
-      "<h3>Word Games Suite</h3>"
+      this, "About Puzzle++",
+      "<h3>Puzzle++</h3>"
       "<p>A collection of word-based puzzle games and solvers.</p>"
       "<ul>"
       "<li><b>Wordle:</b> Entropy-based solver to find optimal guesses</li>"

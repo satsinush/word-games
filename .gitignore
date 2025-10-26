@@ -9,7 +9,9 @@ results/
 *.exe
 ngram_freq.csv
 build/
-resources/
+resources/*.csv
+resources/*.bin
+!resources/test_word_scores.csv
 gmon.out
 profile_results.txt
 .env

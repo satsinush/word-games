@@ -228,7 +228,7 @@ void LetterBoxedGame::runCLI() {
 
       std::cout << "Running solver...\n";
       std::vector<LetterBoxed::Solution> solutions =
-          LetterBoxed::runLetterBoxedSolver(config, wordVec);
+          LetterBoxed::runLetterBoxedSolver(config, wordVec, nullptr);
 
       int printLimit = 100;
       printSolutions(solutions, printLimit);
@@ -278,7 +278,7 @@ void LetterBoxedGame::runHeadless(const Utils::Input::CommandArgs &cmdArgs) {
     LetterBoxed::Config config = getConfigFromArgs(args);
 
     std::vector<LetterBoxed::Solution> solutions =
-        LetterBoxed::runLetterBoxedSolver(config, wordVec);
+        LetterBoxed::runLetterBoxedSolver(config, wordVec, nullptr);
 
     // Output to file if specified
     std::string outputFile =

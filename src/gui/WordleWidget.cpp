@@ -619,9 +619,13 @@ void WordleWidget::solveWordle() {
   // Create progress dialog using base class method
   createProgressDialog("Solving Wordle...", 0, 0);
 
-  // Disable UI during solve
-  ui->solveBtn->setEnabled(false);
+  // Disable UI elements that could interfere with solving
+  ui->inputField->setEnabled(false);
   ui->submitBtn->setEnabled(false);
+  ui->solveBtn->setEnabled(false);
+  ui->newGameBtn->setEnabled(false);
+  ui->settingsBtn->setEnabled(false);
+  ui->resultsTabWidget->setEnabled(false);
 
   // Create and start solver thread with cancellation flag
   solverThread = new SolverThread(wordVec, feedbackHistory, config,
@@ -632,23 +636,16 @@ void WordleWidget::solveWordle() {
 }
 
 void WordleWidget::onSolverFinished() {
-  if (!solverThread) {
-    return;
-  }
-
-  // Re-enable UI immediately for responsiveness
-  ui->solveBtn->setEnabled(true);
+  // Re-enable UI elements
+  ui->inputField->setEnabled(true);
   ui->submitBtn->setEnabled(true);
+  ui->solveBtn->setEnabled(true);
+  ui->newGameBtn->setEnabled(true);
+  ui->settingsBtn->setEnabled(true);
+  ui->resultsTabWidget->setEnabled(true);
 
-  // Close progress dialog immediately
-  if (progressDialog) {
-    progressDialog->close();
-  }
-
-  // Check if thread was interrupted (cancelled)
-  if (solverThread->isInterruptionRequested()) {
-    cleanupProgressDialog();
-    cleanupSolverThread();
+  // Use common handler - returns false if cancelled
+  if (!handleSolverFinished()) {
     return;
   }
 
@@ -746,8 +743,8 @@ void WordleWidget::onSolverFinished() {
           0, QString("All Suggestions (%1)").arg(result.sortedGuesses.size()));
 
     } else {
-      allResultsTable->setRowCount(0);
-      probableWordsTable->setRowCount(0);
+      // No suggestions found - only show message if not cancelled (which we
+      // already handled)
       QMessageBox::information(this, "No Results", "No suggestions available");
     }
   } catch (const std::exception &e) {

@@ -6,6 +6,7 @@
 
 #include "utils/inputUtils.hpp"
 #include "utils/wordUtils.hpp"
+#include <atomic>
 
 namespace LetterBoxed {
 // The main configuration structure for the puzzle solver.
@@ -70,5 +71,6 @@ struct EquivalenceClass {
 
 std::vector<Solution>
 runLetterBoxedSolver(const Config &config,
-                     const std::vector<Utils::Word> &words);
+                     const std::vector<Utils::Word> &words,
+                     std::atomic<bool> *cancel = nullptr);
 } // namespace LetterBoxed

@@ -12,6 +12,7 @@
 #include <QThread>
 #include <QWidget>
 #include <array>
+#include <atomic>
 #include <vector>
 
 namespace Ui {
@@ -57,18 +58,21 @@ private:
     SolverThread(const SpellingBee::Config &cfg,
                  const std::vector<Utils::Word> &words,
                  std::atomic<bool> *cancelFlag)
-        : config(cfg), wordVec(words), cancellationFlag(cancelFlag) {}
+        : config(cfg), wordVecCopy(words), cancellationFlag(cancelFlag) {}
 
     std::vector<Utils::Word> getResult() const { return solutions; }
 
   protected:
     void run() override {
-      solutions = SpellingBee::runSpellingBeeSolver(wordVec, config);
+      solutions = SpellingBee::runSpellingBeeSolver(wordVecCopy, config,
+                                                    cancellationFlag);
     }
 
   private:
     SpellingBee::Config config;
-    const std::vector<Utils::Word> &wordVec;
+    // Copy of the word vector so the worker thread doesn't hold references
+    // to GUI-owned data.
+    std::vector<Utils::Word> wordVecCopy;
     std::vector<Utils::Word> solutions;
     std::atomic<bool> *cancellationFlag;
   };

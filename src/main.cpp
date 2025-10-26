@@ -17,6 +17,7 @@
 
 #ifdef WITH_GUI
 #include <QApplication>
+#include <QIcon>
 
 #include "gui/MainWindow.hpp"
 #endif
@@ -253,6 +254,16 @@ int run(int argc, char *argv[]) {
     std::vector<Utils::Word> wordVec = Utils::loadWords();
 
     QApplication app(argc, argv);
+
+    // Set application name shown by the windowing system and used by Qt
+    QApplication::setApplicationName("Puzzle++");
+
+    // Load the SVG icon from the repository resources folder and set it as
+    // the application / window icon. Use a relative path; this assumes the
+    // working directory contains the project resources at runtime (typical
+    // when running from the project root during development). If you use a
+    // Qt resource (.qrc) in the future, switch to the ":/" prefix.
+    QApplication::setWindowIcon(QIcon(QStringLiteral("resources/icon.svg")));
 
     MainWindow window(wordVec);
     window.show();

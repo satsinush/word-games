@@ -5,6 +5,7 @@
 
 #include "utils/inputUtils.hpp"
 #include "utils/wordUtils.hpp"
+#include <atomic>
 
 namespace SpellingBee {
 struct Config {
@@ -14,5 +15,5 @@ struct Config {
 
 std::vector<Utils::Word>
 runSpellingBeeSolver(const std::vector<Utils::Word> &words,
-                     const Config &config);
+                     const Config &config, std::atomic<bool> *cancel = nullptr);
 } // namespace SpellingBee

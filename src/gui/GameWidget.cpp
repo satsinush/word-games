@@ -2,7 +2,9 @@
 
 #include "gui/GameWidget.hpp"
 #include <QApplication>
-#include <QDebug>
+#include <QDialog>
+#include <QPointer>
+#include <QTimer>
 
 GameWidget::GameWidget(QWidget *parent)
     : QWidget(parent), configInfoLabel(nullptr), progressDialog(nullptr),
@@ -14,9 +16,12 @@ GameWidget::~GameWidget() {
   cancellationRequested.store(true, std::memory_order_release);
 
   if (solverThread && solverThread->isRunning()) {
+    // Ask for cooperative shutdown and schedule deletion when finished.
     solverThread->requestInterruption();
-    // Don't wait - just let it finish on its own
-    // The thread will be cleaned up by Qt's parent-child relationship
+    // Attempt a cooperative shutdown by quitting the event loop if present.
+    solverThread->quit();
+    connect(solverThread, &QThread::finished, solverThread,
+            &QObject::deleteLater, Qt::QueuedConnection);
   }
 
   // Progress dialog is our child, Qt will delete it
@@ -47,14 +52,24 @@ void GameWidget::createProgressDialog(const QString &labelText, int minimum,
   connect(
       progressDialog, &QProgressDialog::canceled, this,
       [this]() {
+        // User requested cancellation: mark the flag and attempt cooperative
+        // interruption. Use QPointer to avoid dangling references if
+        // solverThread is changed or deleted.
         cancellationRequested.store(true, std::memory_order_release);
-        if (solverThread) {
-          // Prefer requesting interruption; do not block here.
-          solverThread->requestInterruption();
+        QPointer<QThread> threadRef(solverThread);
+        if (threadRef) {
+          threadRef->requestInterruption();
         }
-        // Close dialog immediately on cancel (UI action only)
+
+        // Keep the progress dialog visible until the worker actually
+        // finishes. Update the label to indicate cancellation is in
+        // progress and disable the cancel button to prevent repeated
+        // requests.
         if (progressDialog) {
-          progressDialog->close();
+          progressDialog->setLabelText("Cancelling...");
+          // Hide the cancel button if the API is available; otherwise
+          // clear its text to discourage further interaction.
+          progressDialog->setCancelButton(nullptr);
         }
       },
       Qt::QueuedConnection);
@@ -151,6 +166,30 @@ void GameWidget::terminateThread(QThread *thread) {
 
 bool GameWidget::isSolverRunning() const {
   return solverThread && solverThread->isRunning();
+}
+
+bool GameWidget::handleSolverFinished() {
+  if (!solverThread) {
+    return false;
+  }
+
+  // Close progress dialog immediately
+  if (progressDialog) {
+    progressDialog->close();
+  }
+
+  // Check if cancellation was requested using our atomic flag
+  // (isInterruptionRequested() may not be reliable when called from main
+  // thread)
+  if (cancellationRequested.load(std::memory_order_acquire)) {
+    // Don't clear results, don't show messages - just clean up and return
+    cleanupProgressDialog();
+    cleanupSolverThread();
+    return false;
+  }
+
+  // Processing should continue
+  return true;
 }
 
 #endif // WITH_GUI

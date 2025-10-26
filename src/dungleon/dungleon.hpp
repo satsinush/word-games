@@ -197,15 +197,22 @@ Result runDungleonSolver(const std::vector<Pattern> &allPatterns,
 namespace std {
 template <> struct hash<Dungleon::Pattern> {
   size_t operator()(const Dungleon::Pattern &pattern) const noexcept {
-    // TODO
-    return 0;
+    // Hash the characters array using FNV-1a style mixing
+    size_t hash = 2166136261u;
+    for (const auto &c : pattern.characters) {
+      hash ^= c;
+      hash *= 16777619;
+    }
+    return hash;
   }
 };
 
 template <> struct hash<Dungleon::Feedback> {
   size_t operator()(const Dungleon::Feedback &fb) const noexcept {
-    // TODO
-    return 0;
+    // Combine hash of the pattern and the bitset colors
+    size_t hash = std::hash<Dungleon::Pattern>()(fb.pattern);
+    hash ^= fb.colors.to_ulong() + 0x9e3779b9 + (hash << 6) + (hash >> 2);
+    return hash;
   }
 };
 } // namespace std

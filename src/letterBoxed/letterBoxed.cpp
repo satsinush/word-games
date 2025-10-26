@@ -87,7 +87,8 @@ void findWordPathsRecursive(const Utils::Word &wordObj, const Config &config,
                             std::vector<WordPath> &results,
                             std::vector<int> &currentPathGlobalIndexes,
                             const int lastUsedSide, const uint8_t depth,
-                            std::vector<int> &allPathIndices) {
+                            std::vector<int> &allPathIndices,
+                            std::atomic<bool> *cancel) {
 #ifdef TRACY_ENABLE
   ZoneScoped;
 #endif
@@ -103,6 +104,9 @@ void findWordPathsRecursive(const Utils::Word &wordObj, const Config &config,
     return;
   }
 
+  if (cancel && cancel->load())
+    return;
+
   char targetChar = wordObj.wordString[depth];
   for (unsigned int globalIdx = 0; globalIdx < config.allLetters.size();
        ++globalIdx) {
@@ -113,7 +117,7 @@ void findWordPathsRecursive(const Utils::Word &wordObj, const Config &config,
       }
       currentPathGlobalIndexes.push_back(globalIdx);
       findWordPathsRecursive(wordObj, config, results, currentPathGlobalIndexes,
-                             currentSide, depth + 1, allPathIndices);
+                             currentSide, depth + 1, allPathIndices, cancel);
       currentPathGlobalIndexes.pop_back(); // Backtrack
     }
   }
@@ -124,11 +128,14 @@ void findWordPathsRecursive(const Utils::Word &wordObj, const Config &config,
 // Update filterWords to take vector<Word> and propagate order to WordPath
 void filterWords(std::vector<WordPath> &allValidWordPaths,
                  const std::vector<Utils::Word> &allDictionaryWords,
-                 const Config &config, std::vector<int> &allPathIndices) {
+                 const Config &config, std::vector<int> &allPathIndices,
+                 std::atomic<bool> *cancel) {
 #ifdef TRACY_ENABLE
   ZoneScoped;
 #endif
   for (const Utils::Word &wordObj : allDictionaryWords) {
+    if (cancel && cancel->load())
+      return;
     const std::string &word = wordObj.wordString;
     std::bitset<12> uniqueChars;
     bool containsInvalidCharacter = false;
@@ -151,7 +158,7 @@ void filterWords(std::vector<WordPath> &allValidWordPaths,
     currentPathGlobalIndexes.reserve(word.length());
     std::vector<WordPath> paths;
     findWordPathsRecursive(wordObj, config, paths, currentPathGlobalIndexes, -1,
-                           0, allPathIndices);
+                           0, allPathIndices, cancel);
     allValidWordPaths.insert(allValidWordPaths.end(), paths.begin(),
                              paths.end());
   }
@@ -165,7 +172,7 @@ void expandAndStoreSolutions(
     const std::vector<const EquivalenceClass *> &classPath,
     std::vector<const WordPath *> &currentWordChain, const uint8_t depth,
     std::vector<Solution> &finalSolutions, const Config &config,
-    const std::vector<int> &allPathIndices) {
+    const std::vector<int> &allPathIndices, std::atomic<bool> *cancel) {
 #ifdef TRACY_ENABLE
   ZoneScoped;
 #endif
@@ -188,12 +195,17 @@ void expandAndStoreSolutions(
     return;
   }
 
+  if (cancel && cancel->load())
+    return;
+
   // Recursive step: Iterate through all words in the current class.
   const EquivalenceClass *currentClass = classPath[depth];
   for (const WordPath *wordPtr : currentClass->words) {
+    if (cancel && cancel->load())
+      return;
     currentWordChain.push_back(wordPtr);
     expandAndStoreSolutions(classPath, currentWordChain, depth + 1,
-                            finalSolutions, config, allPathIndices);
+                            finalSolutions, config, allPathIndices, cancel);
     currentWordChain.pop_back(); // Backtrack
   }
 }
@@ -207,13 +219,17 @@ void findClassSolutionsRecursive(
     const std::vector<EquivalenceClass> &allEqClasses,
     const std::array<CharStartIndexer, 256> &classIndexers,
     const Config &config,
-    std::vector<std::vector<const EquivalenceClass *>> &classSolutions) {
+    std::vector<std::vector<const EquivalenceClass *>> &classSolutions,
+    std::atomic<bool> *cancel) {
 #ifdef TRACY_ENABLE
   ZoneScoped;
 #endif
   if (currentDepth >= config.maxDepth) {
     return;
   }
+
+  if (cancel && cancel->load())
+    return;
 
   int end = classIndexers[static_cast<unsigned char>(
                               config.allLetters[lastClass->key.endIndex])]
@@ -222,6 +238,8 @@ void findClassSolutionsRecursive(
                                  config.allLetters[lastClass->key.endIndex])]
                    .start;
        i < end; ++i) {
+    if (cancel && cancel->load())
+      return;
     const EquivalenceClass &nextClass = allEqClasses[i];
     if (nextClass.key.startIndex == lastClass->key.endIndex) {
       // Compute new letters covered by adding nextClass's usedChars
@@ -245,7 +263,7 @@ void findClassSolutionsRecursive(
         // same path.
         findClassSolutionsRecursive(
             &nextClass, currentClassPath, newLettersCovered, currentDepth + 1,
-            allEqClasses, classIndexers, config, classSolutions);
+            allEqClasses, classIndexers, config, classSolutions, cancel);
       }
 
       currentClassPath.pop_back(); // Backtrack
@@ -309,7 +327,8 @@ void pruneDominatedClasses(std::vector<EquivalenceClass> &allEqClasses) {
 
 std::vector<Solution>
 runLetterBoxedSolver(const Config &config,
-                     const std::vector<Utils::Word> &words) {
+                     const std::vector<Utils::Word> &words,
+                     std::atomic<bool> *cancel) {
 #ifdef TRACY_ENABLE
   ZoneScoped;
 #endif
@@ -318,7 +337,7 @@ runLetterBoxedSolver(const Config &config,
   allPathIndices.reserve(words.size() / 100); // Reserve space for indices
   std::vector<WordPath> allValidWordPaths;
   allValidWordPaths.reserve(words.size() / 100);
-  filterWords(allValidWordPaths, words, config, allPathIndices);
+  filterWords(allValidWordPaths, words, config, allPathIndices, cancel);
 
   // Create equivalence classes based on the valid word paths.
   std::unordered_map<EquivalenceKey, EquivalenceClass, EquivalenceKeyHash>
@@ -386,7 +405,7 @@ runLetterBoxedSolver(const Config &config,
     std::vector<const EquivalenceClass *> currentClassPath = {&startClass};
     findClassSolutionsRecursive(&startClass, currentClassPath, covered, 1,
                                 allEqClasses, classIndexers, config,
-                                classSolutions);
+                                classSolutions, cancel);
   }
 
   std::vector<Solution> finalSolutions;
@@ -397,7 +416,7 @@ runLetterBoxedSolver(const Config &config,
   for (const auto &classPath : classSolutions) {
     std::vector<const WordPath *> currentWordChain;
     expandAndStoreSolutions(classPath, currentWordChain, 0, finalSolutions,
-                            config, allPathIndices);
+                            config, allPathIndices, cancel);
   }
 
   std::sort(finalSolutions.begin(), finalSolutions.end());

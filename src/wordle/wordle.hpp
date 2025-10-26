@@ -8,6 +8,7 @@
 #include "utils/EntSolver.hpp"
 #include "utils/inputUtils.hpp"
 #include "utils/wordUtils.hpp"
+#include <atomic>
 
 namespace Wordle {
 struct Config {
@@ -103,7 +104,8 @@ std::vector<Utils::Word> filterWords(const std::vector<Utils::Word> &words,
 // Generic EntSolver-based version (cleaner implementation)
 Result runWordleSolver(const std::vector<Utils::Word> &allWords,
                        const std::vector<Feedback> &feedbacks,
-                       const Config &config = Config{});
+                       const Config &config = Config{},
+                       std::atomic<bool> *cancel = nullptr);
 } // namespace Wordle
 
 // Provide std::hash specialization for Wordle::Feedback so it can be used as an

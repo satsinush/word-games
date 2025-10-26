@@ -384,9 +384,12 @@ void SpellingBeeWidget::onInputSubmit() {
   // Create progress dialog using base class method
   createProgressDialog("Solving Spelling Bee...", 0, 0);
 
-  // Disable UI during solve
-  ui->solveBtn->setEnabled(false);
+  // Disable UI elements that could interfere with solving
   ui->inputField->setEnabled(false);
+  ui->solveBtn->setEnabled(false);
+  ui->newGameBtn->setEnabled(false);
+  ui->settingsBtn->setEnabled(false);
+  resultsTable->setEnabled(false);
 
   // Create and start solver thread with cancellation flag
   solverThread = new SolverThread(config, wordVec, &cancellationRequested);
@@ -396,32 +399,28 @@ void SpellingBeeWidget::onInputSubmit() {
 }
 
 void SpellingBeeWidget::onSolverFinished() {
-  if (!solverThread) {
-    return;
-  }
-
-  // Re-enable UI immediately for responsiveness
-  ui->solveBtn->setEnabled(true);
+  // Re-enable UI elements
   ui->inputField->setEnabled(true);
+  ui->solveBtn->setEnabled(true);
+  ui->newGameBtn->setEnabled(true);
+  ui->settingsBtn->setEnabled(true);
+  resultsTable->setEnabled(true);
 
-  // Close progress dialog immediately
-  if (progressDialog) {
-    progressDialog->close();
-  }
-
-  // Check if thread was interrupted (cancelled)
-  if (solverThread->isInterruptionRequested()) {
-    cleanupProgressDialog();
-    cleanupSolverThread();
+  // Use common handler - returns false if cancelled
+  if (!handleSolverFinished()) {
     return;
   }
 
   solutions = static_cast<SolverThread *>(solverThread)->getResult();
 
-  // Display results
-  populateResultTable();
-
-  ui->scoreLabel->setText(QString("Found: %1 words").arg(solutions.size()));
+  // If no solutions were found, inform the user
+  if (solutions.empty()) {
+    QMessageBox::information(this, "No Results", "No solutions found");
+  } else {
+    // Display results
+    populateResultTable();
+    ui->scoreLabel->setText(QString("Found: %1 words").arg(solutions.size()));
+  }
 
   // Clean up (non-blocking)
   cleanupProgressDialog();

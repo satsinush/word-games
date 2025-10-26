@@ -1,6 +1,7 @@
 #pragma once
 
 #include <algorithm>
+#include <atomic>
 #include <cmath>
 #include <cstdint>
 #include <functional>
@@ -53,7 +54,11 @@ public:
    */
   TResultType solve(const std::vector<TCandidateType> &allCandidates,
                     const std::vector<TFeedbackType> &feedbackHistory,
-                    const TConfigType &config) {
+                    const TConfigType &config,
+                    std::atomic<bool> *cancel = nullptr) {
+    // Store cancellation pointer so internal helpers can check it
+    cancellationFlag = cancel;
+
     // Filter candidates based on feedback history
     std::vector<TCandidateType> possibleCandidates;
 
@@ -72,6 +77,11 @@ public:
       if (matches) {
         possibleCandidates.push_back(candidate);
         possibleCandidateSet.insert(candidate);
+      }
+      if (cancellationFlag && cancellationFlag->load()) {
+        // Clean up and return an empty result early on cancellation
+        cancellationFlag = nullptr;
+        return createResult(std::vector<TGuessType>{}, 0);
       }
     }
 
@@ -97,6 +107,10 @@ public:
     const double possibleProb =
         possibleCandidates.empty() ? 0.0 : 1.0 / possibleCandidates.size();
     for (const auto &guessCandidate : allCandidates) {
+      if (cancellationFlag && cancellationFlag->load()) {
+        cancellationFlag = nullptr;
+        return createResult(std::vector<TGuessType>{}, 0);
+      }
       // Calculate probability (how likely this candidate is to be the answer)
       // O(1) lookup in unordered_set with proper hash and equality
       bool isPossible = possibleCandidateSet.find(guessCandidate) !=
@@ -129,10 +143,14 @@ public:
     // ascending, then probability descending
     std::sort(guesses.begin(), guesses.end());
 
+    cancellationFlag = nullptr;
     return createResult(guesses, totalPossible);
   }
 
 private:
+  // Cancellation pointer set during solve(); helpers check this and return
+  // early when set.
+  std::atomic<bool> *cancellationFlag = nullptr;
   // Helper struct for grouping candidates with total score
   struct FeedbackGroup {
     std::vector<TCandidateType> candidates;
@@ -164,6 +182,8 @@ private:
 
     // ITERATE OVER ALL POSSIBLE NEXT GUESSES to find the optimal one
     for (const auto &nextGuess : allCandidates) {
+      if (cancellationFlag && cancellationFlag->load())
+        return std::numeric_limits<double>::infinity();
       double expectedTurns = calculateExpectedTurns(
           nextGuess, currentCandidates, allCandidates, maxDepth);
 
@@ -201,6 +221,8 @@ private:
     feedbackGroups.reserve(currentCandidates.size());
 
     for (const auto &target : currentCandidates) {
+      if (cancellationFlag && cancellationFlag->load())
+        return std::numeric_limits<double>::infinity();
       TFeedbackType feedback = generateFeedback(target, guessCandidate);
       feedbackGroups[feedback].candidates.push_back(target);
       feedbackGroups[feedback].totalScore += target.score;
