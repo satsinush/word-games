@@ -12,7 +12,6 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 if(MSVC AND CMAKE_BUILD_TYPE STREQUAL "Debug")
     message(STATUS "MSVC AddressSanitizer (ASan) enabled.")
     add_compile_options(/fsanitize=address)
-    # add_link_options(/fsanitize=address)
 endif()
 
 option(BUILD_GUI "Build the application with the Qt GUI" ON)
@@ -21,11 +20,11 @@ option(BUILD_BENCHMARKS "Build the project's benchmarks" ON)
 option(BUILD_TRACY "Enable Tracy profiling support" ON)
 
 # Statically link C++ standard library and runtime on Windows with MinGW
-if(WIN32 AND MINGW)
-    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static-libgcc -static-libstdc++")
-    set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -static-libgcc -static-libstdc++")
-    message(STATUS "Statically linking C++ standard library and runtime")
-endif()
+# if(WIN32 AND MINGW)
+#     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static-libgcc -static-libstdc++")
+#     set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -static-libgcc -static-libstdc++")
+#     message(STATUS "Statically linking C++ standard library and runtime")
+# endif()
 
 # ===================================================================
 # 2. GATHER CORE SOURCE FILES
