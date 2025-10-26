@@ -18,10 +18,37 @@
 #endif
 
 namespace Dungleon {
+// Define global variables and functions in the .cpp file to ensure a single
+// definition
+std::array<std::string, NUM_CHARACTERS> CHARACTER_IDS = {
+    "ar", "kn", "ma", "bt", "dr", "bo", "ne", "ao", "sk", "sp",
+    "bd", "tr", "so", "ki", "vi", "co", "ch", "re", "fr", "zo"};
+
+std::array<std::string, NUM_CHARACTERS> CHARACTER_NAMES = {
+    "archer",    "knight",      "mage",     "bat",      "dragon",
+    "blade orc", "necromancer", "axe orc",  "skeleton", "spider",
+    "bandit",    "troll",       "sorcerer", "king",     "villager",
+    "coins",     "chest",       "relic",    "frog",     "zombie"};
+
+CharacterType getCharacterType(uint8_t characterId) {
+  if (characterId <= 2)
+    return HERO;
+  else if (characterId >= 3 && characterId <= 12)
+    return MONSTER;
+  else if (characterId >= 13 && characterId <= 14)
+    return NPC;
+  else if (characterId >= 15 && characterId <= 17)
+    return TREASURE;
+  else
+    return OTHER;
+}
+
 Feedback parseFeedback(const std::string &input, const Config &config) {
-  // Expected format: "ab cd ef gh ij 01201"
+  // Expected format: "ab cd ef gh ij 01234"
   // - 5 two-character pairs (space-separated) representing characters
-  // - 5 digits (no spaces) representing colors: 0=grey, 1=yellow, 2=green
+  // - 5 digits (no spaces) representing colors:
+  //   0=not present, 1=different position no more, 2=correct position no more,
+  //   3=different position one more, 4=correct position one more
 
   (void)config; // Unused parameter
 
@@ -35,7 +62,7 @@ Feedback parseFeedback(const std::string &input, const Config &config) {
 
   // Validate input: should have 6 tokens (5 character pairs + 1 color string)
   if (tokens.size() != 6) {
-    throw std::runtime_error("Invalid format. Expected: 'ab cd ef gh ij 01201' "
+    throw std::runtime_error("Invalid format. Expected: 'ab cd ef gh ij 01234' "
                              "(5 character pairs and 5 color digits)");
   }
 
@@ -74,23 +101,20 @@ Feedback parseFeedback(const std::string &input, const Config &config) {
   // Parse the color string (5 digits)
   const std::string &colorStr = tokens[5];
   if (colorStr.length() != NUM_SLOTS) {
-    throw std::runtime_error(
-        "Invalid color string '" + colorStr +
-        "'. Must be exactly 5 digits (0=grey, 1=yellow, 2=green)");
+    throw std::runtime_error("Invalid color string '" + colorStr +
+                             "'. Must be exactly 5 digits (0-4)");
   }
 
   for (size_t i = 0; i < NUM_SLOTS; ++i) {
     char colorChar = colorStr[i];
-    if (colorChar == '0') {
-      fb.setGrey(i);
-    } else if (colorChar == '1') {
-      fb.setYellow(i);
-    } else if (colorChar == '2') {
-      fb.setGreen(i);
+    if (colorChar >= '0' && colorChar <= '4') {
+      fb.setColor(i, colorChar - '0');
     } else {
-      throw std::runtime_error("Invalid color digit '" +
-                               std::string(1, colorChar) +
-                               "'. Must be 0 (grey), 1 (yellow), or 2 (green)");
+      throw std::runtime_error(
+          "Invalid color digit '" + std::string(1, colorChar) +
+          "'. Must be 0-4 (0=not present, 1=diff pos no more, "
+          "2=correct pos no more, 3=diff pos one more, 4=correct pos one "
+          "more)");
     }
   }
 
@@ -102,37 +126,49 @@ bool matchesFeedback(const Pattern &candidate, const Feedback &fb) {
 #ifdef TRACY_ENABLE
   ZoneScoped;
 #endif
+  // First check if the pattern is valid according to game rules
+  if (!isValidPattern(candidate)) {
+    return false;
+  }
+
   const Pattern &guess = fb.pattern;
 
   // Use precomputed character counts from the candidate
   std::array<uint8_t, NUM_CHARACTERS> candidateCount = candidate.characterCount;
 
-  // Check greens first, and adjust counts
+  // First pass: Check all positions marked as correct (2 or 4)
   for (size_t i = 0; i < NUM_SLOTS; ++i) {
-    if (fb.colors[i * 2 + 1]) // Green
-    {                         // Green
+    int color = fb.getColor(i);
+    if (color == 2 || color == 4) {
+      // Must match at this position
       if (candidate.characters[i] != guess.characters[i]) {
-        return false; // Must match green letters
+        return false;
       }
       candidateCount[candidate.characters[i]]--;
     }
   }
 
+  // Second pass: Check other constraints
   for (size_t i = 0; i < NUM_SLOTS; ++i) {
-    uint8_t guessCharacter = guess.characters[i];
-    if (fb.colors[i * 2 + 1]) { // Green (already checked)
+    int color = fb.getColor(i);
+    uint8_t guessChar = guess.characters[i];
+
+    if (color == 2 || color == 4) {
+      // Already handled in first pass
       continue;
-    } else if (fb.colors[i * 2]) { // Yellow
-      if (candidate.characters[i] == guessCharacter) {
-        return false; // Yellow letter cannot be in the same spot
+    } else if (color == 1 || color == 3) {
+      // Character is in the pattern but not at this position
+      if (candidate.characters[i] == guessChar) {
+        return false; // Cannot be in the same spot
       }
-      if (candidateCount[guessCharacter] <= 0) {
-        return false; // Must contain the yellow letter elsewhere
+      if (candidateCount[guessChar] <= 0) {
+        return false; // Must have this character elsewhere
       }
-      candidateCount[guessCharacter]--;
-    } else { // Grey
-      if (candidateCount[guessCharacter] > 0) {
-        return false; // Candidate has a letter that was marked grey
+      candidateCount[guessChar]--;
+    } else if (color == 0) {
+      // Character is not present (or all instances already accounted for)
+      if (candidateCount[guessChar] > 0) {
+        return false; // Candidate has more of this character than allowed
       }
     }
   }
@@ -140,7 +176,7 @@ bool matchesFeedback(const Pattern &candidate, const Feedback &fb) {
   return true;
 }
 
-// Generate feedback for a guess against a target word
+// Generate feedback for a guess against a target pattern
 Feedback generateFeedback(const Pattern &target, const Pattern &guess) {
 #ifdef TRACY_ENABLE
   ZoneScoped;
@@ -149,34 +185,155 @@ Feedback generateFeedback(const Pattern &target, const Pattern &guess) {
   fb.pattern = guess;
 
   // Use precomputed character counts from the target
-  std::array<uint8_t, NUM_CHARACTERS> candidateCount = target.characterCount;
+  std::array<uint8_t, NUM_CHARACTERS> remainingCount = target.characterCount;
 
-  // First pass: Mark greens. A green is represented by setting both bits for a
-  // position to 1. Example for position i: bit (i*2) = 1, bit (i*2 + 1) = 1.
+  // First pass: Mark correct positions (2 or 4)
   for (size_t i = 0; i < NUM_SLOTS; ++i) {
     if (target.characters[i] == guess.characters[i]) {
-      // Direct manipulation: Set the 'green' bit and the 'yellow' bit.
-      fb.colors[i * 2 + 1] = 1; // This bit signals "correct position" (Green).
-      fb.colors[i * 2] = 1;     // This bit signals "in word" (Green or Yellow).
-
-      candidateCount[target.characters[i]]--;
+      remainingCount[target.characters[i]]--;
     }
   }
 
-  // Second pass: Mark yellows. A yellow is when the "in word" bit is 1 but
-  // "correct position" is 0.
+  // Second pass: Determine full feedback for each position
   for (size_t i = 0; i < NUM_SLOTS; ++i) {
-    if (!fb.colors[i * 2 + 1]) // If it's NOT green...
-    {
-      int guessCharIndex = guess.characters[i];
-      if (candidateCount[guessCharIndex] > 0) {
-        fb.colors[i * 2] = 1;
-        candidateCount[guessCharIndex]--;
+    uint8_t guessChar = guess.characters[i];
+
+    if (target.characters[i] == guessChar) {
+      // Correct position
+      if (remainingCount[guessChar] > 0) {
+        fb.setColor(i, 4); // Correct position, one more
+      } else {
+        fb.setColor(i, 2); // Correct position, no more
+      }
+    } else {
+      // Not in correct position
+      if (remainingCount[guessChar] > 0) {
+        fb.setColor(i, 3); // Different position, one more
+        remainingCount[guessChar]--;
+      } else if (remainingCount[guessChar] == 0 &&
+                 target.characterCount[guessChar] > 0) {
+        fb.setColor(i, 1); // Different position, no more (already used up)
+      } else {
+        fb.setColor(i, 0); // Not present
       }
     }
   }
 
   return fb;
+}
+
+// Check if a pattern is valid according to game rules
+bool isValidPattern(const Pattern &pattern) {
+  std::array<uint8_t, NUM_CHARACTER_TYPES> characterTypeCounts = {};
+  bool dragonNotInLast = false;
+
+  for (uint8_t i = 0; i < NUM_SLOTS; ++i) {
+    uint8_t c = pattern.characters[i];
+    CharacterType cType = getCharacterType(c);
+    characterTypeCounts[cType]++;
+
+    if (c == DRAGON && i != 4) {
+      dragonNotInLast = true;
+    }
+  }
+
+  const auto &characterCounts = pattern.characterCount;
+
+  // Position-based constraints
+  for (uint8_t i = 0; i < NUM_SLOTS; ++i) {
+    uint8_t c = pattern.characters[i];
+    CharacterType cType = getCharacterType(c);
+
+    // Heroes can appear in spots 0 and 1
+    if ((cType == HERO || c == ZOMBIE) && !(i == 0 || i == 1)) {
+      return false;
+    }
+    // The Knight always faces a monster
+    if (i > 0 && pattern.characters[i - 1] == KNIGHT &&
+        !(cType == MONSTER || c == FROG)) {
+      return false;
+    }
+    // The Archer cannot face a monster
+    if (i > 0 && pattern.characters[i - 1] == ARCHER &&
+        (cType == MONSTER || c == FROG)) {
+      return false;
+    }
+    // The bandit can only appear in the first position
+    if (c == BANDIT && i != 0) {
+      return false;
+    }
+    // The sorcerer can only appear in the last position
+    if (c == SORCERER && i != 4) {
+      return false;
+    }
+    // The troll always faces a hero or NPC
+    if (i > 0) {
+      uint8_t lastC = pattern.characters[i - 1];
+      CharacterType lastCType = getCharacterType(lastC);
+      if (c == TROLL &&
+          !(lastCType == HERO || lastCType == NPC || lastC == ZOMBIE)) {
+        return false;
+      }
+    }
+    // The villager can only appear in spots 0 or 1
+    if (c == VILLAGER && !(i == 0 || i == 1)) {
+      return false;
+    }
+    // The king can only appear in spot 0
+    if (c == KING && i != 0) {
+      return false;
+    }
+    // The relic can only appear in spot 4
+    if (c == RELIC && i != 4) {
+      return false;
+    }
+  }
+
+  // Count-based constraints
+  // The Mage always turns a monster into a frog
+  if (characterCounts[MAGE] > 0 && characterCounts[FROG] == 0) {
+    return false;
+  }
+  // Bats always come in a pair
+  if (characterCounts[BAT] % 2 != 0) {
+    return false;
+  }
+  // Spiders always come in triplets
+  if (characterCounts[SPIDER] % 3 != 0) {
+    return false;
+  }
+  // Axe Orcs and Blade Orcs always appear together
+  if ((characterCounts[AXE_ORC] > 0 || characterCounts[BLADE_ORC] > 0) &&
+      characterCounts[AXE_ORC] != characterCounts[BLADE_ORC]) {
+    return false;
+  }
+  // The necromancer always turns all heroes into zombies
+  if (characterCounts[NECROMANCER] > 0 && characterTypeCounts[HERO] > 0) {
+    return false;
+  }
+  // The troll always comes without treasure
+  if (characterCounts[TROLL] > 0 && characterTypeCounts[TREASURE] > 0) {
+    return false;
+  }
+  // The dragon always comes with no other monsters
+  if (characterCounts[DRAGON] > 0 && characterTypeCounts[MONSTER] > 1) {
+    return false;
+  }
+  // The dragon always comes with no coins
+  if (characterCounts[DRAGON] > 0 && characterCounts[COINS] > 0) {
+    return false;
+  }
+  // Coins come as a pair or triple
+  if (characterCounts[COINS] > 0 && characterCounts[COINS] % 2 != 0 &&
+      characterCounts[COINS] % 3 != 0) {
+    return false;
+  }
+  // If there is a dragon not in the last position, then there is a relic
+  if (dragonNotInLast && characterCounts[RELIC] == 0) {
+    return false;
+  }
+
+  return true;
 }
 
 // Generate all possible patterns for the given configuration
@@ -289,43 +446,44 @@ std::vector<Pattern> generateAllPossiblePatterns() {
       CharacterType cType = getCharacterType(c);
       // Heroes can appear in spots 0 and 1
       if ((cType == HERO || c == ZOMBIE) && !(pos == 0 || pos == 1)) {
-        return;
+        continue;
       }
       // The Knight always faces a monster
       if (pos > 0 && characters[pos - 1] == KNIGHT &&
           !(cType == MONSTER || c == FROG)) {
-        return;
+        continue;
       }
       // The Archer cannot face a monster
       if (pos > 0 && characters[pos - 1] == ARCHER &&
           (cType == MONSTER || c == FROG)) {
-        return;
+        continue;
       }
       // The bandit can only appear in the first position
       if (c == BANDIT && pos != 0) {
-        return;
+        continue;
       }
       // The sorcerer can only appear in the last position
       if (c == SORCERER && pos != 4) {
-        return;
+        continue;
       }
       // The troll always faces a hero or NPC
-      // TODO: fix this so that it checks pos - 1 as pos + 1 will always be 0
-      if (pos < 4 && characters[pos + 1] == TROLL &&
-          !(cType == HERO || cType == NPC || c == ZOMBIE)) {
-        return;
+      uint8_t lastCType = pos > 0 ? getCharacterType(characters[pos - 1]) : 0;
+      uint8_t lastC = pos > 0 ? characters[pos - 1] : 0;
+      if (pos > 0 && c == TROLL &&
+          !(lastCType == HERO || lastCType == NPC || lastC == ZOMBIE)) {
+        continue;
       }
       // The villager can only appear in spots 0 or 1
       if (c == VILLAGER && !(pos == 0 || pos == 1)) {
-        return;
+        continue;
       }
       // The king can only appear in spot 0
       if (c == KING && pos != 0) {
-        return;
+        continue;
       }
       // The relic can only appear in spot 4
       if (c == RELIC && pos != 4) {
-        return;
+        continue;
       }
 
       characters[pos] = static_cast<uint8_t>(c);

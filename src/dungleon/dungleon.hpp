@@ -47,28 +47,11 @@ enum Character {
   ZOMBIE = 19
 };
 
-CharacterType getCharacterType(uint8_t characterId) {
-  if (characterId <= 2)
-    return HERO;
-  else if (characterId >= 3 && characterId <= 12)
-    return MONSTER;
-  else if (characterId >= 13 && characterId <= 14)
-    return NPC;
-  else if (characterId >= 15 && characterId <= 17)
-    return TREASURE;
-  else
-    return OTHER;
-}
-
-std::array<std::string, NUM_CHARACTERS> CHARACTER_IDS = {
-    "ar", "kn", "ma", "bt", "dr", "bo", "ne", "ao", "sk", "sp",
-    "bd", "tr", "so", "ki", "vi", "co", "ch", "re", "fr", "zo"};
-
-std::array<std::string, NUM_CHARACTERS> CHARACTER_NAMES = {
-    "archer",    "knight",      "mage",     "bat",      "dragon",
-    "blade orc", "necromancer", "axe orc",  "skeleton", "spider",
-    "bandit",    "troll",       "sorcerer", "king",     "villager",
-    "coins",     "chest",       "relic",    "frog",     "zombie"};
+// Declare global variables and functions as extern to avoid multiple
+// definitions
+extern std::array<std::string, NUM_CHARACTERS> CHARACTER_IDS;
+extern std::array<std::string, NUM_CHARACTERS> CHARACTER_NAMES;
+CharacterType getCharacterType(uint8_t characterId);
 
 struct Config {
   uint8_t maxDepth = 0; // How many moves ahead to calculate ENT
@@ -122,7 +105,8 @@ struct Pattern {
 
 struct Feedback {
   Pattern pattern;
-  std::bitset<10> colors;
+  std::bitset<15>
+      colors; // 3 bits per position (5 positions * 3 bits = 15 bits)
 
   bool operator==(const Feedback &other) const {
     return pattern == other.pattern && colors == other.colors;
@@ -135,27 +119,28 @@ struct Feedback {
   }
 
   // Helper methods to get/set feedback for position i
-  void setGrey(const int i) {
-    colors.reset(i * 2);
-    colors.reset(i * 2 + 1);
-  }
-
-  void setYellow(const int i) {
-    colors.set(i * 2);
-    colors.reset(i * 2 + 1);
-  }
-
-  void setGreen(const int i) {
-    colors.set(i * 2);
-    colors.set(i * 2 + 1);
+  // 0 = not present
+  // 1 = different position, no more
+  // 2 = correct position, no more
+  // 3 = different position, one more
+  // 4 = correct position, one more
+  void setColor(const int i, const int color) {
+    int bitPos = i * 3;
+    colors[bitPos] = (color & 1) != 0;
+    colors[bitPos + 1] = (color & 2) != 0;
+    colors[bitPos + 2] = (color & 4) != 0;
   }
 
   int getColor(const int i) const {
-    if (colors[i * 2 + 1])
-      return 2; // green
-    if (colors[i * 2])
-      return 1; // yellow
-    return 0;   // grey
+    int bitPos = i * 3;
+    int color = 0;
+    if (colors[bitPos])
+      color |= 1;
+    if (colors[bitPos + 1])
+      color |= 2;
+    if (colors[bitPos + 2])
+      color |= 4;
+    return color;
   }
 };
 
@@ -192,11 +177,17 @@ Feedback parseFeedback(const std::string &input, const Config &config);
 // Check if a pattern matches feedback constraints
 bool matchesFeedback(const Pattern &candidate, const Feedback &fb);
 
+// Check if a pattern is valid according to game rules
+bool isValidPattern(const Pattern &pattern);
+
 // Generate feedback for a guess against a target pattern
 Feedback generateFeedback(const Pattern &target, const Pattern &guess);
 
-// Generate all possible patterns for the given configuration
+// Generate all patterns for the given configuration
 std::vector<Pattern> generateAllPatterns();
+
+// Generate all possible patterns for the given configuration
+std::vector<Pattern> generateAllPossiblePatterns();
 
 // Generic EntSolver-based version (cleaner implementation)
 Result runDungleonSolver(const std::vector<Pattern> &allPatterns,

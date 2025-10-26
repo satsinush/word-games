@@ -6,6 +6,7 @@
 #include <string>
 #include <vector>
 
+#include "dungleon/dungleon.hpp"
 #include "game/Game.hpp"
 #include "letterBoxed/LetterBoxedGame.hpp"
 #include "mastermind/MastermindGame.hpp"
@@ -13,6 +14,7 @@
 #include "utils/inputUtils.hpp"
 #include "utils/wordUtils.hpp"
 
+#include "dungleon/DungleonGame.hpp"
 #include "wordle/WordleGame.hpp"
 
 #ifdef WITH_GUI
@@ -100,7 +102,8 @@ Examples:
 )";
 
   printf(usage_message, programName, programName, programName, programName,
-         programName, programName, programName, programName, programName);
+         programName, programName, programName, programName, programName,
+         programName);
 }
 
 void runReadMode(const std::map<std::string, std::string> &args,
@@ -158,6 +161,8 @@ createGame(const std::string &mode, const std::vector<Utils::Word> &wordVec) {
     return std::make_unique<Game::WordleGame>(wordVec);
   else if (mode == "mastermind")
     return std::make_unique<Game::MastermindGame>();
+  else if (mode == "dungleon")
+    return std::make_unique<Game::DungleonGame>();
   else
     return nullptr;
 }
@@ -169,7 +174,8 @@ void runInteractiveMode(const std::vector<Utils::Word> &wordVec) {
     std::cout << "  2: Spelling Bee\n";
     std::cout << "  3: Wordle\n";
     std::cout << "  4: Mastermind\n";
-    std::cout << "  5: Read Results File\n";
+    std::cout << "  5: Dungleon\n";
+    std::cout << "  6: Read Results File\n";
     std::cout << "  q: Quit\n";
     std::cout << "Enter choice: ";
 
@@ -189,7 +195,7 @@ void runInteractiveMode(const std::vector<Utils::Word> &wordVec) {
     if (input == "q")
       return;
 
-    if (input == "5") {
+    if (input == "6") {
       // Interactive read mode
       std::string filename = Utils::Input::promptString(
           "Enter filename to read", "results/temp.txt");
@@ -220,6 +226,8 @@ void runInteractiveMode(const std::vector<Utils::Word> &wordVec) {
       game = createGame("wordle", wordVec);
     else if (input == "4")
       game = createGame("mastermind", wordVec);
+    else if (input == "5")
+      game = createGame("dungleon", wordVec);
     else {
       std::cout << "Invalid choice. Please try again.\n";
       continue;
