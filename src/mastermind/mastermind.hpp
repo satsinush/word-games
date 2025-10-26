@@ -41,13 +41,24 @@ struct Pattern {
   std::array<uint8_t, MAX_PEGS> colors; // Array of color values
   uint8_t numPegs = 4;                  // Actual number of pegs used
   double score = 1.0;                   // Score for weighting (default 1.0)
+  std::array<uint8_t, 256> colorCount =
+      {}; // Precomputed color occurrence counts
 
   Pattern() { colors.fill(0); }
   Pattern(const std::array<uint8_t, MAX_PEGS> &c, uint8_t pegCount)
       : numPegs(pegCount) {
     colors = c;
+    computeColorCount();
   }
   Pattern(uint8_t pegCount) : numPegs(pegCount) { colors.fill(0); }
+
+  // Compute color occurrence counts
+  void computeColorCount() {
+    colorCount.fill(0);
+    for (uint8_t i = 0; i < numPegs; ++i) {
+      colorCount[colors[i]]++;
+    }
+  }
 
   bool operator<(const Pattern &other) const {
     if (numPegs != other.numPegs)

@@ -4,6 +4,7 @@
 #include <cmath>
 #include <iostream>
 #include <map>
+#include <sstream>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -17,9 +18,82 @@
 #endif
 
 namespace Dungleon {
-Feedback parseFeedback(const std::string &input) {
+Feedback parseFeedback(const std::string &input, const Config &config) {
+  // Expected format: "ab cd ef gh ij 01201"
+  // - 5 two-character pairs (space-separated) representing characters
+  // - 5 digits (no spaces) representing colors: 0=grey, 1=yellow, 2=green
+
+  (void)config; // Unused parameter
+
   Feedback fb;
-  // TODO
+  std::istringstream iss(input);
+  std::vector<std::string> tokens;
+  std::string token; // Read all tokens
+  while (iss >> token) {
+    tokens.push_back(token);
+  }
+
+  // Validate input: should have 6 tokens (5 character pairs + 1 color string)
+  if (tokens.size() != 6) {
+    throw std::runtime_error("Invalid format. Expected: 'ab cd ef gh ij 01201' "
+                             "(5 character pairs and 5 color digits)");
+  }
+
+  // Parse the 5 character pairs into an array
+  std::array<uint8_t, 5> characters = {};
+  for (size_t i = 0; i < NUM_SLOTS; ++i) {
+    const std::string &charPair = tokens[i];
+    if (charPair.length() != 2) {
+      throw std::runtime_error(
+          "Invalid character pair '" + charPair +
+          "'. Each character must be exactly 2 characters.");
+    }
+
+    // Find the character ID from CHARACTER_IDS array
+    bool found = false;
+    for (uint8_t j = 0; j < NUM_CHARACTERS; ++j) {
+      if (CHARACTER_IDS[j] == charPair) {
+        characters[i] = j;
+        found = true;
+        break;
+      }
+    }
+
+    if (!found) {
+      throw std::runtime_error(
+          "Unknown character '" + charPair +
+          "'. Valid characters: ar, kn, ma, bt, dr, bo, ne, ao, sk, sp, bd, "
+          "tr, so, ki, vi, co, ch, re, fr, zo");
+    }
+  }
+
+  // Create pattern using array constructor which automatically calls
+  // computeCharacterCount()
+  fb.pattern = Pattern(characters);
+
+  // Parse the color string (5 digits)
+  const std::string &colorStr = tokens[5];
+  if (colorStr.length() != NUM_SLOTS) {
+    throw std::runtime_error(
+        "Invalid color string '" + colorStr +
+        "'. Must be exactly 5 digits (0=grey, 1=yellow, 2=green)");
+  }
+
+  for (size_t i = 0; i < NUM_SLOTS; ++i) {
+    char colorChar = colorStr[i];
+    if (colorChar == '0') {
+      fb.setGrey(i);
+    } else if (colorChar == '1') {
+      fb.setYellow(i);
+    } else if (colorChar == '2') {
+      fb.setGreen(i);
+    } else {
+      throw std::runtime_error("Invalid color digit '" +
+                               std::string(1, colorChar) +
+                               "'. Must be 0 (grey), 1 (yellow), or 2 (green)");
+    }
+  }
+
   return fb;
 }
 
@@ -30,12 +104,8 @@ bool matchesFeedback(const Pattern &candidate, const Feedback &fb) {
 #endif
   const Pattern &guess = fb.pattern;
 
-  // TODO: optimize this by precomuting character counts in Pattern
-  std::array<uint8_t, NUM_CHARACTERS> candidateCount = {};
-  for (uint8_t i = 0; i < NUM_SLOTS; ++i) {
-    uint8_t character = candidate.characters[i];
-    candidateCount[character]++;
-  }
+  // Use precomputed character counts from the candidate
+  std::array<uint8_t, NUM_CHARACTERS> candidateCount = candidate.characterCount;
 
   // Check greens first, and adjust counts
   for (size_t i = 0; i < NUM_SLOTS; ++i) {
@@ -78,12 +148,8 @@ Feedback generateFeedback(const Pattern &target, const Pattern &guess) {
   Feedback fb;
   fb.pattern = guess;
 
-  // TODO: optimize this by precomuting character counts in Pattern
-  std::array<uint8_t, NUM_CHARACTERS> candidateCount = {};
-  for (uint8_t i = 0; i < NUM_SLOTS; ++i) {
-    uint8_t character = target.characters[i];
-    candidateCount[character]++;
-  }
+  // Use precomputed character counts from the target
+  std::array<uint8_t, NUM_CHARACTERS> candidateCount = target.characterCount;
 
   // First pass: Mark greens. A green is represented by setting both bits for a
   // position to 1. Example for position i: bit (i*2) = 1, bit (i*2 + 1) = 1.
@@ -121,16 +187,18 @@ std::vector<Pattern> generateAllPatterns() {
   std::vector<Pattern> patterns;
 
   // Generate all possible combinations with repetition
-  Pattern current;
+  std::array<uint8_t, 5> characters = {};
 
   std::function<void(unsigned int)> generate = [&](unsigned int pos) {
     if (pos == NUM_SLOTS) {
-      patterns.push_back(current);
+      // Create pattern using array constructor which automatically calls
+      // computeCharacterCount()
+      patterns.emplace_back(characters);
       return;
     }
 
     for (unsigned int c = 0; c < NUM_CHARACTERS; ++c) {
-      current.characters[pos] = static_cast<uint8_t>(c);
+      characters[pos] = static_cast<uint8_t>(c);
       generate(pos + 1);
     }
   };
@@ -148,23 +216,28 @@ std::vector<Pattern> generateAllPossiblePatterns() {
   std::vector<Pattern> patterns;
 
   // Generate all possible combinations with repetition
-  Pattern current;
+  std::array<uint8_t, 5> characters = {};
 
   std::function<void(unsigned int)> generate = [&](unsigned int pos) {
     if (pos == NUM_SLOTS) {
-      std::array<uint8_t, NUM_CHARACTERS> characterCounts = {};
+      // Create pattern using array constructor which automatically calls
+      // computeCharacterCount()
+      Pattern pattern(characters);
+
       std::array<uint8_t, NUM_CHARACTER_TYPES> characterTypeCounts = {};
       bool dragonNotInLast = false;
       for (uint8_t i = 0; i < NUM_SLOTS; ++i) {
-        uint8_t c = current.characters[i];
+        uint8_t c = pattern.characters[i];
         CharacterType cType = getCharacterType(c);
-        characterCounts[c]++;
         characterTypeCounts[cType]++;
 
         if (c == DRAGON && i != 4) {
           dragonNotInLast = true;
         }
       }
+
+      // Use precomputed characterCount instead of recounting
+      const auto &characterCounts = pattern.characterCount;
 
       // The Mage (2) always turns a monster into a frog
       if (characterCounts[MAGE] > 0 && characterCounts[FROG] == 0) {
@@ -208,7 +281,7 @@ std::vector<Pattern> generateAllPossiblePatterns() {
         return;
       }
 
-      patterns.push_back(current);
+      patterns.push_back(pattern);
       return;
     }
 
@@ -219,12 +292,12 @@ std::vector<Pattern> generateAllPossiblePatterns() {
         return;
       }
       // The Knight always faces a monster
-      if (pos > 0 && current.characters[pos - 1] == KNIGHT &&
+      if (pos > 0 && characters[pos - 1] == KNIGHT &&
           !(cType == MONSTER || c == FROG)) {
         return;
       }
       // The Archer cannot face a monster
-      if (pos > 0 && current.characters[pos - 1] == ARCHER &&
+      if (pos > 0 && characters[pos - 1] == ARCHER &&
           (cType == MONSTER || c == FROG)) {
         return;
       }
@@ -238,7 +311,7 @@ std::vector<Pattern> generateAllPossiblePatterns() {
       }
       // The troll always faces a hero or NPC
       // TODO: fix this so that it checks pos - 1 as pos + 1 will always be 0
-      if (pos < 4 && current.characters[pos + 1] == TROLL &&
+      if (pos < 4 && characters[pos + 1] == TROLL &&
           !(cType == HERO || cType == NPC || c == ZOMBIE)) {
         return;
       }
@@ -255,7 +328,7 @@ std::vector<Pattern> generateAllPossiblePatterns() {
         return;
       }
 
-      current.characters[pos] = static_cast<uint8_t>(c);
+      characters[pos] = static_cast<uint8_t>(c);
       generate(pos + 1);
     }
   };

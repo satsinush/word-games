@@ -32,11 +32,11 @@ Feedback parseFeedback(const std::string &input, const Config &config) {
   }
 
   // Parse pattern string (no spaces between characters)
-  Pattern guess;
-  guess.numPegs = 0;
+  std::array<uint8_t, MAX_PEGS> colors = {};
+  uint8_t numPegs = 0;
 
   for (char c : patternStr) {
-    if (guess.numPegs >= MAX_PEGS) {
+    if (numPegs >= MAX_PEGS) {
       break;
     }
     int colorIdx = config.charToColor(c);
@@ -44,14 +44,18 @@ Feedback parseFeedback(const std::string &input, const Config &config) {
       throw std::runtime_error("Invalid color character '" + std::string(1, c) +
                                "'. Available colors: " + config.colorChars);
     }
-    guess.colors[guess.numPegs] = static_cast<uint8_t>(colorIdx);
-    guess.numPegs++;
+    colors[numPegs] = static_cast<uint8_t>(colorIdx);
+    numPegs++;
   }
 
-  if (guess.numPegs != config.numPegs) {
+  if (numPegs != config.numPegs) {
     throw std::runtime_error("Pattern must have exactly " +
                              std::to_string(config.numPegs) + " colors");
   }
+
+  // Create pattern using array constructor which automatically calls
+  // computeColorCount()
+  Pattern guess(colors, numPegs);
 
   // Validate feedback values
   if (correctPos < 0 || correctPos > static_cast<int>(config.numPegs) ||
@@ -76,14 +80,7 @@ bool matchesFeedback(const Pattern &candidate, const Feedback &fb) {
   if (candidate.numPegs != guess.numPegs)
     return false;
 
-  // TODO: Precompute this and store as an attribute in each Pattern
-  // Count color occurrences in candidate using vector for better cache
-  // performance uint8_t can only have values 0-255, so reserve 256 spots
-  std::array<uint8_t, 256> candidateCount = {};
-  for (uint8_t i = 0; i < candidate.numPegs; ++i) {
-    uint8_t color = candidate.colors[i];
-    candidateCount[color]++;
-  }
+  std::array<uint8_t, 256> candidateCount = candidate.colorCount;
 
   // Count correct positions and adjust counts
   int correctPositions = 0;
@@ -124,13 +121,7 @@ Feedback generateFeedback(const Pattern &target, const Pattern &guess) {
   if (target.numPegs != guess.numPegs)
     return fb; // Invalid input
 
-  // TODO: optimize this by precomuting character counts in Pattern
-  // Count color occurrences in target using vector for better cache performance
-  // uint8_t can only have values 0-255, so reserve 256 spots
-  std::array<int, 256> targetCount = {};
-  for (uint8_t i = 0; i < target.numPegs; ++i) {
-    targetCount[target.colors[i]]++;
-  }
+  std::array<uint8_t, 256> targetCount = target.colorCount;
 
   // First pass: count correct positions
   for (uint8_t i = 0; i < target.numPegs; ++i) {
@@ -165,17 +156,19 @@ std::vector<Pattern> generateAllPatterns(const Config &config) {
 
   if (config.allowDuplicates) {
     // Generate all possible combinations with repetition
-    Pattern current;
-    current.numPegs = config.numPegs;
+    std::array<uint8_t, MAX_PEGS> colors = {};
+    uint8_t numPegs = config.numPegs;
 
     std::function<void(unsigned int)> generate = [&](unsigned int pos) {
       if (pos == config.numPegs) {
-        patterns.push_back(current);
+        // Create pattern using array constructor which automatically calls
+        // computeColorCount()
+        patterns.emplace_back(colors, numPegs);
         return;
       }
 
       for (unsigned int color = 0; color < numColors; ++color) {
-        current.colors[pos] = static_cast<uint8_t>(color);
+        colors[pos] = static_cast<uint8_t>(color);
         generate(pos + 1);
       }
     };
@@ -193,20 +186,22 @@ std::vector<Pattern> generateAllPatterns(const Config &config) {
       availableColors[i] = static_cast<uint8_t>(i);
     }
 
-    Pattern current;
-    current.numPegs = config.numPegs;
+    std::array<uint8_t, MAX_PEGS> colors = {};
+    uint8_t numPegs = config.numPegs;
     std::vector<bool> used(numColors, false);
 
     std::function<void(unsigned int)> generate = [&](unsigned int pos) {
       if (pos == config.numPegs) {
-        patterns.push_back(current);
+        // Create pattern using array constructor which automatically calls
+        // computeColorCount()
+        patterns.emplace_back(colors, numPegs);
         return;
       }
 
       for (unsigned int i = 0; i < numColors; ++i) {
         if (!used[i]) {
           used[i] = true;
-          current.colors[pos] = static_cast<uint8_t>(i);
+          colors[pos] = static_cast<uint8_t>(i);
           generate(pos + 1);
           used[i] = false;
         }

@@ -77,9 +77,21 @@ struct Config {
 struct Pattern {
   std::array<uint8_t, 5> characters; // Array of character values
   double score = 1.0;                // Score for weighting (default 1.0)
+  std::array<uint8_t, NUM_CHARACTERS> characterCount =
+      {}; // Precomputed character occurrence counts
 
   Pattern() { characters.fill(0); }
-  Pattern(const std::array<uint8_t, 5> &c) : characters(c) {}
+  Pattern(const std::array<uint8_t, 5> &c) : characters(c) {
+    computeCharacterCount();
+  }
+
+  // Compute character occurrence counts
+  void computeCharacterCount() {
+    characterCount.fill(0);
+    for (uint8_t i = 0; i < NUM_SLOTS; ++i) {
+      characterCount[characters[i]]++;
+    }
+  }
 
   bool operator<(const Pattern &other) const {
     for (uint8_t i = 0; i < 5; ++i) {
