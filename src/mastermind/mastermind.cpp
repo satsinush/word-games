@@ -249,15 +249,16 @@ protected:
 
 #include <atomic>
 
-Result runMastermindSolver(const std::vector<Pattern> &allPatterns,
-                           const std::vector<Feedback> &guessHistory,
-                           const Config &config, std::atomic<bool> *cancel) {
+Result runMastermindSolver(const Config &config, std::atomic<bool> *cancel) {
 #ifdef TRACY_ENABLE
   ZoneScoped;
 #endif
 
+  // Generate all possible patterns for the given configuration
+  std::vector<Pattern> allPatterns = Mastermind::generateAllPatterns(config);
+
   // Use the specialized Mastermind ENT solver - returns Result directly!
   MastermindEntSolver solver;
-  return solver.solve(allPatterns, guessHistory, config, cancel);
+  return solver.solve(allPatterns, allPatterns, config, cancel);
 }
 } // namespace Mastermind

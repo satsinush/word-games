@@ -8,8 +8,6 @@
 namespace Game {
 class SpellingBeeGame : public IGame {
 private:
-  const std::vector<Utils::Word> &wordVec;
-
   // UI methods
   void drawPuzzle(const std::array<char, 7> &letters);
   SpellingBee::Config getConfigFromUser();
@@ -18,7 +16,7 @@ private:
   void printSolutions(const std::vector<Utils::Word> &solutions);
 
 public:
-  explicit SpellingBeeGame(const std::vector<Utils::Word> &words);
+  explicit SpellingBeeGame();
 
   void runCLI() override;
   void runHeadless(const Utils::Input::CommandArgs &cmdArgs) override;

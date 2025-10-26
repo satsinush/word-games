@@ -218,7 +218,7 @@ bool MastermindWidget::showConfigDialog() {
 
     // Clear feedback history if pegs or colors changed
     if (oldNumPegs != config.numPegs || oldColorChars != config.colorChars) {
-      feedbackHistory.clear();
+      config.feedbackHistory.clear();
       ui->patternField->clear();
     }
 
@@ -267,7 +267,7 @@ void MastermindWidget::onSubmit() {
     feedback.correctPosition = 0;
     feedback.correctColor = 0;
 
-    feedbackHistory.push_back(feedback);
+    config.feedbackHistory.push_back(feedback);
 
     // Rebuild the feedback list to show the new entry
     rebuildFeedbackList();
@@ -296,7 +296,6 @@ void MastermindWidget::onSettings() {
 void MastermindWidget::onTableRowClicked(int row, int column) {
   Q_UNUSED(column);
 
-  // TODO: figure out why it doesn't populate correctly
   QTableWidget *table = qobject_cast<QTableWidget *>(sender());
   if (!table) {
     return;
@@ -330,7 +329,7 @@ void MastermindWidget::onTableRowClicked(int row, int column) {
   feedback.correctPosition = 0;
   feedback.correctColor = 0;
 
-  feedbackHistory.push_back(feedback);
+  config.feedbackHistory.push_back(feedback);
 
   // Rebuild the feedback list to show the new entry
   rebuildFeedbackList();
@@ -342,7 +341,7 @@ void MastermindWidget::onTableRowClicked(int row, int column) {
 
 void MastermindWidget::initGame() {
   // Config is already set by showConfigDialog()
-  feedbackHistory.clear();
+  config.feedbackHistory.clear();
 
   // Clear feedback list
   QLayoutItem *item;
@@ -369,9 +368,6 @@ void MastermindWidget::initGame() {
   }
   ui->patternField->setPlaceholderText(
       QString("Enter pattern (e.g., %1)...").arg(examplePattern));
-
-  // Generate all possible patterns with new configuration
-  allPatterns = Mastermind::generateAllPatterns(config);
 }
 
 void MastermindWidget::populateResultTable(
@@ -464,8 +460,7 @@ void MastermindWidget::solveMastermind() {
   ui->resultsTabWidget->setEnabled(false);
 
   // Create and start solver thread with cancellation flag
-  solverThread = new SolverThread(allPatterns, feedbackHistory, config,
-                                  &cancellationRequested);
+  solverThread = new SolverThread(config, &cancellationRequested);
   connect(solverThread, &QThread::finished, this,
           &MastermindWidget::onSolverFinished);
   solverThread->start();
@@ -543,8 +538,8 @@ void MastermindWidget::rebuildFeedbackList() {
   }
 
   // Rebuild from feedbackHistory
-  for (size_t i = 0; i < feedbackHistory.size(); ++i) {
-    const auto &fb = feedbackHistory[i];
+  for (size_t i = 0; i < config.feedbackHistory.size(); ++i) {
+    const auto &fb = config.feedbackHistory[i];
     QString displayPattern =
         QString::fromStdString(fb.guess.toString(config)).toUpper();
     FeedbackRow *row =
@@ -559,14 +554,14 @@ void MastermindWidget::rebuildFeedbackList() {
 }
 
 void MastermindWidget::onDeleteFeedback(int index) {
-  if (index >= 0 && index < static_cast<int>(feedbackHistory.size())) {
-    feedbackHistory.erase(feedbackHistory.begin() + index);
+  if (index >= 0 && index < static_cast<int>(config.feedbackHistory.size())) {
+    config.feedbackHistory.erase(config.feedbackHistory.begin() + index);
     rebuildFeedbackList();
   }
 }
 
 void MastermindWidget::onFeedbackChanged(int index) {
-  if (index < 0 || index >= static_cast<int>(feedbackHistory.size())) {
+  if (index < 0 || index >= static_cast<int>(config.feedbackHistory.size())) {
     return;
   }
 
@@ -574,8 +569,8 @@ void MastermindWidget::onFeedbackChanged(int index) {
   FeedbackRow *row =
       qobject_cast<FeedbackRow *>(feedbackListLayout->itemAt(index)->widget());
   if (row) {
-    feedbackHistory[index].correctColor = row->getCorrectColors();
-    feedbackHistory[index].correctPosition = row->getCorrectPositions();
+    config.feedbackHistory[index].correctColor = row->getCorrectColors();
+    config.feedbackHistory[index].correctPosition = row->getCorrectPositions();
   }
 }
 

@@ -14,6 +14,5 @@ struct Config {
 };
 
 std::vector<Utils::Word>
-runSpellingBeeSolver(const std::vector<Utils::Word> &words,
-                     const Config &config, std::atomic<bool> *cancel = nullptr);
+runSpellingBeeSolver(const Config &config, std::atomic<bool> *cancel = nullptr);
 } // namespace SpellingBee

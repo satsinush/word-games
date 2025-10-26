@@ -8,8 +8,6 @@
 namespace Game {
 class WordleGame : public IGame {
 private:
-  const std::vector<Utils::Word> &wordVec;
-
   // Helper methods
   Wordle::Config getConfigFromUser();
   Wordle::Config
@@ -21,7 +19,7 @@ private:
   void saveResults(const Wordle::Result &result, const std::string &outputFile);
 
 public:
-  explicit WordleGame(const std::vector<Utils::Word> &words);
+  explicit WordleGame();
 
   void runCLI() override;
   void runHeadless(const Utils::Input::CommandArgs &cmdArgs) override;

@@ -37,8 +37,7 @@ class SpellingBeeWidget : public GameWidget {
   Q_OBJECT
 
 public:
-  explicit SpellingBeeWidget(const std::vector<Utils::Word> &words,
-                             QWidget *parent = nullptr);
+  explicit SpellingBeeWidget(QWidget *parent = nullptr);
   ~SpellingBeeWidget() override;
 
 public slots:
@@ -55,31 +54,26 @@ private:
   // Worker thread for solving
   class SolverThread : public QThread {
   public:
-    SolverThread(const SpellingBee::Config &cfg,
-                 const std::vector<Utils::Word> &words,
-                 std::atomic<bool> *cancelFlag)
-        : config(cfg), wordVecCopy(words), cancellationFlag(cancelFlag) {}
+    SolverThread(const SpellingBee::Config &cfg, std::atomic<bool> *cancelFlag)
+        : config(cfg), cancellationFlag(cancelFlag) {}
 
     std::vector<Utils::Word> getResult() const { return solutions; }
 
   protected:
     void run() override {
-      solutions = SpellingBee::runSpellingBeeSolver(wordVecCopy, config,
-                                                    cancellationFlag);
+      solutions = SpellingBee::runSpellingBeeSolver(config, cancellationFlag);
     }
 
   private:
     SpellingBee::Config config;
     // Copy of the word vector so the worker thread doesn't hold references
     // to GUI-owned data.
-    std::vector<Utils::Word> wordVecCopy;
     std::vector<Utils::Word> solutions;
     std::atomic<bool> *cancellationFlag;
   };
 
 private:
   Ui::SpellingBeeWidget *ui;
-  const std::vector<Utils::Word> &wordVec;
 
   SpellingBee::Config config;
   std::vector<Utils::Word> solutions;

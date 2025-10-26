@@ -80,8 +80,7 @@ class WordleWidget : public GameWidget {
   Q_OBJECT
 
 public:
-  explicit WordleWidget(const std::vector<Utils::Word> &words,
-                        QWidget *parent = nullptr);
+  explicit WordleWidget(QWidget *parent = nullptr);
   ~WordleWidget() override;
 
 public slots:
@@ -102,24 +101,18 @@ private:
   // Worker thread for solving
   class SolverThread : public QThread {
   public:
-    SolverThread(const std::vector<Utils::Word> &words,
-                 const std::vector<Wordle::Feedback> &feedback,
-                 const Wordle::Config &cfg, std::atomic<bool> *cancelFlag)
-        : wordVecCopy(words), feedbackHistory(feedback), config(cfg),
-          cancellationFlag(cancelFlag) {}
+    SolverThread(const Wordle::Config &cfg, std::atomic<bool> *cancelFlag)
+        : config(cfg), cancellationFlag(cancelFlag) {}
 
     Wordle::Result getResult() const { return result; }
 
   protected:
     void run() override {
-      result = Wordle::runWordleSolver(wordVecCopy, feedbackHistory, config,
-                                       cancellationFlag);
+      result = Wordle::runWordleSolver(config, cancellationFlag);
     }
 
   private:
     // Copy locally so the worker doesn't reference GUI-owned storage.
-    std::vector<Utils::Word> wordVecCopy;
-    std::vector<Wordle::Feedback> feedbackHistory;
     Wordle::Config config;
     Wordle::Result result;
     std::atomic<bool> *cancellationFlag;
@@ -127,9 +120,7 @@ private:
 
 private:
   Ui::WordleWidget *ui;
-  const std::vector<Utils::Word> &wordVec;
 
-  std::vector<Wordle::Feedback> feedbackHistory;
   Wordle::Config config;
 
   // Current guess row

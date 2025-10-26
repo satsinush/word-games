@@ -45,13 +45,12 @@ void filterWords(std::vector<Utils::Word> &words, const Config &config) {
               words.end());
 }
 
-std::vector<Utils::Word>
-runSpellingBeeSolver(const std::vector<Utils::Word> &words,
-                     const Config &config, std::atomic<bool> *cancel) {
+std::vector<Utils::Word> runSpellingBeeSolver(const Config &config,
+                                              std::atomic<bool> *cancel) {
 #ifdef TRACY_ENABLE
   ZoneScoped;
 #endif
-  std::vector<Utils::Word> wordsCopy = words;
+  std::vector<Utils::Word> wordsCopy = Utils::loadWords();
   filterWords(wordsCopy, config);
 
   if (cancel && cancel->load()) {

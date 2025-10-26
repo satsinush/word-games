@@ -32,6 +32,8 @@ struct Word {
   }
 };
 
+extern std::vector<Word> g_words;
+
 // Binary stream operators for efficient binary I/O
 void writeBinary(std::ostream &os, const Word &word);
 void readBinary(std::istream &is, Word &word);

@@ -150,10 +150,8 @@ void LetterBoxDisplay::paintEvent(QPaintEvent *event) {
 
 // ============ LetterBoxedWidget Implementation ============
 
-LetterBoxedWidget::LetterBoxedWidget(const std::vector<Utils::Word> &words,
-                                     QWidget *parent)
-    : GameWidget(parent), ui(new Ui::LetterBoxedWidget), wordVec(words),
-      currentPreset(1) {
+LetterBoxedWidget::LetterBoxedWidget(QWidget *parent)
+    : GameWidget(parent), ui(new Ui::LetterBoxedWidget), currentPreset(1) {
   ui->setupUi(this);
 
   // Limit input to 12 characters
@@ -576,7 +574,7 @@ void LetterBoxedWidget::onSolve() {
   resultsTable->setEnabled(false);
 
   // Create and start solver thread with cancellation flag
-  solverThread = new SolverThread(config, wordVec, &cancellationRequested);
+  solverThread = new SolverThread(config, &cancellationRequested);
   connect(solverThread, &QThread::finished, this,
           &LetterBoxedWidget::onSolverFinished);
   solverThread->start();

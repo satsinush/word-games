@@ -12,11 +12,15 @@
 #include <atomic>
 
 namespace Mastermind {
+
+struct Feedback; // forward declaration so Config can reference Feedback
+
 struct Config {
   uint8_t numPegs = 4;               // Number of pegs in the pattern
   std::string colorChars = "012345"; // Available color characters (max 256)
   bool allowDuplicates = true;       // Whether duplicate colors are allowed
   uint8_t maxDepth = 0;              // How many moves ahead to calculate ENT
+  std::vector<Feedback> feedbackHistory = {}; // History of previous feedbacks
 
   // Helper to get number of colors
   uint8_t numColors() const {
@@ -150,9 +154,7 @@ Feedback generateFeedback(const Pattern &target, const Pattern &guess);
 std::vector<Pattern> generateAllPatterns(const Config &config);
 
 // Generic EntSolver-based version (cleaner implementation)
-Result runMastermindSolver(const std::vector<Pattern> &allPatterns,
-                           const std::vector<Feedback> &guessHistory,
-                           const Config &config = Config{},
+Result runMastermindSolver(const Config &config = Config{},
                            std::atomic<bool> *cancel = nullptr);
 } // namespace Mastermind
 

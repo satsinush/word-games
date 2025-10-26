@@ -63,10 +63,8 @@ struct EquivalenceClass {
   std::vector<const WordPath *> words;
 };
 
-std::vector<Solution>
-runLetterBoxedSolver(const Config &config,
-                     const std::vector<Utils::Word> &words,
-                     std::atomic<bool> *cancel = nullptr);
+std::vector<Solution> runLetterBoxedSolver(const Config &config,
+                                           std::atomic<bool> *cancel = nullptr);
 } // namespace LetterBoxed
 
 namespace std {

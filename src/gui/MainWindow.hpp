@@ -21,8 +21,7 @@ class MainWindow : public QMainWindow {
   Q_OBJECT
 
 public:
-  explicit MainWindow(const std::vector<Utils::Word> &words,
-                      QWidget *parent = nullptr);
+  explicit MainWindow(QWidget *parent = nullptr);
   ~MainWindow();
 
 private slots:

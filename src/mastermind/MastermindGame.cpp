@@ -40,6 +40,7 @@ Mastermind::Config MastermindGame::getConfigFromArgs(
       Utils::Input::getArgValue(args, "allow-duplicates", true);
   config.maxDepth =
       static_cast<uint8_t>(Utils::Input::getArgValue(args, "max-depth", 1u));
+  config.feedbackHistory = getFeedbackFromArgs(args, config);
   return config;
 }
 
@@ -216,13 +217,6 @@ void MastermindGame::saveResults(const Mastermind::Result &result,
 void MastermindGame::runCLI() {
   Mastermind::Config config = getConfigFromUser();
 
-  // Generate all possible patterns
-  std::vector<Mastermind::Pattern> allPatterns =
-      Mastermind::generateAllPatterns(config);
-  std::cout << "Generated " << allPatterns.size() << " possible patterns.\n\n";
-
-  std::vector<Mastermind::Feedback> guessHistory;
-
   while (true) {
     std::string input;
     try {
@@ -232,13 +226,17 @@ void MastermindGame::runCLI() {
       std::cout << "Format: PATTERN POS COL (e.g., 'rgbc 2 1')\n";
       std::cout << "  Feedback: <correct_position> <correct_color>\n\n";
 
-      if (!guessHistory.empty()) {
+      if (!config.feedbackHistory.empty()) {
         std::cout << "Current guess history:\n";
-        for (size_t i = 0; i < guessHistory.size(); ++i) {
-          std::cout << (i + 1) << ". " << guessHistory[i].guess.toString(config)
+        for (size_t i = 0; i < config.feedbackHistory.size(); ++i) {
+          std::cout << (i + 1) << ". "
+                    << config.feedbackHistory[i].guess.toString(config)
                     << " -> "
-                    << static_cast<int>(guessHistory[i].correctPosition) << " "
-                    << static_cast<int>(guessHistory[i].correctColor) << "\n";
+                    << static_cast<int>(
+                           config.feedbackHistory[i].correctPosition)
+                    << " "
+                    << static_cast<int>(config.feedbackHistory[i].correctColor)
+                    << "\n";
         }
         std::cout << "\n";
       }
@@ -259,7 +257,7 @@ void MastermindGame::runCLI() {
         continue;
 
       if (input == "c" || input == "clear") {
-        guessHistory.clear();
+        config.feedbackHistory.clear();
         std::cout << "Guess history cleared.\n";
         continue;
       }
@@ -270,8 +268,7 @@ void MastermindGame::runCLI() {
               Utils::Input::promptInt("Enter search depth (0-2)", 1, 0, 2));
 
           std::cout << "Calculating best guesses...\n";
-          Mastermind::Result result = Mastermind::runMastermindSolver(
-              allPatterns, guessHistory, config);
+          Mastermind::Result result = Mastermind::runMastermindSolver(config);
 
           printResults(result, config);
           std::cout << "\nSolver completed.\n";
@@ -290,7 +287,7 @@ void MastermindGame::runCLI() {
     try {
       // Use the parseFeedback function
       Mastermind::Feedback feedback = Mastermind::parseFeedback(input, config);
-      guessHistory.push_back(feedback);
+      config.feedbackHistory.push_back(feedback);
       std::cout << "Added guess: " << feedback.guess.toString(config)
                 << " with feedback "
                 << static_cast<int>(feedback.correctPosition) << " "
@@ -306,15 +303,8 @@ void MastermindGame::runHeadless(const Utils::Input::CommandArgs &cmdArgs) {
   try {
     const auto &args = cmdArgs.flags;
     Mastermind::Config config = getConfigFromArgs(args);
-    std::vector<Mastermind::Feedback> guessHistory =
-        getFeedbackFromArgs(args, config);
 
-    // Generate all possible patterns
-    std::vector<Mastermind::Pattern> allPatterns =
-        Mastermind::generateAllPatterns(config);
-
-    Mastermind::Result result =
-        Mastermind::runMastermindSolver(allPatterns, guessHistory, config);
+    Mastermind::Result result = Mastermind::runMastermindSolver(config);
 
     std::string outputFile =
         Utils::Input::getArgValue(args, "o", std::string(""));

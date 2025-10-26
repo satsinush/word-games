@@ -200,23 +200,23 @@ protected:
   }
 };
 
-Result runWordleSolver(const std::vector<Utils::Word> &allWords,
-                       const std::vector<Feedback> &feedbacks,
-                       const Config &config, std::atomic<bool> *cancel) {
+Result runWordleSolver(const Config &config, std::atomic<bool> *cancel) {
 #ifdef TRACY_ENABLE
   ZoneScoped;
 #endif
+  std::vector<Utils::Word> allWords = Utils::loadWords();
+
   // Filter words to only words of the specified length
-  std::vector<Utils::Word> availableWords;
+  std::vector<Utils::Word> possibleWords;
   for (const auto &word : allWords) {
     bool exclude = config.excludeUncommonWords && (!word.is_scrabble);
     if (word.wordString.length() == config.wordLength && !exclude) {
-      availableWords.push_back(word);
+      possibleWords.push_back(word);
     }
   }
 
   // Use the specialized Wordle ENT solver - returns Result directly!
   WordleEntSolver solver;
-  return solver.solve(availableWords, feedbacks, config, cancel);
+  return solver.solve(possibleWords, possibleWords, config, cancel);
 }
 } // namespace Wordle

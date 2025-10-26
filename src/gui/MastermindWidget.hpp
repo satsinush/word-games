@@ -74,23 +74,17 @@ private:
   // Worker thread for solving
   class SolverThread : public QThread {
   public:
-    SolverThread(const std::vector<Mastermind::Pattern> &patterns,
-                 const std::vector<Mastermind::Feedback> &feedback,
-                 const Mastermind::Config &cfg, std::atomic<bool> *cancelFlag)
-        : allPatterns(patterns), feedbackHistory(feedback), config(cfg),
-          cancellationFlag(cancelFlag) {}
+    SolverThread(const Mastermind::Config &cfg, std::atomic<bool> *cancelFlag)
+        : config(cfg), cancellationFlag(cancelFlag) {}
 
     Mastermind::Result getResult() const { return result; }
 
   protected:
     void run() override {
-      result = Mastermind::runMastermindSolver(allPatterns, feedbackHistory,
-                                               config, cancellationFlag);
+      result = Mastermind::runMastermindSolver(config, cancellationFlag);
     }
 
   private:
-    std::vector<Mastermind::Pattern> allPatterns;
-    std::vector<Mastermind::Feedback> feedbackHistory;
     Mastermind::Config config;
     Mastermind::Result result;
     std::atomic<bool> *cancellationFlag;
@@ -100,8 +94,6 @@ private:
   Ui::MastermindWidget *ui;
 
   Mastermind::Config config;
-  std::vector<Mastermind::Pattern> allPatterns;
-  std::vector<Mastermind::Feedback> feedbackHistory;
 
   QScrollArea *feedbackListScrollArea;
   QWidget *feedbackListContainer;

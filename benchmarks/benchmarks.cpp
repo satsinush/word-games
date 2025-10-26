@@ -13,23 +13,11 @@
 
 // Display in ms: --benchmark_time_unit=ms
 
-// Global word list - loaded once for all benchmarks
-static std::vector<Utils::Word> g_wordVec;
-
-// Load words once before any benchmarks run
-static void LoadWords(const benchmark::State &state) {
-  if (g_wordVec.empty()) {
-    g_wordVec = Utils::loadWords();
-  }
-}
-
 // ============================================================================
 // Wordle Benchmarks
 // ============================================================================
 
 static void BM_Wordle_Runtime(benchmark::State &state) {
-  LoadWords(state);
-
   Wordle::Config config;
   config.maxDepth = 1;
   config.excludeUncommonWords = true;
@@ -37,9 +25,10 @@ static void BM_Wordle_Runtime(benchmark::State &state) {
   std::vector<Wordle::Feedback> feedbackHistory;
   feedbackHistory.push_back(Wordle::parseFeedback("STEAL 20100"));
 
+  config.feedbackHistory = feedbackHistory;
+
   for (auto _ : state) {
-    Wordle::Result result =
-        Wordle::runWordleSolver(g_wordVec, feedbackHistory, config);
+    Wordle::Result result = Wordle::runWordleSolver(config);
     benchmark::DoNotOptimize(result);
   }
 }
@@ -50,8 +39,6 @@ BENCHMARK(BM_Wordle_Runtime);
 // ============================================================================
 
 static void BM_SpellingBee_Runtime(benchmark::State &state) {
-  LoadWords(state);
-
   SpellingBee::Config config;
   // Use test letters: N H M K A C E
   std::string testLetters = "nhmkace";
@@ -62,7 +49,7 @@ static void BM_SpellingBee_Runtime(benchmark::State &state) {
 
   for (auto _ : state) {
     std::vector<Utils::Word> solutions =
-        SpellingBee::runSpellingBeeSolver(g_wordVec, config);
+        SpellingBee::runSpellingBeeSolver(config);
     benchmark::DoNotOptimize(solutions);
   }
 }
@@ -73,8 +60,6 @@ BENCHMARK(BM_SpellingBee_Runtime);
 // ============================================================================
 
 static void BM_LetterBoxed_Runtime(benchmark::State &state) {
-  LoadWords(state);
-
   LetterBoxed::Config config;
   config.maxDepth = 2;
   config.minWordLength = 3;
@@ -106,7 +91,7 @@ static void BM_LetterBoxed_Runtime(benchmark::State &state) {
 
   for (auto _ : state) {
     std::vector<LetterBoxed::Solution> solutions =
-        LetterBoxed::runLetterBoxedSolver(config, g_wordVec);
+        LetterBoxed::runLetterBoxedSolver(config);
     benchmark::DoNotOptimize(solutions);
   }
 }
@@ -131,9 +116,10 @@ static void BM_Mastermind_Runtime(benchmark::State &state) {
   feedback.push_back(Mastermind::parseFeedback("11223 1 2", config));
   feedback.push_back(Mastermind::parseFeedback("34567 1 2", config));
 
+  config.feedbackHistory = feedback;
+
   for (auto _ : state) {
-    Mastermind::Result result =
-        Mastermind::runMastermindSolver(allPatterns, feedback, config);
+    Mastermind::Result result = Mastermind::runMastermindSolver(config);
     benchmark::DoNotOptimize(result);
   }
 }

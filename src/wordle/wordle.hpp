@@ -11,10 +11,14 @@
 #include <atomic>
 
 namespace Wordle {
+
+struct Feedback; // forward declaration so Config can reference Feedback
+
 struct Config {
   uint8_t maxDepth = 1; // How many moves ahead to calculate ENT
   bool excludeUncommonWords = false;
   uint8_t wordLength = 5; // Length of words to use (default 5)
+  std::vector<Feedback> feedbackHistory = {};
 };
 
 struct Feedback {
@@ -102,9 +106,7 @@ std::vector<Utils::Word> filterWords(const std::vector<Utils::Word> &words,
                                      const std::vector<Feedback> &feedbacks);
 
 // Generic EntSolver-based version (cleaner implementation)
-Result runWordleSolver(const std::vector<Utils::Word> &allWords,
-                       const std::vector<Feedback> &feedbacks,
-                       const Config &config = Config{},
+Result runWordleSolver(const Config &config = Config{},
                        std::atomic<bool> *cancel = nullptr);
 } // namespace Wordle
 

@@ -9,8 +9,7 @@
 #include "wordle/WordleGame.hpp"
 
 namespace Game {
-WordleGame::WordleGame(const std::vector<Utils::Word> &words)
-    : wordVec(words) {}
+WordleGame::WordleGame() {}
 
 Wordle::Config WordleGame::getConfigFromUser() {
   Wordle::Config config;
@@ -32,6 +31,8 @@ WordleGame::getConfigFromArgs(const std::map<std::string, std::string> &args) {
   config.maxDepth = Utils::Input::getArgValue(args, "max-depth", 0);
   config.excludeUncommonWords =
       Utils::Input::getArgValue(args, "exclude-uncommon-words", false);
+  config.feedbackHistory =
+      getFeedbackFromArgs(args); // Get feedback from args if provided
   return config;
 }
 
@@ -206,7 +207,6 @@ void WordleGame::saveResults(const Wordle::Result &result,
 }
 
 void WordleGame::runCLI() {
-  std::vector<Wordle::Feedback> feedbackHistory;
   Wordle::Config config;
 
   // Get word length configuration upfront
@@ -226,9 +226,9 @@ void WordleGame::runCLI() {
       std::cout << "Word and pattern must be "
                 << static_cast<int>(config.wordLength) << " characters.\n\n";
 
-      if (!feedbackHistory.empty()) {
+      if (!config.feedbackHistory.empty()) {
         std::cout << "Current feedback history:\n";
-        for (const auto &fb : feedbackHistory) {
+        for (const auto &fb : config.feedbackHistory) {
           std::cout << "  " << fb.word << " -> ";
           for (size_t i = 0; i < fb.word.size(); ++i) {
             std::cout << fb.getColor(i);
@@ -255,7 +255,7 @@ void WordleGame::runCLI() {
         continue;
 
       if (input == "c" || input == "clear") {
-        feedbackHistory.clear();
+        config.feedbackHistory.clear();
         std::cout << "Feedback history cleared.\n";
         continue;
       }
@@ -269,8 +269,8 @@ void WordleGame::runCLI() {
                   << static_cast<int>(config.wordLength) << " letters\n";
 
         // Clear feedback history when changing word length
-        if (!feedbackHistory.empty()) {
-          feedbackHistory.clear();
+        if (!config.feedbackHistory.empty()) {
+          config.feedbackHistory.clear();
           std::cout << "Feedback history cleared due to word length change.\n";
         }
         continue;
@@ -285,8 +285,7 @@ void WordleGame::runCLI() {
               "Exclude uncommon words from suggestions?", true);
 
           std::cout << "Calculating best guesses...\n";
-          Wordle::Result result =
-              Wordle::runWordleSolver(wordVec, feedbackHistory, config);
+          Wordle::Result result = Wordle::runWordleSolver(config);
 
           printResults(result);
         } catch (const Utils::Input::UserCancelledException &) {
@@ -307,7 +306,7 @@ void WordleGame::runCLI() {
           continue;
         }
 
-        feedbackHistory.push_back(fb);
+        config.feedbackHistory.push_back(fb);
         std::cout << "Added feedback for " << fb.word << "\n";
       } catch (const std::exception &e) {
         std::cout << "Error: " << e.what() << "\n";
@@ -326,10 +325,8 @@ void WordleGame::runHeadless(const Utils::Input::CommandArgs &cmdArgs) {
   try {
     const auto &args = cmdArgs.flags;
     Wordle::Config config = getConfigFromArgs(args);
-    std::vector<Wordle::Feedback> feedbackHistory = getFeedbackFromArgs(args);
 
-    Wordle::Result result =
-        Wordle::runWordleSolver(wordVec, feedbackHistory, config);
+    Wordle::Result result = Wordle::runWordleSolver(config);
 
     std::string outputFile =
         Utils::Input::getArgValue(args, "o", std::string(""));

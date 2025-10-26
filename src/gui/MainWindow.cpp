@@ -8,7 +8,7 @@
 #include "ui_MainWindow.h"
 #include <QMessageBox>
 
-MainWindow::MainWindow(const std::vector<Utils::Word> &words, QWidget *parent)
+MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent), ui(new Ui::MainWindow) {
 
   ui->setupUi(this);
@@ -25,9 +25,9 @@ MainWindow::MainWindow(const std::vector<Utils::Word> &words, QWidget *parent)
   sidebarButtonGroup->setExclusive(true);
 
   // Create and add game widgets to the stacked widget
-  wordleWidget = new WordleWidget(words, this);
-  spellingBeeWidget = new SpellingBeeWidget(words, this);
-  letterBoxedWidget = new LetterBoxedWidget(words, this);
+  wordleWidget = new WordleWidget(this);
+  spellingBeeWidget = new SpellingBeeWidget(this);
+  letterBoxedWidget = new LetterBoxedWidget(this);
   mastermindWidget = new MastermindWidget(this);
 
   ui->stackedWidget->addWidget(wordleWidget);      // index 0

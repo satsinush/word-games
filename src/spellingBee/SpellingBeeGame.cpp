@@ -9,8 +9,7 @@
 #include "utils/inputUtils.hpp"
 
 namespace Game {
-SpellingBeeGame::SpellingBeeGame(const std::vector<Utils::Word> &words)
-    : wordVec(words) {}
+SpellingBeeGame::SpellingBeeGame() {}
 
 void SpellingBeeGame::drawPuzzle(const std::array<char, 7> &letters) {
   auto up = [](char c) {
@@ -131,7 +130,7 @@ void SpellingBeeGame::runCLI() {
 
       std::cout << "Running solver...\n";
       std::vector<Utils::Word> solutions =
-          SpellingBee::runSpellingBeeSolver(wordVec, config);
+          SpellingBee::runSpellingBeeSolver(config);
 
       printSolutions(solutions);
 
@@ -176,7 +175,7 @@ void SpellingBeeGame::runHeadless(const Utils::Input::CommandArgs &cmdArgs) {
     SpellingBee::Config config = getConfigFromArgs(args);
 
     std::vector<Utils::Word> solutions =
-        SpellingBee::runSpellingBeeSolver(wordVec, config);
+        SpellingBee::runSpellingBeeSolver(config);
 
     // Output to file if specified
     std::string outputFile =

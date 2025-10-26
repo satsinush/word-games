@@ -20,6 +20,9 @@
 #include "utils/wordUtils.hpp"
 
 namespace Utils {
+
+std::vector<Word> g_words;
+
 std::filesystem::path getExecutableDir() {
   char buffer[1024];
 #ifdef _WIN32
@@ -83,6 +86,11 @@ void readBinary(std::istream &is, Word &word) {
 // If maxWords is 0, loads all words.
 std::vector<Word> loadWords(const std::string &csvFile, bool useBinaryCache,
                             size_t maxWords) {
+  if (csvFile.empty() && !g_words.empty()) {
+    // Return cached words if already loaded from default CSV or binary
+    return g_words;
+  }
+
   std::filesystem::path data_dir = getExecutableDir() / "resources";
   std::filesystem::path csv_file =
       csvFile.empty() ? (data_dir / "word_scores.csv") : (data_dir / csvFile);
@@ -118,6 +126,7 @@ std::vector<Word> loadWords(const std::string &csvFile, bool useBinaryCache,
     if (!file.is_open()) {
       std::cerr << "Error: Could not open " << csv_file
                 << ". Please ensure it exists.\n";
+      g_words = allWordsVec;
       return allWordsVec;
     }
 
@@ -126,6 +135,7 @@ std::vector<Word> loadWords(const std::string &csvFile, bool useBinaryCache,
     if (!std::getline(file, line)) {
       std::cerr << "Error: Empty CSV file.\n";
       file.close();
+      g_words = allWordsVec;
       return allWordsVec;
     }
 
@@ -194,6 +204,7 @@ std::vector<Word> loadWords(const std::string &csvFile, bool useBinaryCache,
     }
   }
 
+  g_words = allWordsVec;
   return allWordsVec;
 }
 } // namespace Utils

@@ -91,9 +91,8 @@ void HexagonButton::paintEvent(QPaintEvent *event) {
 
 // ============ SpellingBeeWidget Implementation ============
 
-SpellingBeeWidget::SpellingBeeWidget(const std::vector<Utils::Word> &words,
-                                     QWidget *parent)
-    : GameWidget(parent), ui(new Ui::SpellingBeeWidget), wordVec(words) {
+SpellingBeeWidget::SpellingBeeWidget(QWidget *parent)
+    : GameWidget(parent), ui(new Ui::SpellingBeeWidget) {
   ui->setupUi(this);
 
   // Limit input to 7 characters
@@ -392,7 +391,7 @@ void SpellingBeeWidget::onInputSubmit() {
   resultsTable->setEnabled(false);
 
   // Create and start solver thread with cancellation flag
-  solverThread = new SolverThread(config, wordVec, &cancellationRequested);
+  solverThread = new SolverThread(config, &cancellationRequested);
   connect(solverThread, &QThread::finished, this,
           &SpellingBeeWidget::onSolverFinished);
   solverThread->start();

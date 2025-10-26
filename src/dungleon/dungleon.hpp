@@ -1,5 +1,6 @@
 #pragma once
 #include <array>
+#include <atomic>
 #include <bitset>
 #include <cmath>
 #include <map>
@@ -53,8 +54,11 @@ extern std::array<std::string, NUM_CHARACTERS> CHARACTER_IDS;
 extern std::array<std::string, NUM_CHARACTERS> CHARACTER_NAMES;
 CharacterType getCharacterType(uint8_t characterId);
 
+struct Feedback; // forward declaration so Config can reference Feedback
+
 struct Config {
   uint8_t maxDepth = 0; // How many moves ahead to calculate ENT
+  std::vector<Feedback> feedbackHistory = {}; // History of previous feedbacks
 };
 
 struct Pattern {
@@ -190,9 +194,8 @@ std::vector<Pattern> generateAllPatterns();
 std::vector<Pattern> generateAllPossiblePatterns();
 
 // Generic EntSolver-based version (cleaner implementation)
-Result runDungleonSolver(const std::vector<Pattern> &allPatterns,
-                         const std::vector<Feedback> &guessHistory,
-                         const Config &config = Config{});
+Result runDungleonSolver(const Config &config = Config{},
+                         std::atomic<bool> *cancel = nullptr);
 } // namespace Dungleon
 
 // Provide std::hash specializations for Mastermind types so they can be used as

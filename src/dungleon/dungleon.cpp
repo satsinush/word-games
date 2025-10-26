@@ -529,15 +529,16 @@ protected:
   }
 };
 
-Result runDungleonSolver(const std::vector<Pattern> &allPatterns,
-                         const std::vector<Feedback> &feedbacks,
-                         const Config &config) {
+Result runDungleonSolver(const Config &config, std::atomic<bool> *cancel) {
 #ifdef TRACY_ENABLE
   ZoneScoped;
 #endif
 
+  std::vector<Pattern> allPatterns = generateAllPossiblePatterns();
+  std::vector<Pattern> possiblePatterns = generateAllPossiblePatterns();
+
   // Use the specialized Dungleon ENT solver - returns Result directly!
   DungleonEntSolver solver;
-  return solver.solve(allPatterns, feedbacks, config);
+  return solver.solve(allPatterns, possiblePatterns, config);
 }
 } // namespace Dungleon

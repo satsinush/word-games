@@ -176,10 +176,8 @@ void GuessRow::onDeleteClicked() { emit deleteRequested(); }
 
 // ============ WordleWidget Implementation ============
 
-WordleWidget::WordleWidget(const std::vector<Utils::Word> &words,
-                           QWidget *parent)
-    : GameWidget(parent), ui(new Ui::WordleWidget), wordVec(words),
-      currentRowWidget(nullptr) {
+WordleWidget::WordleWidget(QWidget *parent)
+    : GameWidget(parent), ui(new Ui::WordleWidget), currentRowWidget(nullptr) {
   ui->setupUi(this);
 
   // Initialize config
@@ -325,7 +323,7 @@ bool WordleWidget::showConfigDialog() {
 
     // Clear feedback history if word length changed
     if (oldWordLength != config.wordLength) {
-      feedbackHistory.clear();
+      config.feedbackHistory.clear();
 
       // Delete all GuessRow widgets
       for (GuessRow *row : guessRows) {
@@ -357,7 +355,7 @@ bool WordleWidget::showConfigDialog() {
 
 void WordleWidget::initGame() {
   // Clear feedback history
-  feedbackHistory.clear();
+  config.feedbackHistory.clear();
 
   // Delete all GuessRow widgets
   for (GuessRow *row : guessRows) {
@@ -424,9 +422,9 @@ void WordleWidget::setupCurrentRow() {
 }
 
 void WordleWidget::rebuildFeedbackHistory() {
-  feedbackHistory.clear();
+  config.feedbackHistory.clear();
   for (GuessRow *row : guessRows) {
-    feedbackHistory.push_back(row->getFeedback());
+    config.feedbackHistory.push_back(row->getFeedback());
   }
 }
 
@@ -509,7 +507,7 @@ void WordleWidget::submitCurrentGuess() {
     fb.setGrey(i);
   }
 
-  feedbackHistory.push_back(fb);
+  config.feedbackHistory.push_back(fb);
 
   // Remove current row from layout
   guessListLayout->removeWidget(currentRowWidget);
@@ -628,8 +626,7 @@ void WordleWidget::solveWordle() {
   ui->resultsTabWidget->setEnabled(false);
 
   // Create and start solver thread with cancellation flag
-  solverThread = new SolverThread(wordVec, feedbackHistory, config,
-                                  &cancellationRequested);
+  solverThread = new SolverThread(config, &cancellationRequested);
   connect(solverThread, &QThread::finished, this,
           &WordleWidget::onSolverFinished);
   solverThread->start();

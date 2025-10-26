@@ -36,8 +36,7 @@ class LetterBoxedWidget : public GameWidget {
   Q_OBJECT
 
 public:
-  explicit LetterBoxedWidget(const std::vector<Utils::Word> &words,
-                             QWidget *parent = nullptr);
+  explicit LetterBoxedWidget(QWidget *parent = nullptr);
   ~LetterBoxedWidget() override;
 
 public slots:
@@ -57,10 +56,8 @@ private:
   public:
     // Take the word vector by const-ref but store a copy internally so the
     // worker thread does not hold references to data owned by the GUI thread.
-    SolverThread(const LetterBoxed::Config &cfg,
-                 const std::vector<Utils::Word> &words,
-                 std::atomic<bool> *cancelFlag)
-        : config(cfg), wordVecCopy(words), cancellationFlag(cancelFlag) {}
+    SolverThread(const LetterBoxed::Config &cfg, std::atomic<bool> *cancelFlag)
+        : config(cfg), cancellationFlag(cancelFlag) {}
 
     std::vector<LetterBoxed::Solution> getResult() const { return solutions; }
 
@@ -68,22 +65,19 @@ private:
     void run() override {
       // Call solver with our local copy and pass cancellation pointer so the
       // solver can stop cooperatively.
-      solutions = LetterBoxed::runLetterBoxedSolver(config, wordVecCopy,
-                                                    cancellationFlag);
+      solutions = LetterBoxed::runLetterBoxedSolver(config, cancellationFlag);
     }
 
   private:
     LetterBoxed::Config config;
     // Store a copy so the GUI may modify or destroy its vector without
     // affecting the running worker.
-    std::vector<Utils::Word> wordVecCopy;
     std::vector<LetterBoxed::Solution> solutions;
     std::atomic<bool> *cancellationFlag;
   };
 
 private:
   Ui::LetterBoxedWidget *ui;
-  const std::vector<Utils::Word> &wordVec;
 
   LetterBoxed::Config config;
   std::vector<LetterBoxed::Solution> solutions;

@@ -313,13 +313,15 @@ void pruneDominatedClasses(std::vector<EquivalenceClass> &allEqClasses) {
 
 // --- Solver Entry Point ---
 
-std::vector<Solution>
-runLetterBoxedSolver(const Config &config,
-                     const std::vector<Utils::Word> &words,
-                     std::atomic<bool> *cancel) {
+std::vector<Solution> runLetterBoxedSolver(const Config &config,
+                                           std::atomic<bool> *cancel) {
 #ifdef TRACY_ENABLE
   ZoneScoped;
 #endif
+
+  // Load all words
+  const std::vector<Utils::Word> words = Utils::loadWords();
+
   // Create a vector to hold all character indices for all valid word paths.
   std::vector<int> allPathIndices;
   allPathIndices.reserve(words.size() / 100); // Reserve space for indices

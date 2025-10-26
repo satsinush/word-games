@@ -8,9 +8,6 @@
 namespace Game {
 class LetterBoxedGame : public IGame {
 private:
-  const std::vector<Utils::Word> &wordVec;
-  int totalLetterCount;
-
   // UI methods
   void drawPuzzle(const std::array<char, 12> &letters);
   LetterBoxed::Config getConfigFromUser();
@@ -20,7 +17,7 @@ private:
                       const int limit = 100);
 
 public:
-  explicit LetterBoxedGame(const std::vector<Utils::Word> &words);
+  explicit LetterBoxedGame();
 
   void runCLI() override;
   void runHeadless(const Utils::Input::CommandArgs &cmdArgs) override;

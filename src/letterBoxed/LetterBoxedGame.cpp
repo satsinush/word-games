@@ -9,8 +9,7 @@
 #include "utils/inputUtils.hpp"
 
 namespace Game {
-LetterBoxedGame::LetterBoxedGame(const std::vector<Utils::Word> &words)
-    : wordVec(words) {}
+LetterBoxedGame::LetterBoxedGame() {}
 
 void LetterBoxedGame::drawPuzzle(const std::array<char, 12> &letters) {
   auto up = [](char c) {
@@ -228,7 +227,7 @@ void LetterBoxedGame::runCLI() {
 
       std::cout << "Running solver...\n";
       std::vector<LetterBoxed::Solution> solutions =
-          LetterBoxed::runLetterBoxedSolver(config, wordVec, nullptr);
+          LetterBoxed::runLetterBoxedSolver(config, nullptr);
 
       int printLimit = 100;
       printSolutions(solutions, printLimit);
@@ -278,7 +277,7 @@ void LetterBoxedGame::runHeadless(const Utils::Input::CommandArgs &cmdArgs) {
     LetterBoxed::Config config = getConfigFromArgs(args);
 
     std::vector<LetterBoxed::Solution> solutions =
-        LetterBoxed::runLetterBoxedSolver(config, wordVec, nullptr);
+        LetterBoxed::runLetterBoxedSolver(config);
 
     // Output to file if specified
     std::string outputFile =

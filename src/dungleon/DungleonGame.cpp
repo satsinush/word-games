@@ -237,8 +237,7 @@ void DungleonGame::runCLI() {
           // Use all patterns for guesses (including invalid patterns)
           std::vector<Dungleon::Pattern> allPatterns =
               Dungleon::generateAllPossiblePatterns();
-          Dungleon::Result result =
-              Dungleon::runDungleonSolver(allPatterns, feedbackHistory, config);
+          Dungleon::Result result = Dungleon::runDungleonSolver(config);
           printResults(result);
         } catch (const Utils::Input::UserCancelledException &) {
           std::cout << "Solve cancelled.\n";
@@ -272,8 +271,7 @@ void DungleonGame::runHeadless(const Utils::Input::CommandArgs &cmdArgs) {
     // Use all patterns for guesses (including invalid patterns)
     std::vector<Dungleon::Pattern> allPatterns =
         Dungleon::generateAllPossiblePatterns();
-    Dungleon::Result result =
-        Dungleon::runDungleonSolver(allPatterns, feedbackHistory, config);
+    Dungleon::Result result = Dungleon::runDungleonSolver(config);
 
     std::string outputFile =
         Utils::Input::getArgValue(args, "o", std::string(""));

@@ -13,8 +13,6 @@
 
 // Helper function to load words for testing
 std::vector<Utils::Word> loadTestWords() {
-  // TODO: fix load words to use path relative to resources directory to prevent
-  // issues
   // Load from test CSV without binary cache, load all words
   std::vector<Utils::Word> words =
       Utils::loadWords("test_word_scores.csv", false, 0);
@@ -53,23 +51,21 @@ TEST(WordleTest, SolverWithGuesses) {
   config.maxDepth = std::stoi(args["max-depth"]);
 
   // Parse feedback history
-  std::vector<Wordle::Feedback> feedbackHistory;
   std::string guessesStr = args["guesses"];
   size_t pos = 0;
   while ((pos = guessesStr.find(';')) != std::string::npos) {
     std::string token = guessesStr.substr(0, pos);
-    feedbackHistory.push_back(Wordle::parseFeedback(token));
+    config.feedbackHistory.push_back(Wordle::parseFeedback(token));
     guessesStr.erase(0, pos + 1);
   }
   if (!guessesStr.empty()) {
-    feedbackHistory.push_back(Wordle::parseFeedback(guessesStr));
+    config.feedbackHistory.push_back(Wordle::parseFeedback(guessesStr));
   }
 
-  EXPECT_EQ(feedbackHistory.size(), 2);
+  EXPECT_EQ(config.feedbackHistory.size(), 2);
 
   // Run solver
-  Wordle::Result result =
-      Wordle::runWordleSolver(words, feedbackHistory, config);
+  Wordle::Result result = Wordle::runWordleSolver(config);
 
   // Verify results
   EXPECT_GT(result.sortedGuesses.size(), 0) << "Should have at least one guess";
@@ -109,18 +105,16 @@ TEST(MastermindTest, SolverWithGuesses) {
       Mastermind::generateAllPatterns(config);
   EXPECT_EQ(allPatterns.size(), 1296);
 
-  // Parse guess history using parseFeedback
-  std::vector<Mastermind::Feedback> guessHistory;
-
   // First guess: "1122 1 2"
-  guessHistory.push_back(Mastermind::parseFeedback("1122 1 2", config));
+  config.feedbackHistory.push_back(
+      Mastermind::parseFeedback("1122 1 2", config));
 
   // Second guess: "2131 2 1"
-  guessHistory.push_back(Mastermind::parseFeedback("2131 2 1", config));
+  config.feedbackHistory.push_back(
+      Mastermind::parseFeedback("2131 2 1", config));
 
   // Run solver
-  Mastermind::Result result =
-      Mastermind::runMastermindSolver(allPatterns, guessHistory, config);
+  Mastermind::Result result = Mastermind::runMastermindSolver(config);
 
   // Verify results
   EXPECT_GT(result.sortedGuesses.size(), 0) << "Should have at least one guess";
@@ -170,7 +164,7 @@ TEST(SpellingBeeTest, SolverWithLetters) {
 
   // Run solver
   std::vector<Utils::Word> solutions =
-      SpellingBee::runSpellingBeeSolver(words, config);
+      SpellingBee::runSpellingBeeSolver(config);
 
   // Verify results
   EXPECT_EQ(solutions.size(), 4) << "Should find exactly 4 solutions";
@@ -272,7 +266,7 @@ TEST(LetterBoxedTest, SolverWithLetters) {
 
   // Run solver
   std::vector<LetterBoxed::Solution> solutions =
-      LetterBoxed::runLetterBoxedSolver(config, words);
+      LetterBoxed::runLetterBoxedSolver(config);
 
   // Verify results
   EXPECT_EQ(solutions.size(), 4) << "Should find exactly 4 solutions";

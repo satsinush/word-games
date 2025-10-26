@@ -53,30 +53,30 @@ public:
    * Main solver function that returns the final result type directly
    */
   TResultType solve(const std::vector<TCandidateType> &allCandidates,
-                    const std::vector<TFeedbackType> &feedbackHistory,
+                    const std::vector<TCandidateType> &possibleCandidates,
                     const TConfigType &config,
                     std::atomic<bool> *cancel = nullptr) {
     // Store cancellation pointer so internal helpers can check it
     cancellationFlag = cancel;
 
     // Filter candidates based on feedback history
-    std::vector<TCandidateType> possibleCandidates;
+    std::vector<TCandidateType> filteredPossibleCandidates;
 
     // Create unordered_set using std::hash and std::equal_to (default template
     // specializations)
-    std::unordered_set<TCandidateType> possibleCandidateSet;
+    std::unordered_set<TCandidateType> filteredPossibleCandidateSet;
 
-    for (const auto &candidate : allCandidates) {
+    for (const auto &candidate : possibleCandidates) {
       bool matches = true;
-      for (const auto &feedback : feedbackHistory) {
+      for (const auto &feedback : config.feedbackHistory) {
         if (!matchesFeedback(candidate, feedback)) {
           matches = false;
           break;
         }
       }
       if (matches) {
-        possibleCandidates.push_back(candidate);
-        possibleCandidateSet.insert(candidate);
+        filteredPossibleCandidates.push_back(candidate);
+        filteredPossibleCandidateSet.insert(candidate);
       }
       if (cancellationFlag && cancellationFlag->load()) {
         // Clean up and return an empty result early on cancellation
@@ -86,17 +86,18 @@ public:
     }
 
     std::vector<TGuessType> guesses;
-    int totalPossible = static_cast<int>(possibleCandidates.size());
+    int totalPossible = static_cast<int>(filteredPossibleCandidates.size());
 
     // If maxDepth is 0, skip ENT calculation and just return filtered
     // candidates
     if (config.maxDepth == 0) {
-      for (const auto &candidate : possibleCandidates) {
-        double probability =
-            possibleCandidates.empty() ? 0.0 : 1.0 / possibleCandidates.size();
+      for (const auto &candidate : filteredPossibleCandidates) {
+        double probability = filteredPossibleCandidates.empty()
+                                 ? 0.0
+                                 : 1.0 / filteredPossibleCandidates.size();
         TGuessType guess = createGuess(
             candidate,
-            std::log2(static_cast<double>(possibleCandidates.size())),
+            std::log2(static_cast<double>(filteredPossibleCandidates.size())),
             probability);
         guesses.push_back(guess);
       }
@@ -104,8 +105,9 @@ public:
     }
 
     // Calculate Expected Number of Turns (ENT) for all candidates
-    const double possibleProb =
-        possibleCandidates.empty() ? 0.0 : 1.0 / possibleCandidates.size();
+    const double possibleProb = filteredPossibleCandidates.empty()
+                                    ? 0.0
+                                    : 1.0 / filteredPossibleCandidates.size();
     for (const auto &guessCandidate : allCandidates) {
       if (cancellationFlag && cancellationFlag->load()) {
         cancellationFlag = nullptr;
@@ -113,8 +115,8 @@ public:
       }
       // Calculate probability (how likely this candidate is to be the answer)
       // O(1) lookup in unordered_set with proper hash and equality
-      bool isPossible = possibleCandidateSet.find(guessCandidate) !=
-                        possibleCandidateSet.end();
+      bool isPossible = filteredPossibleCandidateSet.find(guessCandidate) !=
+                        filteredPossibleCandidateSet.end();
 
       double probability = isPossible ? possibleProb : 0.0;
 
@@ -125,10 +127,10 @@ public:
       // calculateExpectedTurns gets the ENT after this guess, assuming the
       // guess is not correct So we multiply by (1 - probability) to weight it
       // by the chance the guess is wrong
-      if (possibleCandidates.size() > 1) {
+      if (filteredPossibleCandidates.size() > 1) {
         expectedTurns =
             (1 - probability) *
-            calculateExpectedTurns(guessCandidate, possibleCandidates,
+            calculateExpectedTurns(guessCandidate, filteredPossibleCandidates,
                                    allCandidates, config.maxDepth);
       }
 

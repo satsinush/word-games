@@ -151,14 +151,13 @@ void runReadMode(const std::map<std::string, std::string> &args,
   }
 }
 
-std::unique_ptr<Game::IGame>
-createGame(const std::string &mode, const std::vector<Utils::Word> &wordVec) {
+std::unique_ptr<Game::IGame> createGame(const std::string &mode) {
   if (mode == "letterboxed")
-    return std::make_unique<Game::LetterBoxedGame>(wordVec);
+    return std::make_unique<Game::LetterBoxedGame>();
   else if (mode == "spellingbee")
-    return std::make_unique<Game::SpellingBeeGame>(wordVec);
+    return std::make_unique<Game::SpellingBeeGame>();
   else if (mode == "wordle")
-    return std::make_unique<Game::WordleGame>(wordVec);
+    return std::make_unique<Game::WordleGame>();
   else if (mode == "mastermind")
     return std::make_unique<Game::MastermindGame>();
   else if (mode == "dungleon")
@@ -167,7 +166,7 @@ createGame(const std::string &mode, const std::vector<Utils::Word> &wordVec) {
     return nullptr;
 }
 
-void runInteractiveMode(const std::vector<Utils::Word> &wordVec) {
+void runInteractiveMode() {
   while (true) {
     std::cout << "\nSelect game mode:\n";
     std::cout << "  1: Letter Boxed\n";
@@ -219,15 +218,15 @@ void runInteractiveMode(const std::vector<Utils::Word> &wordVec) {
 
     std::unique_ptr<Game::IGame> game;
     if (input == "1")
-      game = createGame("letterboxed", wordVec);
+      game = createGame("letterboxed");
     else if (input == "2")
-      game = createGame("spellingbee", wordVec);
+      game = createGame("spellingbee");
     else if (input == "3")
-      game = createGame("wordle", wordVec);
+      game = createGame("wordle");
     else if (input == "4")
-      game = createGame("mastermind", wordVec);
+      game = createGame("mastermind");
     else if (input == "5")
-      game = createGame("dungleon", wordVec);
+      game = createGame("dungleon");
     else {
       std::cout << "Invalid choice. Please try again.\n";
       continue;
@@ -255,12 +254,12 @@ int run(int argc, char *argv[]) {
     return 0;
   }
 
+  // Load words once to populate global cache
+  Utils::loadWords();
+
 #ifdef WITH_GUI
   // Check if no arguments are provided
   if (argc == 1) {
-    // Load words for GUI mode
-    std::vector<Utils::Word> wordVec = Utils::loadWords();
-
     QApplication app(argc, argv);
 
     // Set application name shown by the windowing system and used by Qt
@@ -273,7 +272,7 @@ int run(int argc, char *argv[]) {
     // Qt resource (.qrc) in the future, switch to the ":/" prefix.
     QApplication::setWindowIcon(QIcon(QStringLiteral("resources/icon.svg")));
 
-    MainWindow window(wordVec);
+    MainWindow window;
     window.show();
 
     return app.exec();
@@ -282,14 +281,9 @@ int run(int argc, char *argv[]) {
 
   // Check if interactive mode is requested
   if (args.find("i") != args.end()) {
-    std::vector<Utils::Word> wordVec = Utils::loadWords();
-    runInteractiveMode(wordVec);
+    runInteractiveMode();
     return 0;
   }
-
-  // Load words (not needed for Mastermind, but we'll load them anyway for
-  // consistency)
-  std::vector<Utils::Word> wordVec = Utils::loadWords();
 
   // Check if mode is specified for headless operation
   if (!cmdArgs.positional.empty()) {
@@ -306,7 +300,7 @@ int run(int argc, char *argv[]) {
       return 0;
     }
 
-    auto game = createGame(mode, wordVec);
+    auto game = createGame(mode);
 
     if (!game) {
       std::cerr << "Invalid mode: " << mode << "\n";
@@ -325,7 +319,7 @@ int run(int argc, char *argv[]) {
   }
 
   // Run interactive mode if no mode specified
-  runInteractiveMode(wordVec);
+  runInteractiveMode();
 
   return 0;
 }
