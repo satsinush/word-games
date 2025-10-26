@@ -1,4 +1,3 @@
-*.bin
 log.txt
 temp.txt
 results/
@@ -9,9 +8,6 @@ results/
 *.exe
 ngram_freq.csv
 build/
-resources/*.csv
-resources/*.bin
-!resources/test_word_scores.csv
 gmon.out
 profile_results.txt
 .env
