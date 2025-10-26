@@ -58,12 +58,6 @@ struct EquivalenceKey {
   bool operator<(const EquivalenceKey &other) const;
 };
 
-struct EquivalenceKeyHash {
-  std::size_t operator()(const EquivalenceKey &k) const;
-};
-
-bool operator==(const EquivalenceKey &a, const EquivalenceKey &b);
-
 struct EquivalenceClass {
   EquivalenceKey key;
   std::vector<const WordPath *> words;
@@ -74,3 +68,23 @@ runLetterBoxedSolver(const Config &config,
                      const std::vector<Utils::Word> &words,
                      std::atomic<bool> *cancel = nullptr);
 } // namespace LetterBoxed
+
+namespace std {
+// Template specialization for std::hash to allow EquivalenceKeyHash in std
+// namespace
+template <> struct hash<LetterBoxed::EquivalenceKey> {
+  std::size_t operator()(const LetterBoxed::EquivalenceKey &k) const {
+    std::size_t h1 = std::hash<int>{}(k.startIndex);
+    std::size_t h2 = std::hash<int>{}(k.endIndex);
+
+    // Hash the bitset
+    std::size_t h3 = 0;
+    for (size_t i = 0; i < k.usedChars.size(); ++i) {
+      h3 ^= (k.usedChars[i] + 0x9e3779b9 + (h3 << 6) + (h3 >> 2));
+    }
+
+    // Combine all hashes
+    return h1 ^ (h2 + 0x9e3779b9 + (h1 << 6) + (h1 >> 2)) ^ h3;
+  }
+};
+} // namespace std

@@ -111,13 +111,19 @@ Result runWordleSolver(const std::vector<Utils::Word> &allWords,
 // Provide std::hash specialization for Wordle::Feedback so it can be used as an
 // unordered_map/unordered_set key in generic code (like the EntSolver).
 namespace std {
+// Improved hash function for Wordle::Feedback
+// Handles cases where colors exceed 64 bits
 template <> struct hash<Wordle::Feedback> {
   size_t operator()(const Wordle::Feedback &fb) const noexcept {
-    // Combine hash of the word string and the bitset colors
     size_t h1 = std::hash<std::string>{}(fb.word);
-    size_t h2 = std::hash<unsigned long long>{}(fb.colors.to_ullong());
 
-    // Use a simple but effective hash combiner
+    // Use a custom hash for the bitset to handle larger sizes
+    size_t h2 = 0;
+    for (size_t i = 0; i < fb.colors.size(); ++i) {
+      h2 ^= (fb.colors[i] + 0x9e3779b9 + (h2 << 6) + (h2 >> 2));
+    }
+
+    // Combine the two hashes
     return h1 ^ (h2 + 0x9e3779b9 + (h1 << 6) + (h1 >> 2));
   }
 };

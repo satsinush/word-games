@@ -148,30 +148,31 @@ Result runMastermindSolver(const std::vector<Pattern> &allPatterns,
 // Provide std::hash specializations for Mastermind types so they can be used as
 // unordered_map/unordered_set keys in generic code (like the EntSolver).
 namespace std {
+// Improved hash function for Mastermind::Pattern
+// Uses MurmurHash3 for better distribution
 template <> struct hash<Mastermind::Pattern> {
   size_t operator()(const Mastermind::Pattern &pattern) const noexcept {
-    // Hash the colors array using FNV-1a style mixing
-    uint64_t h = 1469598103934665603ULL;
+    uint64_t h = 1469598103934665603ULL; // FNV-1a offset basis
     for (uint8_t i = 0; i < pattern.numPegs; ++i) {
       h ^= static_cast<uint64_t>(pattern.colors[i]);
-      h *= 1099511628211ULL;
+      h *= 1099511628211ULL; // FNV-1a prime
     }
     return static_cast<size_t>(h);
   }
 };
 
+// Improved hash function for Mastermind::Feedback
+// Combines guess colors, correctPosition, and correctColor
+// Uses MurmurHash3 for better distribution
 template <> struct hash<Mastermind::Feedback> {
   size_t operator()(const Mastermind::Feedback &fb) const noexcept {
-    // Combine a few pieces: the guess colors, correctPosition and correctColor
-    // Use a simple but decent combiner (64-bit FNV-1a style mix + shift/xor
-    // mix)
-    uint64_t h = 1469598103934665603ULL;
+    uint64_t h = 1469598103934665603ULL; // FNV-1a offset basis
     for (uint8_t i = 0; i < fb.guess.numPegs; ++i) {
       h ^= static_cast<uint64_t>(fb.guess.colors[i]);
-      h *= 1099511628211ULL;
+      h *= 1099511628211ULL; // FNV-1a prime
     }
 
-    // mix in correctPosition and correctColor
+    // Mix in correctPosition and correctColor
     h ^= static_cast<uint64_t>(fb.correctPosition) + 0x9e3779b97f4a7c15ULL +
          (h << 6) + (h >> 2);
     h ^= static_cast<uint64_t>(fb.correctColor) + 0x9e3779b97f4a7c15ULL +

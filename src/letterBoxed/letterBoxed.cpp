@@ -28,18 +28,6 @@ bool EquivalenceKey::operator<(const EquivalenceKey &other) const {
   return usedChars.to_ulong() < other.usedChars.to_ulong();
 }
 
-std::size_t EquivalenceKeyHash::operator()(const EquivalenceKey &k) const {
-  std::size_t h1 = std::hash<int>()(k.startIndex);
-  std::size_t h2 = std::hash<int>()(k.endIndex);
-  std::size_t h3 = std::hash<unsigned long>()(k.usedChars.to_ulong());
-
-  // Combine hashes
-  std::size_t seed = h1;
-  seed ^= h2 + 0x9e3779b9 + (seed << 6) + (seed >> 2);
-  seed ^= h3 + 0x9e3779b9 + (seed << 6) + (seed >> 2);
-  return seed;
-}
-
 bool operator==(const EquivalenceKey &a, const EquivalenceKey &b) {
   return a.startIndex == b.startIndex && a.endIndex == b.endIndex &&
          a.usedChars == b.usedChars;
@@ -340,8 +328,7 @@ runLetterBoxedSolver(const Config &config,
   filterWords(allValidWordPaths, words, config, allPathIndices, cancel);
 
   // Create equivalence classes based on the valid word paths.
-  std::unordered_map<EquivalenceKey, EquivalenceClass, EquivalenceKeyHash>
-      eqClassMap;
+  std::unordered_map<EquivalenceKey, EquivalenceClass> eqClassMap;
   eqClassMap.reserve(allValidWordPaths.size()); // Reserve space for classes
   for (const auto &wp : allValidWordPaths) {
     EquivalenceKey key;
