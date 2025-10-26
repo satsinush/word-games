@@ -42,7 +42,7 @@ void CharacterSlot::setCharacter(int charId) {
   if (charId >= 0 &&
       charId < static_cast<int>(Dungleon::CHARACTER_IDS.size())) {
     QString label = QString::fromStdString(Dungleon::CHARACTER_IDS[charId]);
-    setText(label);
+    setText(label); // Set text as fallback
 
     // Try to load icon
     std::string name = Dungleon::CHARACTER_NAMES[charId];
@@ -55,13 +55,37 @@ void CharacterSlot::setCharacter(int charId) {
         QString("resources/dungleon/%1.png").arg(QString::fromStdString(name));
     QPixmap icon(path);
     if (!icon.isNull()) {
-      setPixmap(
+      // FIX: Get/create a child label for the icon
+      QLabel *iconLabel = findChild<QLabel *>("iconLabel");
+      if (!iconLabel) {
+        iconLabel = new QLabel(this);
+        iconLabel->setObjectName("iconLabel");
+        iconLabel->setAlignment(Qt::AlignCenter);
+        iconLabel->setAttribute(Qt::WA_TransparentForMouseEvents);
+        iconLabel->setGeometry(0, 0, width(), height()); // Fill parent
+      }
+      // FIX: Set pixmap on the *child* label, not the parent
+      iconLabel->setPixmap(
           icon.scaled(40, 40, Qt::KeepAspectRatio, Qt::SmoothTransformation));
-      setText("");
+      iconLabel->show();
+      setText(""); // Clear parent's text
+    } else {
+      // No icon, just use text (already set)
+      QLabel *iconLabel = findChild<QLabel *>("iconLabel");
+      if (iconLabel)
+        iconLabel->hide();  // Hide icon label if it exists
+      setPixmap(QPixmap()); // Clear parent pixmap
     }
   } else {
     setText("");
-    setPixmap(QPixmap());
+    setPixmap(QPixmap()); // Clear parent's pixmap
+
+    // FIX: Clear and hide icon label
+    QLabel *iconLabel = findChild<QLabel *>("iconLabel");
+    if (iconLabel) {
+      iconLabel->setPixmap(QPixmap());
+      iconLabel->hide();
+    }
   }
   // Update badge visibility according to current color
   QLabel *badge = findChild<QLabel *>("plusBadge");
@@ -70,7 +94,7 @@ void CharacterSlot::setCharacter(int charId) {
       badge->show();
     else
       badge->hide();
-    badge->raise();
+    badge->raise(); // This will now work, raising it above the icon label
   }
   updateStyle();
 }
@@ -84,21 +108,34 @@ void CharacterSlot::setColor(int color) {
     QLabel *badge = findChild<QLabel *>("plusBadge");
     if (m_color == 3 || m_color == 4) {
       if (!badge) {
-        badge = new QLabel("+", this);
+        badge = new QLabel(this); // No text initially
         badge->setObjectName("plusBadge");
-        badge->setStyleSheet(
-            "QLabel { background: rgba(0,0,0,150); color: white; "
-            "font-weight: bold; font-size: 12px; border-radius: 8px; "
-            "padding: 0px; }");
         badge->setFixedSize(14, 14);
         badge->setAlignment(Qt::AlignCenter);
-        badge->move(width() - 18, 2);
+
+        // Load pixmap
+        QPixmap plusIcon("resources/dungleon/plus.png");
+        if (!plusIcon.isNull()) {
+          badge->setPixmap(plusIcon.scaled(14, 14, Qt::KeepAspectRatio,
+                                           Qt::SmoothTransformation));
+          badge->setStyleSheet("QLabel { background-color: transparent; }");
+        } else {
+          // Fallback if image fails to load
+          badge->setText("+");
+          badge->setStyleSheet(
+              "QLabel { background: rgba(0,0,0,150); color: white; "
+              "font-weight: bold; font-size: 12px; border-radius: 8px; "
+              "padding: 0px; }");
+        }
+
+        // Common properties
+        badge->move(width() - badge->width() - 4, 4);
         badge->setAttribute(Qt::WA_TransparentForMouseEvents);
         badge->show();
       } else {
         badge->show();
       }
-      badge->raise();
+      badge->raise(); // Raise badge above icon label
     } else {
       if (badge)
         badge->hide();
@@ -111,6 +148,12 @@ void CharacterSlot::clear() {
   m_color = 0;
   setText("");
   setPixmap(QPixmap());
+
+  // FIX: Remove icon label if it exists
+  QLabel *iconLabel = findChild<QLabel *>("iconLabel");
+  if (iconLabel) {
+    iconLabel->deleteLater();
+  }
 
   // Remove badge if it exists
   QLabel *badge = findChild<QLabel *>("plusBadge");
@@ -126,33 +169,19 @@ void CharacterSlot::updateStyle() {
 
   // Dungleon colors: 0=not present, 1=diff pos no more, 2=correct pos no more,
   // 3=diff pos one more, 4=correct pos one more
-  switch (m_color) {
-  case 0: // Not present
-    bgColor = "#787c7e";
+  if (m_color == 0) {
+    bgColor = "#cd4848";
     textColor = "white";
-    border = "#787c7e";
-    break;
-  case 1: // Different position, no more (yellow-ish)
+    border = "#cd4848";
+  } else if (m_color == 1 || m_color == 3) {
     bgColor = "#c9b458";
     textColor = "white";
     border = "#c9b458";
-    break;
-  case 2: // Correct position, no more (green)
+  } else if (m_color == 2 || m_color == 4) {
     bgColor = "#6aaa64";
     textColor = "white";
     border = "#6aaa64";
-    break;
-  case 3: // Different position, one more (lighter yellow)
-    bgColor = "#e5d366";
-    textColor = "white";
-    border = "#e5d366";
-    break;
-  case 4: // Correct position, one more (lighter green)
-    bgColor = "#8bc589";
-    textColor = "white";
-    border = "#8bc589";
-    break;
-  default:
+  } else {
     bgColor = "#787c7e";
     textColor = "white";
     border = "#787c7e";
@@ -165,6 +194,8 @@ void CharacterSlot::updateStyle() {
     textColor = "#000";
   }
 
+  // This stylesheet now applies to the parent slot, which acts
+  // as the background/border.
   setStyleSheet(QString("QLabel { "
                         "background-color: %1; "
                         "color: %2; "
@@ -176,11 +207,30 @@ void CharacterSlot::updateStyle() {
                     .arg(border));
 }
 
+void CharacterSlot::resizeEvent(QResizeEvent *event) {
+  QLabel::resizeEvent(event);
+
+  // FIX: Reposition icon label to fill parent
+  QLabel *iconLabel = findChild<QLabel *>("iconLabel");
+  if (iconLabel) {
+    iconLabel->setGeometry(0, 0, width(), height());
+  }
+
+  // Reposition badge (top-right) if present
+  QLabel *badge = findChild<QLabel *>("plusBadge");
+  if (badge) {
+    // move a few pixels from the top-right corner
+    badge->move(width() - badge->width() - 4, 4);
+    badge->raise();
+  }
+}
+
 void CharacterSlot::mousePressEvent(QMouseEvent *event) {
   if (event->button() == Qt::LeftButton && m_characterId >= 0) {
     // Cycle through colors
     m_color = (m_color + 1) % 5;
-    updateStyle();
+    // FIX: Must call setColor to update badge, not just updateStyle
+    setColor(m_color);
     emit clicked();
   } else if (event->button() == Qt::RightButton && m_characterId >= 0) {
     // Right-click signals intent to clear this slot
@@ -514,8 +564,8 @@ void DungleonWidget::setupCurrentPattern() {
   currentBackspaceBtn->setFixedSize(36, 36);
   currentBackspaceBtn->setToolTip("Remove last character");
   currentBackspaceBtn->setStyleSheet(
-      "QPushButton { background-color: #f0f0f0; border: 1px solid #ccc;"
-      " border-radius: 4px; }");
+      "QPushButton { background-color: #505050; border: 1px solid #111;"
+      " border-radius: 4px; color: #f0f0f0; }");
   connect(currentBackspaceBtn, &QPushButton::clicked, this, [this]() {
     if (currentSlotIndex > 0) {
       --currentSlotIndex;
