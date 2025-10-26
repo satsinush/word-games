@@ -1,6 +1,7 @@
 #ifdef WITH_GUI
 
 #include "gui/MainWindow.hpp"
+#include "gui/DungleonWidget.hpp"
 #include "gui/LetterBoxedWidget.hpp"
 #include "gui/MastermindWidget.hpp"
 #include "gui/SpellingBeeWidget.hpp"
@@ -22,6 +23,7 @@ MainWindow::MainWindow(QWidget *parent)
   sidebarButtonGroup->addButton(ui->btnSpellingBee, 1);
   sidebarButtonGroup->addButton(ui->btnLetterBoxed, 2);
   sidebarButtonGroup->addButton(ui->btnMastermind, 3);
+  sidebarButtonGroup->addButton(ui->btnDungleon, 4);
   sidebarButtonGroup->setExclusive(true);
 
   // Create and add game widgets to the stacked widget
@@ -29,11 +31,13 @@ MainWindow::MainWindow(QWidget *parent)
   spellingBeeWidget = new SpellingBeeWidget(this);
   letterBoxedWidget = new LetterBoxedWidget(this);
   mastermindWidget = new MastermindWidget(this);
+  dungleonWidget = new DungleonWidget(this);
 
   ui->stackedWidget->addWidget(wordleWidget);      // index 0
   ui->stackedWidget->addWidget(spellingBeeWidget); // index 1
   ui->stackedWidget->addWidget(letterBoxedWidget); // index 2
   ui->stackedWidget->addWidget(mastermindWidget);  // index 3
+  ui->stackedWidget->addWidget(dungleonWidget);    // index 4
 
   // Set initial page to Wordle
   ui->stackedWidget->setCurrentIndex(0);
@@ -58,6 +62,8 @@ void MainWindow::setupConnections() {
           &MainWindow::onLetterBoxedSelected);
   connect(ui->btnMastermind, &QPushButton::clicked, this,
           &MainWindow::onMastermindSelected);
+  connect(ui->btnDungleon, &QPushButton::clicked, this,
+          &MainWindow::onDungleonSelected);
 
   // Menu action connections
   connect(ui->actionNew_Game, &QAction::triggered, this,
@@ -84,6 +90,8 @@ void MainWindow::onLetterBoxedSelected() { switchToPage(2); }
 
 void MainWindow::onMastermindSelected() { switchToPage(3); }
 
+void MainWindow::onDungleonSelected() { switchToPage(4); }
+
 // Menu action slot implementations
 void MainWindow::onMenuNewGame() {
   // Get the current widget and call its newGame() slot
@@ -101,6 +109,9 @@ void MainWindow::onMenuNewGame() {
     break;
   case 3:
     mastermindWidget->newGame();
+    break;
+  case 4:
+    dungleonWidget->newGame();
     break;
   }
 }

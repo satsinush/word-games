@@ -539,6 +539,6 @@ Result runDungleonSolver(const Config &config, std::atomic<bool> *cancel) {
 
   // Use the specialized Dungleon ENT solver - returns Result directly!
   DungleonEntSolver solver;
-  return solver.solve(allPatterns, possiblePatterns, config);
+  return solver.solve(allPatterns, possiblePatterns, config, cancel);
 }
 } // namespace Dungleon

@@ -16,6 +16,7 @@ class WordleWidget;
 class SpellingBeeWidget;
 class LetterBoxedWidget;
 class MastermindWidget;
+class DungleonWidget;
 
 class MainWindow : public QMainWindow {
   Q_OBJECT
@@ -30,6 +31,7 @@ private slots:
   void onSpellingBeeSelected();
   void onLetterBoxedSelected();
   void onMastermindSelected();
+  void onDungleonSelected();
 
   // Menu actions
   void onMenuNewGame();
@@ -48,6 +50,7 @@ private:
   SpellingBeeWidget *spellingBeeWidget;
   LetterBoxedWidget *letterBoxedWidget;
   MastermindWidget *mastermindWidget;
+  DungleonWidget *dungleonWidget;
 
   // Helper methods
   void setupConnections();
