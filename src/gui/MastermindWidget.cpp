@@ -396,8 +396,7 @@ void MastermindWidget::populateResultTable(
     table->setItem(row, 0, rankItem);
 
     // Pattern (uppercase monospace)
-    QString patternStr =
-        QString::fromStdString(guess.pattern.toString(config)).toUpper();
+    QString patternStr = QString::fromStdString(guess.pattern.toString(config));
     QTableWidgetItem *patternItem = new QTableWidgetItem(patternStr);
     QFont monoFont("Consolas", 10);
     monoFont.setBold(true);
@@ -540,8 +539,7 @@ void MastermindWidget::rebuildFeedbackList() {
   // Rebuild from feedbackHistory
   for (size_t i = 0; i < config.feedbackHistory.size(); ++i) {
     const auto &fb = config.feedbackHistory[i];
-    QString displayPattern =
-        QString::fromStdString(fb.guess.toString(config)).toUpper();
+    QString displayPattern = QString::fromStdString(fb.guess.toString(config));
     FeedbackRow *row =
         new FeedbackRow(i, displayPattern, fb.correctColor, fb.correctPosition,
                         config.numPegs, this);

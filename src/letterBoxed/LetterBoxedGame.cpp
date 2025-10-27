@@ -37,7 +37,7 @@ LetterBoxed::Config LetterBoxedGame::getConfigFromUser() {
 
   // Get puzzle letters
   std::string letters = Utils::Input::promptLetters(
-      "Enter the 12 puzzle letters (ex. abc def ghi jkl):", 12, false);
+      "Enter the 12 puzzle letters (ex. abc def ghi jkl):", 12, true);
 
   for (size_t i = 0; i < 12; ++i) {
     config.allLetters[i] = letters[i];

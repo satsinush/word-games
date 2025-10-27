@@ -606,7 +606,7 @@ void DungleonWidget::submitCurrentPattern() {
   Dungleon::Feedback fb;
   for (int i = 0; i < 5; ++i) {
     fb.pattern.characters[i] = currentSlots[i]->getCharacter();
-    fb.setColor(i, 0); // Default to "not present"
+    fb.setColor(i, currentSlots[i]->getColor());
   }
   fb.pattern.computeCharacterCount();
 
@@ -857,13 +857,6 @@ void DungleonWidget::onSolverFinished() {
     ui->resultsTabWidget->setTabText(
         1,
         QString("Possible Solutions (%1)").arg(result.totalPossiblePatterns));
-
-    // Switch to appropriate tab
-    if (!probablePatterns.empty()) {
-      ui->resultsTabWidget->setCurrentIndex(1);
-    } else {
-      ui->resultsTabWidget->setCurrentIndex(0);
-    }
   } catch (const std::exception &e) {
     QMessageBox::critical(this, "Error",
                           QString("Solver error: %1").arg(e.what()));

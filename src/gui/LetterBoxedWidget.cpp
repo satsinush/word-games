@@ -491,20 +491,13 @@ void LetterBoxedWidget::onInputSubmit() {
     return;
   }
 
-  // Check for duplicates
-  std::set<char> seen;
+  // Check for all letters (duplicates are fine)
   for (char c : letters) {
     if (!isalpha(static_cast<unsigned char>(c))) {
       QMessageBox::warning(this, "Invalid Input",
                            "All characters must be letters!");
       return;
     }
-    if (seen.count(c)) {
-      QMessageBox::warning(this, "Invalid Input",
-                           "Duplicate letters not allowed!");
-      return;
-    }
-    seen.insert(c);
   }
 
   // Set up config
