@@ -368,15 +368,34 @@ DungleonWidget::DungleonWidget(QWidget *parent)
   currentInputLayout->setSpacing(5);
   currentInputLayout->setContentsMargins(0, 5, 0, 5);
 
-  // Add to main layout: insert current input above submit button, and the
-  // submitted-patterns scroll area below the submit button.
-  QVBoxLayout *mainLayout = qobject_cast<QVBoxLayout *>(layout());
-  if (mainLayout) {
-    int submitIdx = mainLayout->indexOf(ui->submitBtn);
-    mainLayout->insertWidget(submitIdx, currentInputWidget);
-    // Recompute submit index (it shifts when we insert)
-    int submitIdx2 = mainLayout->indexOf(ui->submitBtn);
-    mainLayout->insertWidget(submitIdx2 + 1, patternListScrollArea);
+  // If the UI file provides a `currentInputContainer` (added to the .ui),
+  // add the current input widget there so the slots appear to the right of
+  // the bank. Use findChild to avoid depending on a regenerated ui header.
+  QWidget *container = this->findChild<QWidget *>("currentInputContainer");
+  if (container) {
+    // Ensure the container has a layout we can add into.
+    QLayout *existing = container->layout();
+    if (!existing) {
+      QHBoxLayout *containerLayout = new QHBoxLayout(container);
+      containerLayout->setSpacing(6);
+      containerLayout->setContentsMargins(0, 0, 0, 0);
+      container->setLayout(containerLayout);
+    }
+    container->layout()->addWidget(currentInputWidget);
+  } else {
+    QVBoxLayout *mainLayout = qobject_cast<QVBoxLayout *>(layout());
+    if (mainLayout) {
+      int submitIdx = mainLayout->indexOf(ui->submitBtn);
+      mainLayout->insertWidget(submitIdx, currentInputWidget);
+    }
+  }
+
+  // Ensure the submitted-patterns scroll area is placed just below the
+  // submit button (same behavior as before).
+  QVBoxLayout *mainLayout2 = qobject_cast<QVBoxLayout *>(layout());
+  if (mainLayout2) {
+    int submitIdx2 = mainLayout2->indexOf(ui->submitBtn);
+    mainLayout2->insertWidget(submitIdx2 + 1, patternListScrollArea);
   }
 
   // Connect signals
@@ -675,17 +694,39 @@ void DungleonWidget::onTableRowClicked(int row, int column) {
 
   const Dungleon::Pattern &pattern = (*results)[row].pattern;
 
-  // Clear current pattern
-  for (int i = 0; i < 5; ++i) {
-    currentSlots[i]->clear();
-  }
-  currentSlotIndex = 0;
-
-  // Fill with pattern from table
+  // Fill current input with the pattern from the table (so the user sees it)
   for (int i = 0; i < 5; ++i) {
     currentSlots[i]->setCharacter(pattern.characters[i]);
-    currentSlotIndex++;
+    currentSlots[i]->setColor(0);
   }
+  currentSlotIndex = 5;
+
+  // Create a feedback object from the clicked pattern (default color = 0)
+  Dungleon::Feedback fb;
+  for (int i = 0; i < 5; ++i) {
+    fb.pattern.characters[i] = pattern.characters[i];
+    fb.setColor(i, 0);
+  }
+  fb.pattern.computeCharacterCount();
+
+  // Append to config feedback history and UI as a new PatternRow
+  config.feedbackHistory.push_back(fb);
+
+  PatternRow *patternRow = new PatternRow(fb, patternListWidget);
+  patternRow->setEditable(true);
+  connect(patternRow, &PatternRow::deleteRequested, this,
+          &DungleonWidget::onPatternDeleted);
+  connect(patternRow, &PatternRow::editRequested, this,
+          [this]() { rebuildFeedbackHistory(); });
+
+  patternRows.push_back(patternRow);
+  // Insert before the stretch at the end
+  patternListLayout->insertWidget(patternListLayout->count() - 1, patternRow);
+
+  updateConfigInfo();
+
+  // Reset current input to a fresh empty row
+  setupCurrentPattern();
 }
 
 void DungleonWidget::newGame() { onNewGame(); }

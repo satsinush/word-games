@@ -521,7 +521,7 @@ void MastermindWidget::setUIEnabled(bool enabled) {
 
 void MastermindWidget::updateConfigInfo() {
   QString info = QString("<span style='color:#666; font-size:11pt;'>%1 pegs | "
-                         "Colors: %2 | Depth: %3</span>")
+                         "Colors: %2 | Search Depth: %3</span>")
                      .arg(config.numPegs)
                      .arg(QString::fromStdString(config.colorChars))
                      .arg(config.maxDepth);

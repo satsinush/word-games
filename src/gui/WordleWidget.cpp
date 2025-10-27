@@ -396,7 +396,8 @@ void WordleWidget::setUIEnabled(bool enabled) {
 
 void WordleWidget::updateConfigInfo() {
   QString info =
-      QString("<span style='color:#666; font-size:11pt;'>%1 letters | Depth: "
+      QString("<span style='color:#666; font-size:11pt;'>%1 letters | Search "
+              "Depth: "
               "%2 | %3</span>")
           .arg(config.wordLength)
           .arg(config.maxDepth)
