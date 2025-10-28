@@ -45,9 +45,6 @@ MainWindow::MainWindow(QWidget *parent)
 
   // Connect signals and slots
   setupConnections();
-
-  // Initialize status bar
-  // statusBar()->showMessage("Welcome to Word Games Suite!");
 }
 
 MainWindow::~MainWindow() { delete ui; }

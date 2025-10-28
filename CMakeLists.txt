@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(word-games LANGUAGES CXX)
+project(p++ LANGUAGES CXX)
 
 # ===================================================================
 # 1. PROJECT-WIDE SETTINGS
@@ -65,8 +65,8 @@ if(BUILD_TRACY)
 endif()
 
 # --- Create the standard, non-profiled library ---
-add_library(word-games-base STATIC ${CORE_SRCS})
-target_include_directories(word-games-base PUBLIC
+add_library(p++-base STATIC ${CORE_SRCS})
+target_include_directories(p++-base PUBLIC
     ${CMAKE_SOURCE_DIR}/src
     ${CMAKE_CURRENT_BINARY_DIR}
 )
@@ -74,37 +74,37 @@ target_include_directories(word-games-base PUBLIC
 # Add Tracy include path to base library (for IntelliSense), but don't enable it
 # DO NOT define TRACY_ENABLE here - leave it undefined so Tracy macros become no-ops
 if(BUILD_TRACY)
-    target_include_directories(word-games-base PUBLIC
+    target_include_directories(p++-base PUBLIC
         ${tracy_SOURCE_DIR}/public
     )
 endif()
 
 if(MSVC)
-    target_compile_options(word-games-base PRIVATE /W4 /permissive-)
+    target_compile_options(p++-base PRIVATE /W4 /permissive-)
 else()
-    target_compile_options(word-games-base PRIVATE -Wall -Wextra -fdiagnostics-color=always -Wno-stringop-overread)
+    target_compile_options(p++-base PRIVATE -Wall -Wextra -fdiagnostics-color=always -Wno-stringop-overread)
 endif()
 
 # --- Conditionally create the profiled library variant ---
 if(BUILD_TRACY)
     # Create the profiled library from the same sources
-    add_library(word-games-profiled STATIC ${CORE_SRCS})
+    add_library(p++-profiled STATIC ${CORE_SRCS})
 
     # Apply all the same base properties
-    target_include_directories(word-games-profiled PUBLIC
+    target_include_directories(p++-profiled PUBLIC
         ${CMAKE_SOURCE_DIR}/src
         ${CMAKE_CURRENT_BINARY_DIR}
         ${tracy_SOURCE_DIR}/public
     )
     if(MSVC)
-        target_compile_options(word-games-profiled PRIVATE /W4 /permissive-)
+        target_compile_options(p++-profiled PRIVATE /W4 /permissive-)
     else()
-        target_compile_options(word-games-profiled PRIVATE -Wall -Wextra -fdiagnostics-color=always -Wno-stringop-overread)
+        target_compile_options(p++-profiled PRIVATE -Wall -Wextra -fdiagnostics-color=always -Wno-stringop-overread)
     endif()
 
     # Apply the Tracy-specific properties to this version
-    target_compile_definitions(word-games-profiled PUBLIC TRACY_ENABLE=1)
-    target_link_libraries(word-games-profiled INTERFACE TracyClient)
+    target_compile_definitions(p++-profiled PUBLIC TRACY_ENABLE=1)
+    target_link_libraries(p++-profiled INTERFACE TracyClient)
 else()
     message(STATUS "Tracy profiling disabled.")
 endif()
@@ -122,46 +122,46 @@ if(BUILD_GUI)
         "${CMAKE_SOURCE_DIR}/src/gui/*.hpp"
         "${CMAKE_SOURCE_DIR}/src/gui/*.ui"
     )
-    add_library(word-games-gui STATIC ${GUI_SRCS})
+    add_library(p++-gui STATIC ${GUI_SRCS})
 
-    target_include_directories(word-games-gui PUBLIC ${CMAKE_SOURCE_DIR}/src)
-    set_target_properties(word-games-gui PROPERTIES AUTOMOC ON AUTOUIC ON AUTORCC ON)
+    target_include_directories(p++-gui PUBLIC ${CMAKE_SOURCE_DIR}/src)
+    set_target_properties(p++-gui PROPERTIES AUTOMOC ON AUTOUIC ON AUTORCC ON)
 
     # Link the GUI library to its dependencies
-    target_link_libraries(word-games-gui PUBLIC Qt6::Widgets)
-    target_compile_definitions(word-games-gui PUBLIC WITH_GUI)
+    target_link_libraries(p++-gui PUBLIC Qt6::Widgets)
+    target_compile_definitions(p++-gui PUBLIC WITH_GUI)
 endif()
 
 # -- Define the main executable once --
-add_executable(word-games src/main.cpp)
+add_executable(p++ src/main.cpp)
 
 if(BUILD_TRACY)
-    target_compile_definitions(word-games PRIVATE TRACY_ENABLE=1)
+    target_compile_definitions(p++ PRIVATE TRACY_ENABLE=1)
 endif()
 
 # -- Link the core game logic (profiled or not) --
-target_link_libraries(word-games PRIVATE
-    $<IF:$<BOOL:${BUILD_TRACY}>,word-games-profiled,word-games-base>
+target_link_libraries(p++ PRIVATE
+    $<IF:$<BOOL:${BUILD_TRACY}>,p++-profiled,p++-base>
 )
 
 # -- Conditionally link the GUI library and add its dependencies --
 if(BUILD_GUI)
-    target_link_libraries(word-games PRIVATE word-games-gui)
-    set_target_properties(word-games PROPERTIES AUTOMOC ON)
+    target_link_libraries(p++ PRIVATE p++-gui)
+    set_target_properties(p++ PROPERTIES AUTOMOC ON)
 
     if(WIN32)
         find_program(WINDEPLOYQT_EXECUTABLE windeployqt HINTS ${CMAKE_PREFIX_PATH}/bin)
         if(WINDEPLOYQT_EXECUTABLE)
-            add_custom_command(TARGET word-games POST_BUILD
-                COMMAND ${WINDEPLOYQT_EXECUTABLE} ARGS $<TARGET_FILE:word-games>
-                WORKING_DIRECTORY $<TARGET_FILE_DIR:word-games>
+            add_custom_command(TARGET p++ POST_BUILD
+                COMMAND ${WINDEPLOYQT_EXECUTABLE} ARGS $<TARGET_FILE:p++>
+                WORKING_DIRECTORY $<TARGET_FILE_DIR:p++>
                 COMMENT "Running windeployqt...")
         endif()
     endif()
 endif()
 
 # -- Add shared resources dependency --
-add_dependencies(word-games copy_resources)
+add_dependencies(p++ copy_resources)
 
 # ===================================================================
 # 6. SETUP TESTING (NO GUI DEPENDENCIES)
@@ -178,24 +178,24 @@ if(BUILD_TESTING)
     set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
     FetchContent_MakeAvailable(googletest)
 
-    add_executable(word-games-tests tests/tests.cpp)
-    target_link_libraries(word-games-tests PRIVATE
-        word-games-base
+    add_executable(p++-tests tests/tests.cpp)
+    target_link_libraries(p++-tests PRIVATE
+        p++-base
         gtest_main
     )
-    add_dependencies(word-games-tests copy_resources)
+    add_dependencies(p++-tests copy_resources)
 
     include(GoogleTest)
     if(WIN32 AND MINGW)
         get_filename_component(MINGW_BIN_DIR ${CMAKE_CXX_COMPILER} DIRECTORY)
         set(SYSTEM32_PATH "$ENV{SystemRoot}/System32")
         set(TEST_ENVIRONMENT_LIST "PATH=${MINGW_BIN_DIR};${SYSTEM32_PATH}")
-        gtest_discover_tests(word-games-tests
+        gtest_discover_tests(p++-tests
             PROPERTIES
                 ENVIRONMENT "${TEST_ENVIRONMENT_LIST}"
         )
     else()
-        gtest_discover_tests(word-games-tests)
+        gtest_discover_tests(p++-tests)
     endif()
 else()
     message(STATUS "Testing disabled.")
@@ -219,13 +219,13 @@ if(BUILD_BENCHMARKS)
     )
     FetchContent_MakeAvailable(googlebenchmark)
 
-    add_executable(word-games-benchmarks benchmarks/benchmarks.cpp)
-    target_link_libraries(word-games-benchmarks PRIVATE
-        word-games-base
+    add_executable(p++-benchmarks benchmarks/benchmarks.cpp)
+    target_link_libraries(p++-benchmarks PRIVATE
+        p++-base
         benchmark::benchmark
         benchmark::benchmark_main
     )
-    add_dependencies(word-games-benchmarks copy_resources)
+    add_dependencies(p++-benchmarks copy_resources)
 else()
     message(STATUS "Benchmarks disabled.")
 endif()

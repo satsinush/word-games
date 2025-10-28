@@ -1,4 +1,5 @@
-# Word Games Solver 🧩
+# Puzzle++ 🧩
+Word game and puzzle solver created in C++
 
 This is a C++ command-line tool designed to solve two popular word puzzles: **New York Times Letter Boxed** and **Spelling Bee**. It can be run interactively or by using command-line arguments for automated solving.
 

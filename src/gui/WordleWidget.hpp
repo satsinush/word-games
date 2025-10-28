@@ -146,9 +146,13 @@ private:
   void setupCurrentRow();
   void submitCurrentGuess();
   void rebuildFeedbackHistory();
-  void populateResultTable(QTableWidget *table,
-                           const std::vector<Wordle::WordGuess> &guesses,
-                           int maxRows, int startRank = 1);
+  // Populate both results tables (All Suggestions and Possible Solutions).
+  // maxRows limits the number of rows shown in each table.
+  void populateResults(int maxRows = 1000);
+
+  // Cached results for table click handling
+  std::vector<Wordle::WordGuess> lastAllResults;
+  std::vector<Wordle::WordGuess> lastProbableResults;
 };
 
 #endif // WITH_GUI

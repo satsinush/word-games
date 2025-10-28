@@ -11,6 +11,7 @@ namespace SpellingBee {
 struct Config {
   std::array<char, 7> allLetters;
   std::array<bool, 256> validLettersMap = {false};
+  bool excludeUncommonWords = false;
 };
 
 std::vector<Utils::Word>

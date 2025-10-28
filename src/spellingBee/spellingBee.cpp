@@ -22,6 +22,9 @@ bool isValidWord(Utils::Word &word, const Config &config) {
 #ifdef TRACY_ENABLE
   ZoneScoped;
 #endif
+  if (config.excludeUncommonWords && !word.is_scrabble)
+    return false;
+
   if (word.wordString.size() <= 3)
     return false;
 

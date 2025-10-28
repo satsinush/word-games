@@ -230,7 +230,7 @@ void LetterBoxedWidget::newGame() { onNewGame(); }
 bool LetterBoxedWidget::showConfigDialog() {
   QDialog dialog(this);
   dialog.setWindowTitle("Solver Configuration");
-  dialog.setMinimumWidth(450);
+  dialog.setMinimumWidth(300);
 
   QVBoxLayout *mainLayout = new QVBoxLayout(&dialog);
 
@@ -426,15 +426,15 @@ void LetterBoxedWidget::onInputChanged(const QString &text) {
   updateLetterBoxFromInput(text);
 }
 
-void LetterBoxedWidget::populateResultTable() {
+void LetterBoxedWidget::populateResults(int maxRows) {
   resultsTable->setRowCount(0);
 
   if (solutions.empty()) {
     return;
   }
 
-  // Show top 100 solutions
-  int limit = std::min(100, static_cast<int>(solutions.size()));
+  // Show top maxRows solutions
+  int limit = std::min(maxRows, static_cast<int>(solutions.size()));
   resultsTable->setRowCount(limit);
 
   for (int i = 0; i < limit; ++i) {
@@ -457,8 +457,8 @@ void LetterBoxedWidget::populateResultTable() {
 
     // Color code by word count
     QColor bgColor;
-    if (solution.wordCount == 2) {
-      bgColor = QColor(106, 170, 100); // Green for 2-word solutions
+    if (solution.wordCount <= 2) {
+      bgColor = QColor(106, 170, 100); // Green for 2-word or fewer solutions
     } else if (solution.wordCount == 3) {
       bgColor = QColor(201, 180, 88); // Yellow for 3-word solutions
     } else {
@@ -592,7 +592,7 @@ void LetterBoxedWidget::onSolverFinished() {
   if (solutions.empty()) {
     QMessageBox::information(this, "No Results", "No solutions found");
   } else {
-    populateResultTable();
+    populateResults(1000);
   }
 
   // Clean up (non-blocking)

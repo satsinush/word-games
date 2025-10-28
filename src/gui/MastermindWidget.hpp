@@ -105,9 +105,12 @@ private:
   void updateConfigInfo() override;
   void rebuildFeedbackList();
   void solveMastermind();
-  void populateResultTable(QTableWidget *table,
-                           const std::vector<Mastermind::PatternGuess> &guesses,
-                           bool filterPossible);
+  // Populate both result tables (All Results and Possible Results)
+  void populateResults(int maxRows = 1000);
+
+  // Cached results for table click handling
+  std::vector<Mastermind::PatternGuess> lastAllResults;
+  std::vector<Mastermind::PatternGuess> lastProbableResults;
 };
 
 #endif // WITH_GUI

@@ -281,7 +281,7 @@ bool WordleWidget::showConfigDialog() {
   // Show configuration dialog
   QDialog dialog(this);
   dialog.setWindowTitle("Wordle Solver Configuration");
-  dialog.setMinimumWidth(400);
+  dialog.setMinimumWidth(300);
 
   QVBoxLayout *layout = new QVBoxLayout(&dialog);
   QFormLayout *formLayout = new QFormLayout();
@@ -347,7 +347,6 @@ bool WordleWidget::showConfigDialog() {
       ui->inputField->clear();
     }
 
-    updateConfigInfo();
     return true;
   }
   return false;
@@ -544,67 +543,116 @@ void WordleWidget::onSettings() {
   updateConfigInfo();
 }
 
-void WordleWidget::populateResultTable(
-    QTableWidget *table, const std::vector<Wordle::WordGuess> &guesses,
-    int maxRows, int startRank) {
-  table->setRowCount(0);
+void WordleWidget::populateResults(int maxRows) {
+  // Fill All Suggestions from cached lastAllResults
+  const auto &all = lastAllResults;
+  int allRows = std::min(maxRows, static_cast<int>(all.size()));
+  allResultsTable->setRowCount(allRows);
+  for (int i = 0; i < allRows; ++i) {
+    allResultsTable->setRowHeight(i, 24);
+    const auto &guess = all[i];
 
-  int numRows = std::min(maxRows, static_cast<int>(guesses.size()));
-  table->setRowCount(numRows);
-
-  for (int i = 0; i < numRows; ++i) {
-    const auto &guess = guesses[i];
-
-    // Rank
-    QTableWidgetItem *rankItem =
-        new QTableWidgetItem(QString::number(startRank + i));
+    QTableWidgetItem *rankItem = new QTableWidgetItem(QString::number(i + 1));
     rankItem->setTextAlignment(Qt::AlignCenter);
-    table->setItem(i, 0, rankItem);
+    allResultsTable->setItem(i, 0, rankItem);
 
-    // Word - uppercase and monospace font
     QTableWidgetItem *wordItem = new QTableWidgetItem(
         QString::fromStdString(guess.word.wordString).toUpper());
     QFont monoFont("Consolas", 10);
     monoFont.setBold(true);
     wordItem->setFont(monoFont);
     wordItem->setTextAlignment(Qt::AlignCenter);
-    table->setItem(i, 1, wordItem);
+    allResultsTable->setItem(i, 1, wordItem);
 
-    // Word Score - 3 decimal places
     QTableWidgetItem *scoreItem =
         new QTableWidgetItem(QString::number(guess.word.score, 'f', 3));
     scoreItem->setTextAlignment(Qt::AlignCenter);
-    table->setItem(i, 2, scoreItem);
+    allResultsTable->setItem(i, 2, scoreItem);
 
-    // ENT - 3 decimal places
     QTableWidgetItem *entItem =
         new QTableWidgetItem(QString::number(guess.ent, 'f', 3));
     entItem->setTextAlignment(Qt::AlignCenter);
-    table->setItem(i, 3, entItem);
+    allResultsTable->setItem(i, 3, entItem);
 
-    // Probability - as percentage
     QTableWidgetItem *probItem = new QTableWidgetItem(
         QString::number(guess.probability * 100.0, 'f', 2) + "%");
     probItem->setTextAlignment(Qt::AlignCenter);
-    table->setItem(i, 4, probItem);
+    allResultsTable->setItem(i, 4, probItem);
 
-    // Color highlighting based on probability
+    // highlight
     if (guess.probability >= 1.0) {
-      // Green for 100% probability
       for (int col = 0; col < 5; ++col) {
-        table->item(i, col)->setBackground(
-            QColor(144, 238, 144));                          // Light green
-        table->item(i, col)->setForeground(QColor(0, 0, 0)); // Black text
+        allResultsTable->item(i, col)->setBackground(QColor(144, 238, 144));
+        allResultsTable->item(i, col)->setForeground(QColor(0, 0, 0));
       }
     } else if (guess.probability > 0.0) {
-      // Yellow for possible words (probability > 0 but < 100%)
       for (int col = 0; col < 5; ++col) {
-        table->item(i, col)->setBackground(
-            QColor(255, 255, 153));                          // Light yellow
-        table->item(i, col)->setForeground(QColor(0, 0, 0)); // Black text
+        allResultsTable->item(i, col)->setBackground(QColor(255, 255, 153));
+        allResultsTable->item(i, col)->setForeground(QColor(0, 0, 0));
       }
     }
   }
+
+  // Build probable list from full list but keep original ranks
+  std::vector<std::pair<int, Wordle::WordGuess>> probable;
+  probable.reserve(all.size());
+  for (int i = 0; i < static_cast<int>(all.size()); ++i) {
+    if (all[i].probability > 0.0)
+      probable.emplace_back(i + 1, all[i]);
+  }
+
+  int probRows = std::min(maxRows, static_cast<int>(probable.size()));
+  probableWordsTable->setRowCount(probRows);
+  for (int r = 0; r < probRows; ++r) {
+    probableWordsTable->setRowHeight(r, 24);
+    int originalRank = probable[r].first;
+    const auto &guess = probable[r].second;
+
+    QTableWidgetItem *rankItem =
+        new QTableWidgetItem(QString::number(originalRank));
+    rankItem->setTextAlignment(Qt::AlignCenter);
+    probableWordsTable->setItem(r, 0, rankItem);
+
+    QTableWidgetItem *wordItem = new QTableWidgetItem(
+        QString::fromStdString(guess.word.wordString).toUpper());
+    QFont monoFont2("Consolas", 10);
+    monoFont2.setBold(true);
+    wordItem->setFont(monoFont2);
+    wordItem->setTextAlignment(Qt::AlignCenter);
+    probableWordsTable->setItem(r, 1, wordItem);
+
+    QTableWidgetItem *scoreItem =
+        new QTableWidgetItem(QString::number(guess.word.score, 'f', 3));
+    scoreItem->setTextAlignment(Qt::AlignCenter);
+    probableWordsTable->setItem(r, 2, scoreItem);
+
+    QTableWidgetItem *entItem =
+        new QTableWidgetItem(QString::number(guess.ent, 'f', 3));
+    entItem->setTextAlignment(Qt::AlignCenter);
+    probableWordsTable->setItem(r, 3, entItem);
+
+    QTableWidgetItem *probItem = new QTableWidgetItem(
+        QString::number(guess.probability * 100.0, 'f', 2) + "%");
+    probItem->setTextAlignment(Qt::AlignCenter);
+    probableWordsTable->setItem(r, 4, probItem);
+
+    if (guess.probability >= 1.0) {
+      for (int col = 0; col < 5; ++col) {
+        probableWordsTable->item(r, col)->setBackground(QColor(144, 238, 144));
+        probableWordsTable->item(r, col)->setForeground(QColor(0, 0, 0));
+      }
+    } else if (guess.probability > 0.0) {
+      for (int col = 0; col < 5; ++col) {
+        probableWordsTable->item(r, col)->setBackground(QColor(255, 255, 153));
+        probableWordsTable->item(r, col)->setForeground(QColor(0, 0, 0));
+      }
+    }
+  }
+
+  lastProbableResults.clear();
+  lastProbableResults.reserve(probable.size());
+  for (auto &p : probable)
+    lastProbableResults.push_back(p.second);
 }
 
 void WordleWidget::solveWordle() {
@@ -652,97 +700,21 @@ void WordleWidget::onSolverFinished() {
         static_cast<SolverThread *>(solverThread)->getResult();
 
     if (!result.sortedGuesses.empty()) {
-      // Populate all results table (show ALL results)
-      populateResultTable(allResultsTable, result.sortedGuesses,
-                          result.sortedGuesses.size(), 1);
+      // Cache and populate both tables
+      lastAllResults = result.sortedGuesses;
+      populateResults(1000);
 
-      // Filter and populate probable words table, tracking original ranks
-      std::vector<Wordle::WordGuess> probableWords;
-      std::vector<int> originalRanks;
-
-      for (size_t i = 0; i < result.sortedGuesses.size(); ++i) {
-        const auto &guess = result.sortedGuesses[i];
-        if (guess.probability > 0.0) {
-          probableWords.push_back(guess);
-          originalRanks.push_back(i + 1); // Track original rank
-        }
-      }
-
-      if (!probableWords.empty()) {
-        // Manually populate probable words table with original ranks
-        probableWordsTable->setRowCount(0);
-
-        int numRows = std::min(50, static_cast<int>(probableWords.size()));
-        probableWordsTable->setRowCount(numRows);
-
-        for (int i = 0; i < numRows; ++i) {
-          const auto &guess = probableWords[i];
-          int originalRank = originalRanks[i];
-
-          // Rank - use original rank from all results
-          QTableWidgetItem *rankItem =
-              new QTableWidgetItem(QString::number(originalRank));
-          rankItem->setTextAlignment(Qt::AlignCenter);
-          probableWordsTable->setItem(i, 0, rankItem);
-
-          // Word - uppercase and monospace font
-          QTableWidgetItem *wordItem = new QTableWidgetItem(
-              QString::fromStdString(guess.word.wordString).toUpper());
-          QFont monoFont("Consolas", 10);
-          monoFont.setBold(true);
-          wordItem->setFont(monoFont);
-          wordItem->setTextAlignment(Qt::AlignCenter);
-          probableWordsTable->setItem(i, 1, wordItem);
-
-          // Word Score - 3 decimal places
-          QTableWidgetItem *scoreItem =
-              new QTableWidgetItem(QString::number(guess.word.score, 'f', 3));
-          scoreItem->setTextAlignment(Qt::AlignCenter);
-          probableWordsTable->setItem(i, 2, scoreItem);
-
-          // ENT - 3 decimal places
-          QTableWidgetItem *entItem =
-              new QTableWidgetItem(QString::number(guess.ent, 'f', 3));
-          entItem->setTextAlignment(Qt::AlignCenter);
-          probableWordsTable->setItem(i, 3, entItem);
-
-          // Probability - as percentage
-          QTableWidgetItem *probItem = new QTableWidgetItem(
-              QString::number(guess.probability * 100.0, 'f', 2) + "%");
-          probItem->setTextAlignment(Qt::AlignCenter);
-          probableWordsTable->setItem(i, 4, probItem);
-
-          // Color highlighting based on probability
-          if (guess.probability >= 1.0) {
-            // Green for 100% probability
-            for (int col = 0; col < 5; ++col) {
-              probableWordsTable->item(i, col)->setBackground(
-                  QColor(144, 238, 144)); // Light green
-              probableWordsTable->item(i, col)->setForeground(QColor(0, 0, 0));
-            }
-          } else if (guess.probability > 0.0) {
-            // Yellow for possible words (probability > 0 but < 100%)
-            for (int col = 0; col < 5; ++col) {
-              probableWordsTable->item(i, col)->setBackground(
-                  QColor(255, 255, 153)); // Light yellow
-              probableWordsTable->item(i, col)->setForeground(QColor(0, 0, 0));
-            }
-          }
-        }
-
-        ui->resultsTabWidget->setTabText(
-            1, QString("Possible Solutions (%1)").arg(probableWords.size()));
-      } else {
-        probableWordsTable->setRowCount(0);
-        ui->resultsTabWidget->setTabText(1, "Possible Solutions (0)");
-      }
-
+      // Update tab labels
       ui->resultsTabWidget->setTabText(
-          0, QString("All Suggestions (%1)").arg(result.sortedGuesses.size()));
-
+          0, QString("All Suggestions (%1)").arg(lastAllResults.size()));
+      // Count probable entries
+      int probableCount = 0;
+      for (const auto &g : lastAllResults)
+        if (g.probability > 0.0)
+          ++probableCount;
+      ui->resultsTabWidget->setTabText(
+          1, QString("Possible Solutions (%1)").arg(probableCount));
     } else {
-      // No suggestions found - only show message if not cancelled (which we
-      // already handled)
       QMessageBox::information(this, "No Results", "No suggestions available");
     }
   } catch (const std::exception &e) {

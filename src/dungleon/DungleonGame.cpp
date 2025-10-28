@@ -22,6 +22,8 @@ Dungleon::Config DungleonGame::getConfigFromArgs(
   Dungleon::Config config;
   config.maxDepth =
       static_cast<uint8_t>(Utils::Input::getArgValue(args, "max-depth", 0));
+  config.excludeImpossiblePatterns =
+      Utils::Input::getArgValue(args, "exclude-impossible", false);
   return config;
 }
 
@@ -232,6 +234,8 @@ void DungleonGame::runCLI() {
           // Ask for search depth each time before computing ENT
           config.maxDepth = static_cast<uint8_t>(Utils::Input::promptInt(
               "Search depth for ENT calculation (0-2)", 1, 0, 2));
+          config.excludeImpossiblePatterns = Utils::Input::promptBool(
+              "Exclude impossible patterns from guesses?", false);
 
           std::cout << "Calculating best guesses...\n";
           // Use all patterns for guesses (including invalid patterns)

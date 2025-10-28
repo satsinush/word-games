@@ -3,6 +3,7 @@
 #include "gui/SpellingBeeWidget.hpp"
 #include "ui_SpellingBeeWidget.h"
 
+#include <QCheckBox>
 #include <QDialog>
 #include <QDialogButtonBox>
 #include <QFormLayout>
@@ -165,8 +166,32 @@ SpellingBeeWidget::~SpellingBeeWidget() {
 void SpellingBeeWidget::newGame() { onNewGame(); }
 
 bool SpellingBeeWidget::showConfigDialog() {
-  // No longer used - configuration happens inline
-  return true;
+  // Show configuration dialog
+  QDialog dialog(this);
+  dialog.setWindowTitle("Spelling Bee Solver Configuration");
+  dialog.setMinimumWidth(300);
+
+  QVBoxLayout *layout = new QVBoxLayout(&dialog);
+  QFormLayout *formLayout = new QFormLayout();
+
+  // Exclude Uncommon Words
+  QCheckBox *excludeCheckbox = new QCheckBox(&dialog);
+  excludeCheckbox->setChecked(config.excludeUncommonWords);
+  formLayout->addRow("Exclude Uncommon Words:", excludeCheckbox);
+
+  layout->addLayout(formLayout);
+
+  QDialogButtonBox *buttonBox = new QDialogButtonBox(
+      QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
+  connect(buttonBox, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
+  connect(buttonBox, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+  layout->addWidget(buttonBox);
+
+  if (dialog.exec() == QDialog::Accepted) {
+    config.excludeUncommonWords = excludeCheckbox->isChecked();
+    return true;
+  }
+  return false;
 }
 
 void SpellingBeeWidget::initGame() {
@@ -278,16 +303,16 @@ void SpellingBeeWidget::onInputChanged(const QString &text) {
   updateHexagonsFromInput(text);
 }
 
-void SpellingBeeWidget::populateResultTable() {
+void SpellingBeeWidget::populateResults(int maxRows) {
   resultsTable->setRowCount(0);
 
   if (solutions.empty()) {
     return;
   }
+  int limit = std::min(maxRows, static_cast<int>(solutions.size()));
+  resultsTable->setRowCount(limit);
 
-  resultsTable->setRowCount(solutions.size());
-
-  for (int i = 0; i < static_cast<int>(solutions.size()); ++i) {
+  for (int i = 0; i < limit; ++i) {
     const auto &word = solutions[i];
 
     // Word column
@@ -417,7 +442,7 @@ void SpellingBeeWidget::onSolverFinished() {
     QMessageBox::information(this, "No Results", "No solutions found");
   } else {
     // Display results
-    populateResultTable();
+    populateResults(1000);
     ui->scoreLabel->setText(QString("Found: %1 words").arg(solutions.size()));
   }
 
@@ -429,13 +454,8 @@ void SpellingBeeWidget::onSolverFinished() {
 void SpellingBeeWidget::onNewGame() { initGame(); }
 
 void SpellingBeeWidget::onSettings() {
-  QMessageBox::information(
-      this, "Spelling Bee Settings",
-      "Spelling Bee solver has no configurable settings.\n\n"
-      "It finds all valid words that:\n"
-      "- Are at least 4 letters long\n"
-      "- Use only the 7 provided letters\n"
-      "- Include the center letter (first letter entered)");
+  showConfigDialog();
+  updateConfigInfo();
 }
 
 #endif // WITH_GUI

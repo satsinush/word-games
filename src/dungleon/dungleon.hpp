@@ -57,7 +57,9 @@ CharacterType getCharacterType(uint8_t characterId);
 struct Feedback; // forward declaration so Config can reference Feedback
 
 struct Config {
-  uint8_t maxDepth = 0; // How many moves ahead to calculate ENT
+  uint8_t maxDepth = 1; // How many moves ahead to calculate ENT
+  bool excludeImpossiblePatterns =
+      false; // Whether to exclude impossible patterns from guesses
   std::vector<Feedback> feedbackHistory = {}; // History of previous feedbacks
 };
 

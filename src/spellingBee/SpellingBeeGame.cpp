@@ -41,6 +41,9 @@ SpellingBee::Config SpellingBeeGame::getConfigFromUser() {
     config.validLettersMap[static_cast<unsigned char>(c)] = true;
   }
 
+  config.excludeUncommonWords =
+      Utils::Input::promptBool("Exclude uncommon words?", false);
+
   drawPuzzle(config.allLetters);
 
   return config;
@@ -83,6 +86,9 @@ SpellingBee::Config SpellingBeeGame::getConfigFromArgs(
   for (char c : config.allLetters) {
     config.validLettersMap[static_cast<unsigned char>(c)] = true;
   }
+
+  config.excludeUncommonWords =
+      Utils::Input::getArgValue(args, "exclude-uncommon-words", false);
 
   return config;
 }

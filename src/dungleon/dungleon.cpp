@@ -534,7 +534,9 @@ Result runDungleonSolver(const Config &config, std::atomic<bool> *cancel) {
   ZoneScoped;
 #endif
 
-  std::vector<Pattern> allPatterns = generateAllPatterns();
+  std::vector<Pattern> allPatterns = config.excludeImpossiblePatterns
+                                         ? generateAllPossiblePatterns()
+                                         : generateAllPatterns();
   std::vector<Pattern> possiblePatterns = generateAllPossiblePatterns();
 
   // Use the specialized Dungleon ENT solver - returns Result directly!

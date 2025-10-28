@@ -220,11 +220,9 @@ bool MastermindWidget::showConfigDialog() {
     if (oldNumPegs != config.numPegs || oldColorChars != config.colorChars) {
       config.feedbackHistory.clear();
       ui->patternField->clear();
+      initGame();
     }
 
-    // Regenerate patterns and reinitialize game with new configuration
-    initGame();
-    updateConfigInfo();
     return true;
   }
 
@@ -370,72 +368,119 @@ void MastermindWidget::initGame() {
       QString("Enter pattern (e.g., %1)...").arg(examplePattern));
 }
 
-void MastermindWidget::populateResultTable(
-    QTableWidget *table, const std::vector<Mastermind::PatternGuess> &guesses,
-    bool filterPossible) {
-  table->setRowCount(0);
+void MastermindWidget::populateResults(int maxRows) {
+  // Populate All Results
+  const auto &all = lastAllResults;
+  ui->allResultsTable->setRowCount(0);
+  int limit = std::min(maxRows, static_cast<int>(all.size()));
+  for (int i = 0; i < limit; ++i) {
+    const auto &guess = all[i];
+    if (ui->allResultsTable->rowCount() >= maxRows)
+      break;
+    int row = ui->allResultsTable->rowCount();
+    ui->allResultsTable->insertRow(row);
 
-  int displayedRank = 0;
-  for (size_t i = 0; i < guesses.size(); ++i) {
-    const auto &guess = guesses[i];
-
-    // Skip if filtering for possible and this has 0 probability
-    if (filterPossible && guess.probability <= 0.0) {
-      continue;
-    }
-
-    displayedRank++;
-    int row = table->rowCount();
-    table->insertRow(row);
-
-    // Rank - use actual position in full list (i+1), not displayedRank
-    int actualRank = static_cast<int>(i) + 1;
+    int actualRank = i + 1;
     QTableWidgetItem *rankItem =
         new QTableWidgetItem(QString::number(actualRank));
     rankItem->setTextAlignment(Qt::AlignCenter);
-    table->setItem(row, 0, rankItem);
+    ui->allResultsTable->setItem(row, 0, rankItem);
 
-    // Pattern (uppercase monospace)
     QString patternStr = QString::fromStdString(guess.pattern.toString(config));
     QTableWidgetItem *patternItem = new QTableWidgetItem(patternStr);
     QFont monoFont("Consolas", 10);
     monoFont.setBold(true);
     patternItem->setFont(monoFont);
     patternItem->setTextAlignment(Qt::AlignCenter);
-    table->setItem(row, 1, patternItem);
+    ui->allResultsTable->setItem(row, 1, patternItem);
 
-    // ENT
     QTableWidgetItem *entItem =
         new QTableWidgetItem(QString::number(guess.ent, 'f', 3));
     entItem->setTextAlignment(Qt::AlignCenter);
-    table->setItem(row, 2, entItem);
+    ui->allResultsTable->setItem(row, 2, entItem);
 
-    // Probability
-    QString probStr = QString::number(guess.probability * 100.0, 'f', 2) + "%";
-    QTableWidgetItem *probItem = new QTableWidgetItem(probStr);
+    QTableWidgetItem *probItem = new QTableWidgetItem(
+        QString::number(guess.probability * 100.0, 'f', 2) + "%");
     probItem->setTextAlignment(Qt::AlignCenter);
-    table->setItem(row, 3, probItem);
+    ui->allResultsTable->setItem(row, 3, probItem);
 
     // Color coding
     if (guess.probability >= 1.0) {
-      // Green for 100% probability
       QColor bgColor(144, 238, 144);
       for (int col = 0; col < 4; ++col) {
-        if (table->item(row, col)) {
-          table->item(row, col)->setBackground(bgColor);
-          table->item(row, col)->setForeground(Qt::black);
+        if (ui->allResultsTable->item(row, col)) {
+          ui->allResultsTable->item(row, col)->setBackground(bgColor);
+          ui->allResultsTable->item(row, col)->setForeground(Qt::black);
         }
       }
     } else if (guess.probability > 0.0) {
-      // Yellow for 0% < probability < 100%
       QColor bgColor(255, 255, 153);
       for (int col = 0; col < 4; ++col) {
-        if (table->item(row, col)) {
-          table->item(row, col)->setBackground(bgColor);
-          table->item(row, col)->setForeground(Qt::black);
+        if (ui->allResultsTable->item(row, col)) {
+          ui->allResultsTable->item(row, col)->setBackground(bgColor);
+          ui->allResultsTable->item(row, col)->setForeground(Qt::black);
         }
       }
     }
+  }
+
+  // Populate Possible Results (only entries with probability > 0), preserving
+  // original rank
+  ui->possibleResultsTable->setRowCount(0);
+  lastProbableResults.clear();
+  for (int i = 0; i < static_cast<int>(all.size()); ++i) {
+    const auto &guess = all[i];
+    if (guess.probability <= 0.0)
+      continue;
+    int row = ui->possibleResultsTable->rowCount();
+    ui->possibleResultsTable->insertRow(row);
+
+    int actualRank = i + 1;
+    QTableWidgetItem *rankItem =
+        new QTableWidgetItem(QString::number(actualRank));
+    rankItem->setTextAlignment(Qt::AlignCenter);
+    ui->possibleResultsTable->setItem(row, 0, rankItem);
+
+    QString patternStr = QString::fromStdString(guess.pattern.toString(config));
+    QTableWidgetItem *patternItem = new QTableWidgetItem(patternStr);
+    QFont monoFont2("Consolas", 10);
+    monoFont2.setBold(true);
+    patternItem->setFont(monoFont2);
+    patternItem->setTextAlignment(Qt::AlignCenter);
+    ui->possibleResultsTable->setItem(row, 1, patternItem);
+
+    QTableWidgetItem *entItem2 =
+        new QTableWidgetItem(QString::number(guess.ent, 'f', 3));
+    entItem2->setTextAlignment(Qt::AlignCenter);
+    ui->possibleResultsTable->setItem(row, 2, entItem2);
+
+    QTableWidgetItem *probItem2 = new QTableWidgetItem(
+        QString::number(guess.probability * 100.0, 'f', 2) + "%");
+    probItem2->setTextAlignment(Qt::AlignCenter);
+    ui->possibleResultsTable->setItem(row, 3, probItem2);
+
+    // Color coding
+    if (guess.probability >= 1.0) {
+      QColor bgColor(144, 238, 144);
+      for (int col = 0; col < 4; ++col) {
+        if (ui->possibleResultsTable->item(row, col)) {
+          ui->possibleResultsTable->item(row, col)->setBackground(bgColor);
+          ui->possibleResultsTable->item(row, col)->setForeground(Qt::black);
+        }
+      }
+    } else {
+      QColor bgColor(255, 255, 153);
+      for (int col = 0; col < 4; ++col) {
+        if (ui->possibleResultsTable->item(row, col)) {
+          ui->possibleResultsTable->item(row, col)->setBackground(bgColor);
+          ui->possibleResultsTable->item(row, col)->setForeground(Qt::black);
+        }
+      }
+    }
+
+    lastProbableResults.push_back(guess);
+    if (static_cast<int>(ui->possibleResultsTable->rowCount()) >= maxRows)
+      break;
   }
 }
 
@@ -487,13 +532,12 @@ void MastermindWidget::onSolverFinished() {
     if (result.sortedGuesses.empty()) {
       QMessageBox::information(this, "No Results", "No suggestions available");
     } else {
-      // Populate both tables
-      populateResultTable(ui->allResultsTable, result.sortedGuesses, false);
-      populateResultTable(ui->possibleResultsTable, result.sortedGuesses, true);
+      // Cache results and populate both tables via single call
+      lastAllResults = result.sortedGuesses;
+      populateResults(1000);
 
-      // Update tab titles with counts
       ui->resultsTabWidget->setTabText(
-          0, QString("All Suggestions (%1)").arg(result.sortedGuesses.size()));
+          0, QString("All Suggestions (%1)").arg(lastAllResults.size()));
       ui->resultsTabWidget->setTabText(
           1,
           QString("Possible Answers (%1)").arg(result.totalPossiblePatterns));

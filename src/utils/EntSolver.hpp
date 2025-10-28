@@ -91,16 +91,22 @@ public:
     // If maxDepth is 0, skip ENT calculation and just return filtered
     // candidates
     if (config.maxDepth == 0) {
-      for (const auto &candidate : filteredPossibleCandidates) {
-        double probability = filteredPossibleCandidates.empty()
-                                 ? 0.0
-                                 : 1.0 / filteredPossibleCandidates.size();
+      double possibleProb = filteredPossibleCandidates.empty()
+                                ? 0.0
+                                : 1.0 / filteredPossibleCandidates.size();
+      for (const auto &candidate : allCandidates) {
+        bool isPossible = filteredPossibleCandidateSet.find(candidate) !=
+                          filteredPossibleCandidateSet.end();
+        double probability = isPossible ? possibleProb : 0.0;
         TGuessType guess = createGuess(
             candidate,
             std::log2(static_cast<double>(filteredPossibleCandidates.size())),
             probability);
         guesses.push_back(guess);
       }
+
+      std::sort(guesses.begin(), guesses.end());
+
       return createResult(guesses, totalPossible);
     }
 

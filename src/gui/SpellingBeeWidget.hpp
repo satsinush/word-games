@@ -86,7 +86,7 @@ private:
   void initGame() override;
   void setUIEnabled(bool enabled) override;
   void updateConfigInfo() override;
-  void populateResultTable();
+  void populateResults(int maxRows = 1000);
   void createHexagons();
   void updateHexagonsFromInput(const QString &text);
 };

@@ -100,9 +100,9 @@ private:
   void submitCurrentPattern();
   void rebuildFeedbackHistory();
   void solveDungleon();
-  void populateResultTable(QTableWidget *table,
-                           const std::vector<Dungleon::PatternGuess> &guesses,
-                           int maxRows, int startRank = 1);
+  // Populate both results tables (All Suggestions and Possible Solutions).
+  // maxRows limits the number of rows shown in each table.
+  void populateResults(int maxRows = 1000);
 
   // Worker thread for solving
   class SolverThread : public QThread {

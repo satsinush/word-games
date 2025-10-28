@@ -3,8 +3,7 @@
 - Add Strands (solver) get all possible words that can be created
 - Add Dungleon solver
   - Add Gauntlet mode, each level's solution shares at least one character
+  - Create tests and benchmarks for Dungleon solver
 
 - Fix debug heap corruption error and segmentation faults when using Tracy
   - Update Tracy to use proper thread handling
-
-- Rebrand to Puzzle++
