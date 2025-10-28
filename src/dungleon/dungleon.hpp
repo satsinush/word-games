@@ -184,7 +184,7 @@ Feedback parseFeedback(const std::string &input, const Config &config);
 bool matchesFeedback(const Pattern &candidate, const Feedback &fb);
 
 // Check if a pattern is valid according to game rules
-bool isValidPattern(const Pattern &pattern);
+bool isValidPattern(const Pattern &pattern, uint8_t numSlots = NUM_SLOTS);
 
 // Generate feedback for a guess against a target pattern
 Feedback generateFeedback(const Pattern &target, const Pattern &guess);

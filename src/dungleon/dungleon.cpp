@@ -126,10 +126,10 @@ bool matchesFeedback(const Pattern &candidate, const Feedback &fb) {
 #ifdef TRACY_ENABLE
   ZoneScoped;
 #endif
-  // First check if the pattern is valid according to game rules
-  if (!isValidPattern(candidate)) {
-    return false;
-  }
+  // Don't check if pattern is valid, assume that this has been done already
+  // if (!isValidPattern(candidate)) {
+  //   return false;
+  // }
 
   const Pattern &guess = fb.pattern;
 
@@ -223,11 +223,12 @@ Feedback generateFeedback(const Pattern &target, const Pattern &guess) {
 }
 
 // Check if a pattern is valid according to game rules
-bool isValidPattern(const Pattern &pattern) {
+// TODO: Optimize and ensure checks for transformed characters is accurate
+bool isValidPattern(const Pattern &pattern, uint8_t numSlots) {
   std::array<uint8_t, NUM_CHARACTER_TYPES> characterTypeCounts = {};
   bool dragonNotInLast = false;
 
-  for (uint8_t i = 0; i < NUM_SLOTS; ++i) {
+  for (uint8_t i = 0; i < numSlots; ++i) {
     uint8_t c = pattern.characters[i];
     CharacterType cType = getCharacterType(c);
     characterTypeCounts[cType]++;
@@ -240,7 +241,7 @@ bool isValidPattern(const Pattern &pattern) {
   const auto &characterCounts = pattern.characterCount;
 
   // Position-based constraints
-  for (uint8_t i = 0; i < NUM_SLOTS; ++i) {
+  for (uint8_t i = 0; i < numSlots; ++i) {
     uint8_t c = pattern.characters[i];
     CharacterType cType = getCharacterType(c);
 
@@ -289,22 +290,27 @@ bool isValidPattern(const Pattern &pattern) {
     }
   }
 
+  if (numSlots < NUM_SLOTS) {
+    return true; // Skip count-based constraints for partial patterns
+  }
+
   // Count-based constraints
   // The Mage always turns a monster into a frog
   if (characterCounts[MAGE] > 0 && characterCounts[FROG] == 0) {
     return false;
   }
   // Bats always come in a pair
-  if (characterCounts[BAT] % 2 != 0) {
+  if (characterCounts[BAT] % 2 != 0 && characterCounts[FROG] == 0) {
     return false;
   }
   // Spiders always come in triplets
-  if (characterCounts[SPIDER] % 3 != 0) {
+  if (characterCounts[SPIDER] % 3 != 0 && characterCounts[FROG] == 0) {
     return false;
   }
   // Axe Orcs and Blade Orcs always appear together
   if ((characterCounts[AXE_ORC] > 0 || characterCounts[BLADE_ORC] > 0) &&
-      characterCounts[AXE_ORC] != characterCounts[BLADE_ORC]) {
+      characterCounts[AXE_ORC] != characterCounts[BLADE_ORC] &&
+      characterCounts[FROG] == 0) {
     return false;
   }
   // The necromancer always turns all heroes into zombies
@@ -316,7 +322,8 @@ bool isValidPattern(const Pattern &pattern) {
     return false;
   }
   // The dragon always comes with no other monsters
-  if (characterCounts[DRAGON] > 0 && characterTypeCounts[MONSTER] > 1) {
+  if (characterCounts[DRAGON] > 0 &&
+      (characterTypeCounts[MONSTER] > 1 || characterCounts[FROG] > 0)) {
     return false;
   }
   // The dragon always comes with no coins
@@ -377,64 +384,10 @@ std::vector<Pattern> generateAllPossiblePatterns() {
 
   std::function<void(unsigned int)> generate = [&](unsigned int pos) {
     if (pos == NUM_SLOTS) {
-      // Create pattern using array constructor which automatically calls
-      // computeCharacterCount()
+
       Pattern pattern(characters);
 
-      std::array<uint8_t, NUM_CHARACTER_TYPES> characterTypeCounts = {};
-      bool dragonNotInLast = false;
-      for (uint8_t i = 0; i < NUM_SLOTS; ++i) {
-        uint8_t c = pattern.characters[i];
-        CharacterType cType = getCharacterType(c);
-        characterTypeCounts[cType]++;
-
-        if (c == DRAGON && i != 4) {
-          dragonNotInLast = true;
-        }
-      }
-
-      // Use precomputed characterCount instead of recounting
-      const auto &characterCounts = pattern.characterCount;
-
-      // The Mage (2) always turns a monster into a frog
-      if (characterCounts[MAGE] > 0 && characterCounts[FROG] == 0) {
-        return;
-      }
-      // Bats always come in a pair
-      if (characterCounts[BAT] % 2 != 0) {
-        return;
-      }
-      // Spiders always come in triplets
-      if (characterCounts[SPIDER] % 3 != 0) {
-        return;
-      }
-      // Axe Orcs and Blade Orcs always appear together
-      if ((characterCounts[AXE_ORC] > 0 || characterCounts[BLADE_ORC] > 0) &&
-          characterCounts[AXE_ORC] != characterCounts[BLADE_ORC]) {
-        return;
-      }
-      // The necromancer always turns all heroes into zombies
-      if (characterCounts[NECROMANCER] > 0 && characterCounts[HERO] > 0) {
-        return;
-      }
-      // The troll always comes without treasure
-      if (characterCounts[TROLL] > 0 && characterTypeCounts[TREASURE] > 0) {
-        return;
-      }
-      // The dragon always comes with no other monsters
-      if (characterCounts[DRAGON] > 0 && characterTypeCounts[MONSTER] > 1) {
-        return;
-      }
-      // The dragon always comes with no coins
-      if (characterCounts[DRAGON] > 0 && characterCounts[COINS] > 0) {
-        return;
-      }
-      // Coins come as a pair or triple
-      if (characterCounts[COINS] % 2 != 0 && characterCounts[COINS] % 3 != 0) {
-        return;
-      }
-      // If there is a dragon not in the last position, then there is a relic
-      if (dragonNotInLast && characterCounts[RELIC] == 0) {
+      if (!isValidPattern(pattern)) {
         return;
       }
 
@@ -443,46 +396,7 @@ std::vector<Pattern> generateAllPossiblePatterns() {
     }
 
     for (uint8_t c = 0; c < NUM_CHARACTERS; ++c) {
-      CharacterType cType = getCharacterType(c);
-      // Heroes can appear in spots 0 and 1
-      if ((cType == HERO || c == ZOMBIE) && !(pos == 0 || pos == 1)) {
-        continue;
-      }
-      // The Knight always faces a monster
-      if (pos > 0 && characters[pos - 1] == KNIGHT &&
-          !(cType == MONSTER || c == FROG)) {
-        continue;
-      }
-      // The Archer cannot face a monster
-      if (pos > 0 && characters[pos - 1] == ARCHER &&
-          (cType == MONSTER || c == FROG)) {
-        continue;
-      }
-      // The bandit can only appear in the first position
-      if (c == BANDIT && pos != 0) {
-        continue;
-      }
-      // The sorcerer can only appear in the last position
-      if (c == SORCERER && pos != 4) {
-        continue;
-      }
-      // The troll always faces a hero or NPC
-      uint8_t lastCType = pos > 0 ? getCharacterType(characters[pos - 1]) : 0;
-      uint8_t lastC = pos > 0 ? characters[pos - 1] : 0;
-      if (pos > 0 && c == TROLL &&
-          !(lastCType == HERO || lastCType == NPC || lastC == ZOMBIE)) {
-        continue;
-      }
-      // The villager can only appear in spots 0 or 1
-      if (c == VILLAGER && !(pos == 0 || pos == 1)) {
-        continue;
-      }
-      // The king can only appear in spot 0
-      if (c == KING && pos != 0) {
-        continue;
-      }
-      // The relic can only appear in spot 4
-      if (c == RELIC && pos != 4) {
+      if (!isValidPattern(Pattern(characters), pos)) {
         continue;
       }
 
