@@ -842,6 +842,29 @@ void DungleonWidget::populateResults(int maxRows) {
         QString::number(guess.probability * 100.0, 'f', 2) + "%");
     probItem->setTextAlignment(Qt::AlignCenter);
     allResultsTable->setItem(i, 3, probItem);
+
+    // Color coding
+    if (guess.probability >= 1.0) {
+      QColor bgColor(144, 238, 144);
+      for (int col = 0; col < 4; ++col) {
+        if (allResultsTable->item(i, col)) {
+          allResultsTable->item(i, col)->setBackground(bgColor);
+          allResultsTable->item(i, col)->setForeground(Qt::black);
+        }
+      }
+      patternWidget->setStyleSheet(
+          QString("QWidget { background-color: %1; }").arg(bgColor.name()));
+    } else if (guess.probability > 0.0) {
+      QColor bgColor(255, 255, 153);
+      for (int col = 0; col < 4; ++col) {
+        if (allResultsTable->item(i, col)) {
+          allResultsTable->item(i, col)->setBackground(bgColor);
+          allResultsTable->item(i, col)->setForeground(Qt::black);
+        }
+      }
+      patternWidget->setStyleSheet(
+          QString("QWidget { background-color: %1; }").arg(bgColor.name()));
+    }
   }
 
   // --- Possible solutions table ---
@@ -915,6 +938,29 @@ void DungleonWidget::populateResults(int maxRows) {
         QString::number(guess.probability * 100.0, 'f', 2) + "%");
     probItem->setTextAlignment(Qt::AlignCenter);
     probablePatternsTable->setItem(r, 3, probItem);
+
+    // Color coding
+    if (guess.probability >= 1.0) {
+      QColor bgColor(144, 238, 144);
+      for (int col = 0; col < 4; ++col) {
+        if (probablePatternsTable->item(r, col)) {
+          probablePatternsTable->item(r, col)->setBackground(bgColor);
+          probablePatternsTable->item(r, col)->setForeground(Qt::black);
+        }
+      }
+      patternWidget->setStyleSheet(
+          QString("QWidget { background-color: %1; }").arg(bgColor.name()));
+    } else {
+      QColor bgColor(255, 255, 153);
+      for (int col = 0; col < 4; ++col) {
+        if (probablePatternsTable->item(r, col)) {
+          probablePatternsTable->item(r, col)->setBackground(bgColor);
+          probablePatternsTable->item(r, col)->setForeground(Qt::black);
+        }
+      }
+      patternWidget->setStyleSheet(
+          QString("QWidget { background-color: %1; }").arg(bgColor.name()));
+    }
   }
 
   // Update cached probable results to match what is displayed (keeping

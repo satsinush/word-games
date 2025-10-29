@@ -7,5 +7,5 @@
 - Fix debug heap corruption error and segmentation faults when using Tracy
   - Update Tracy to use proper thread handling
 
-- Use separate process instead of Qt thread in order to kill the solvers without cooperative cancellation
+- Use separate process instead of Qt thread in order to kill the solvers without cooperative cancellation?
 - Improve test cases for all solvers
