@@ -437,6 +437,12 @@ std::vector<Pattern> generateAllPossiblePatterns() {
 class DungleonEntSolver
     : public Utils::AbstractEntSolver<Pattern, Feedback, Config, PatternGuess,
                                       Result> {
+public:
+  // Forwarding constructor: initialize base class with given config
+  DungleonEntSolver(const Config &cfg)
+      : Utils::AbstractEntSolver<Pattern, Feedback, Config, PatternGuess,
+                                 Result>(cfg) {}
+
 protected:
   bool matchesFeedback(const Pattern &candidate,
                        const Feedback &feedback) const override {
@@ -464,6 +470,11 @@ protected:
     result.totalPossiblePatterns = totalPossible;
     return result;
   }
+
+  double worstCaseExpectedTurns(size_t numCandidates) const override {
+    return std::log(static_cast<double>(numCandidates)) /
+           std::log(static_cast<double>(NUM_CHARACTERS));
+  }
 };
 
 Result runDungleonSolver(const Config &config, std::atomic<bool> *cancel) {
@@ -477,7 +488,7 @@ Result runDungleonSolver(const Config &config, std::atomic<bool> *cancel) {
   std::vector<Pattern> possiblePatterns = generateAllPossiblePatterns();
 
   // Use the specialized Dungleon ENT solver - returns Result directly!
-  DungleonEntSolver solver;
-  return solver.solve(allPatterns, possiblePatterns, config, cancel);
+  DungleonEntSolver solver(config);
+  return solver.solve(allPatterns, possiblePatterns, cancel);
 }
 } // namespace Dungleon

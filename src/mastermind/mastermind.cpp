@@ -218,6 +218,12 @@ std::vector<Pattern> generateAllPatterns(const Config &config) {
 class MastermindEntSolver
     : public Utils::AbstractEntSolver<Pattern, Feedback, Config, PatternGuess,
                                       Result> {
+public:
+  // Forwarding constructor: initialize base class with given config
+  MastermindEntSolver(const Config &cfg)
+      : Utils::AbstractEntSolver<Pattern, Feedback, Config, PatternGuess,
+                                 Result>(cfg) {}
+
 protected:
   bool matchesFeedback(const Pattern &candidate,
                        const Feedback &feedback) const override {
@@ -245,6 +251,11 @@ protected:
     result.totalPossiblePatterns = totalPossible;
     return result;
   }
+
+  double worstCaseExpectedTurns(size_t numCandidates) const override {
+    return std::log(static_cast<double>(numCandidates)) /
+           std::log(static_cast<double>(config.numPegs));
+  }
 };
 
 #include <atomic>
@@ -258,7 +269,7 @@ Result runMastermindSolver(const Config &config, std::atomic<bool> *cancel) {
   std::vector<Pattern> allPatterns = Mastermind::generateAllPatterns(config);
 
   // Use the specialized Mastermind ENT solver - returns Result directly!
-  MastermindEntSolver solver;
-  return solver.solve(allPatterns, allPatterns, config, cancel);
+  MastermindEntSolver solver(config);
+  return solver.solve(allPatterns, allPatterns, cancel);
 }
 } // namespace Mastermind

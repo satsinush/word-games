@@ -35,6 +35,8 @@ class AbstractEntSolver {
 public:
   virtual ~AbstractEntSolver() = default;
 
+  AbstractEntSolver(const TConfigType &config) : config(config) {}
+
 protected:
   // Pure virtual methods to be implemented by derived classes
   virtual bool matchesFeedback(const TCandidateType &candidate,
@@ -58,7 +60,6 @@ public:
    */
   TResultType solve(const std::vector<TCandidateType> &allCandidates,
                     const std::vector<TCandidateType> &possibleCandidates,
-                    const TConfigType &config,
                     std::atomic<bool> *cancel = nullptr) {
     // Store cancellation pointer so internal helpers can check it
     cancellationFlag = cancel;
@@ -159,10 +160,14 @@ public:
     return createResult(guesses, totalPossible);
   }
 
+protected:
+  TConfigType config;
+
 private:
   // Cancellation pointer set during solve(); helpers check this and return
   // early when set.
   std::atomic<bool> *cancellationFlag = nullptr;
+
   // Helper struct for grouping candidates with total score
   struct FeedbackGroup {
     std::vector<TCandidateType> candidates;
