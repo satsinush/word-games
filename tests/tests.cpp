@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 
+#include "dungleon/dungleon.hpp"
 #include "letterBoxed/letterBoxed.hpp"
 #include "mastermind/mastermind.hpp"
 #include "spellingBee/spellingBee.hpp"
@@ -276,5 +277,209 @@ TEST(LetterBoxedTest, SolverWithLetters) {
     EXPECT_TRUE(solutions[i - 1] < solutions[i] ||
                 !(solutions[i] < solutions[i - 1]))
         << "Solutions should be sorted";
+  }
+}
+
+// =============================================================================
+// DUNGLEON TESTS
+// =============================================================================
+
+TEST(DungleonTest, ParseFeedback) {
+  // Example input: 5 two-letter ids + 5 digits
+  std::string input = "ar kn ma bt dr 01234";
+  Dungleon::Config config;
+  Dungleon::Feedback fb = Dungleon::parseFeedback(input, config);
+
+  // Check pattern characters map to expected enums
+  EXPECT_EQ(fb.pattern.characters[0], static_cast<uint8_t>(Dungleon::ARCHER));
+  EXPECT_EQ(fb.pattern.characters[1], static_cast<uint8_t>(Dungleon::KNIGHT));
+  EXPECT_EQ(fb.pattern.characters[2], static_cast<uint8_t>(Dungleon::MAGE));
+  EXPECT_EQ(fb.pattern.characters[3], static_cast<uint8_t>(Dungleon::BAT));
+  EXPECT_EQ(fb.pattern.characters[4], static_cast<uint8_t>(Dungleon::DRAGON));
+
+  // Check colors parsed correctly
+  EXPECT_EQ(fb.getColor(0), 0);
+  EXPECT_EQ(fb.getColor(1), 1);
+  EXPECT_EQ(fb.getColor(2), 2);
+  EXPECT_EQ(fb.getColor(3), 3);
+  EXPECT_EQ(fb.getColor(4), 4);
+}
+
+TEST(DungleonTest, GeneratePossiblePatternsNonEmpty) {
+  // Should produce a non-empty set of valid possible patterns
+  std::vector<Dungleon::Pattern> patterns =
+      Dungleon::generateAllPossiblePatterns();
+  EXPECT_FALSE(patterns.empty())
+      << "generateAllPossiblePatterns returned empty";
+
+  // Spot-check that returned patterns are valid according to isValidPattern
+  for (size_t i = 0; i < std::min<size_t>(patterns.size(), 10); ++i) {
+    EXPECT_TRUE(Dungleon::isValidPattern(patterns[i]))
+        << "Pattern failed validity check: " << patterns[i].toString();
+  }
+}
+
+TEST(DungleonTest, SolverWithGuesses) {
+  Dungleon::Config config;
+  config.maxDepth = 0;
+  config.excludeImpossiblePatterns = true;
+
+  // Provide one feedback entry to constrain the solver
+  // Format: "ar kn ma bt dr 00000"
+  config.feedbackHistory.push_back(
+      Dungleon::parseFeedback("ar kn ma bt dr 00000", config));
+
+  Dungleon::Result result = Dungleon::runDungleonSolver(config);
+
+  EXPECT_GT(result.sortedGuesses.size(), 0)
+      << "Solver should return at least one guess";
+  EXPECT_GT(result.totalPossiblePatterns, 0)
+      << "There should be at least one possible pattern remaining";
+}
+
+// =============================================================================
+// PERMUTATION / MATCHING CONSISTENCY TESTS
+// For each game, generate feedback for all permutations of targets/guesses
+// using the examples provided and verify that matchesFeedback(candidate, fb)
+// is equivalent to (generateFeedback(candidate, guess) == fb) for all
+// candidate patterns/words.
+// =============================================================================
+
+// Helper: build a Utils::Word with letter counts from a lowercase string
+static Utils::Word makeWord(const std::string &s) {
+  Utils::Word w;
+  w.wordString = s;
+  w.score = 0.0;
+  w.is_scrabble = false;
+  w.uniqueLetters = 0;
+  w.letterCount.fill(0);
+  for (char c : s) {
+    if (c >= 'a' && c <= 'z') {
+      ++w.letterCount[c - 'a'];
+    }
+  }
+  return w;
+}
+
+TEST(WordleTest, PermutationsGenerateAndMatch) {
+  // Provided words: TARES, TEETH, EBONY
+  std::vector<std::string> wordsStr = {"tares", "teeth", "ebony"};
+  std::vector<Utils::Word> words;
+  for (auto &w : wordsStr)
+    words.push_back(makeWord(w));
+
+  // For every target and guess, generate feedback and verify matching
+  for (const auto &target : words) {
+    for (const auto &guessStr : wordsStr) {
+      Wordle::Feedback fb = Wordle::generateFeedback(target, guessStr);
+
+      for (const auto &candidate : words) {
+        Wordle::Feedback fbCandidate =
+            Wordle::generateFeedback(candidate, guessStr);
+        bool matches = Wordle::matchesFeedback(candidate, fb);
+        EXPECT_EQ(matches, (fbCandidate == fb))
+            << "Mismatch for target='" << target.wordString << "' guess='"
+            << guessStr << "' candidate='" << candidate.wordString << "'";
+      }
+    }
+  }
+}
+
+TEST(MastermindTest, PermutationsGenerateAndMatch) {
+  // Provided patterns: 1234, 1221, 3153
+  Mastermind::Config config;
+  config.numPegs = 4;
+  config.colorChars = "012345"; // allow digits used in examples
+  config.allowDuplicates = true;
+
+  auto makePatternFromStr = [&](const std::string &s) {
+    std::array<uint8_t, Mastermind::MAX_PEGS> colors = {};
+    uint8_t numPegs = 0;
+    for (char c : s) {
+      int ci = config.charToColor(c);
+      EXPECT_GE(ci, 0) << "Invalid color char in test string: " << c;
+      colors[numPegs++] = static_cast<uint8_t>(ci);
+    }
+    return Mastermind::Pattern(colors, numPegs);
+  };
+
+  std::vector<std::string> pats = {"1234", "1221", "3153"};
+  std::vector<Mastermind::Pattern> patterns;
+  for (auto &p : pats)
+    patterns.push_back(makePatternFromStr(p));
+
+  for (const auto &target : patterns) {
+    for (const auto &guess : patterns) {
+      Mastermind::Feedback fb = Mastermind::generateFeedback(target, guess);
+
+      for (const auto &candidate : patterns) {
+        Mastermind::Feedback fbCandidate =
+            Mastermind::generateFeedback(candidate, guess);
+        bool matches = Mastermind::matchesFeedback(candidate, fb);
+        EXPECT_EQ(matches, (fbCandidate == fb))
+            << "Mismatch for target='" << target.toString(config) << "' guess='"
+            << guess.toString(config) << "' candidate='"
+            << candidate.toString(config) << "'";
+      }
+    }
+  }
+}
+
+TEST(DungleonTest, PermutationsGenerateAndMatch) {
+  // Provided patterns (use enum values from Dungleon::Character)
+  // A: MAGE VILLAGER BLADE_ORC FROG SORCERER
+  // B: MAGE KNIGHT BLADE_ORC FROG FROG
+  // C: MAGE MAGE BLADE_ORC FROG RELIC
+  Dungleon::Pattern A;
+  A.characters = {Dungleon::MAGE, Dungleon::VILLAGER, Dungleon::BLADE_ORC,
+                  Dungleon::FROG, Dungleon::SORCERER};
+  A.computeCharacterCount();
+
+  Dungleon::Pattern B;
+  B.characters = {Dungleon::MAGE, Dungleon::KNIGHT, Dungleon::BLADE_ORC,
+                  Dungleon::FROG, Dungleon::FROG};
+  B.computeCharacterCount();
+
+  Dungleon::Feedback expectedFB_A_B;
+  expectedFB_A_B.pattern = B;
+  expectedFB_A_B.setColor(0, 2);
+  expectedFB_A_B.setColor(1, 0);
+  expectedFB_A_B.setColor(2, 2);
+  expectedFB_A_B.setColor(3, 2);
+  expectedFB_A_B.setColor(4, 0);
+  Dungleon::Feedback fbAB = Dungleon::generateFeedback(A, B);
+  EXPECT_EQ(expectedFB_A_B, fbAB) << "Unexpected feedback for A vs B";
+
+  Dungleon::Pattern C;
+  C.characters = {Dungleon::MAGE, Dungleon::MAGE, Dungleon::BLADE_ORC,
+                  Dungleon::FROG, Dungleon::RELIC};
+  C.computeCharacterCount();
+
+  Dungleon::Feedback expectedFB_B_C;
+  expectedFB_B_C.pattern = C;
+  expectedFB_B_C.setColor(0, 2);
+  expectedFB_B_C.setColor(1, 0);
+  expectedFB_B_C.setColor(2, 2);
+  expectedFB_B_C.setColor(3, 4);
+  expectedFB_B_C.setColor(4, 0);
+  Dungleon::Feedback fbBC = Dungleon::generateFeedback(B, C);
+  EXPECT_EQ(expectedFB_B_C, fbBC) << "Unexpected feedback for B vs C";
+
+  std::vector<Dungleon::Pattern> patterns = {A, B, C};
+
+  for (const auto &target : patterns) {
+    for (const auto &guess : patterns) {
+      Dungleon::Feedback fb = Dungleon::generateFeedback(target, guess);
+
+      for (const auto &candidate : patterns) {
+        Dungleon::Feedback fbCandidate =
+            Dungleon::generateFeedback(candidate, guess);
+        bool matches = Dungleon::matchesFeedback(candidate, fb);
+        EXPECT_EQ(matches, (fbCandidate == fb))
+            << "Mismatch for Dungleon target='" << target.toString()
+            << "' guess='" << guess.toString() << "' candidate='"
+            << candidate.toString() << "'" << " matches=" << matches;
+      }
+    }
   }
 }

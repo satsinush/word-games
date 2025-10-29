@@ -134,17 +134,26 @@ bool matchesFeedback(const Pattern &candidate, const Feedback &fb) {
   const Pattern &guess = fb.pattern;
 
   // Use precomputed character counts from the candidate
-  std::array<uint8_t, NUM_CHARACTERS> candidateCount = candidate.characterCount;
+  std::array<uint8_t, NUM_CHARACTERS> remainingCount = candidate.characterCount;
 
   // First pass: Check all positions marked as correct (2 or 4)
   for (size_t i = 0; i < NUM_SLOTS; ++i) {
     int color = fb.getColor(i);
+    uint8_t guessChar = guess.characters[i];
     if (color == 2 || color == 4) {
       // Must match at this position
-      if (candidate.characters[i] != guess.characters[i]) {
+      if (candidate.characters[i] != guessChar) {
         return false;
       }
-      candidateCount[candidate.characters[i]]--;
+      if (color == 2 && candidate.characterCount[guessChar] >
+                            fb.pattern.characterCount[guessChar]) {
+        return false; // Too many instances in the candidate
+      }
+      if (color == 4 && candidate.characterCount[guessChar] <=
+                            fb.pattern.characterCount[guessChar]) {
+        return false; // Not enough instances in the candidate
+      }
+      remainingCount[candidate.characters[i]]--;
     }
   }
 
@@ -161,13 +170,21 @@ bool matchesFeedback(const Pattern &candidate, const Feedback &fb) {
       if (candidate.characters[i] == guessChar) {
         return false; // Cannot be in the same spot
       }
-      if (candidateCount[guessChar] <= 0) {
+      if (remainingCount[guessChar] <= 0) {
         return false; // Must have this character elsewhere
       }
-      candidateCount[guessChar]--;
+      if (color == 1 && candidate.characterCount[guessChar] >
+                            fb.pattern.characterCount[guessChar]) {
+        return false; // Too many instances in the candidate
+      }
+      if (color == 3 && candidate.characterCount[guessChar] <=
+                            fb.pattern.characterCount[guessChar]) {
+        return false; // Not enough instances in the candidate
+      }
+      remainingCount[guessChar]--;
     } else if (color == 0) {
       // Character is not present (or all instances already accounted for)
-      if (candidateCount[guessChar] > 0) {
+      if (remainingCount[guessChar] > 0) {
         return false; // Candidate has more of this character than allowed
       }
     }
@@ -187,10 +204,18 @@ Feedback generateFeedback(const Pattern &target, const Pattern &guess) {
   // Use precomputed character counts from the target
   std::array<uint8_t, NUM_CHARACTERS> remainingCount = target.characterCount;
 
-  // First pass: Mark correct positions (2 or 4)
+  // First pass: Determine correct positions
   for (size_t i = 0; i < NUM_SLOTS; ++i) {
-    if (target.characters[i] == guess.characters[i]) {
-      remainingCount[target.characters[i]]--;
+    uint8_t guessChar = guess.characters[i];
+
+    if (target.characters[i] == guessChar) {
+      // Correct position
+      if (target.characterCount[guessChar] > guess.characterCount[guessChar]) {
+        fb.setColor(i, 4); // Correct position, more in the target
+      } else {
+        fb.setColor(i, 2); // Correct position, no more in the target
+      }
+      remainingCount[guessChar]--; // Decrement remaining count
     }
   }
 
@@ -200,21 +225,19 @@ Feedback generateFeedback(const Pattern &target, const Pattern &guess) {
 
     if (target.characters[i] == guessChar) {
       // Correct position
-      if (remainingCount[guessChar] > 0) {
-        fb.setColor(i, 4); // Correct position, one more
-      } else {
-        fb.setColor(i, 2); // Correct position, no more
-      }
+      continue; // Already handled in first pass
     } else {
       // Not in correct position
-      if (remainingCount[guessChar] > 0) {
-        fb.setColor(i, 3); // Different position, one more
-        remainingCount[guessChar]--;
-      } else if (remainingCount[guessChar] == 0 &&
-                 target.characterCount[guessChar] > 0) {
-        fb.setColor(i, 1); // Different position, no more (already used up)
+      if (remainingCount[guessChar] == 0) {
+        fb.setColor(i, 0); // No more instances in target
       } else {
-        fb.setColor(i, 0); // Not present
+        if (target.characterCount[guessChar] >
+            guess.characterCount[guessChar]) {
+          fb.setColor(i, 3); // Different position, more in target
+        } else {
+          fb.setColor(i, 1); // Different position, no more in target
+        }
+        remainingCount[guessChar]--; // Decrement remaining count
       }
     }
   }

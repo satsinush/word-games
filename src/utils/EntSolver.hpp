@@ -243,15 +243,9 @@ private:
     for (const auto &group : feedbackGroups) {
       double prob = group.second.totalScore / totalScore;
 
-      if (group.second.candidates.size() == 1) {
-        // This feedback group leads to a solution in 1 more turn
-        expectedTurns += prob * 1.0;
-      } else {
-        // This feedback group requires optimal play on the subgroup
-        double optimalSubTurns = findMinExpectedTurns(
-            group.second.candidates, allCandidates, maxDepth - 1);
-        expectedTurns += prob * (1.0 + optimalSubTurns);
-      }
+      double optimalSubTurns = findMinExpectedTurns(
+          group.second.candidates, allCandidates, maxDepth - 1);
+      expectedTurns += prob * (1.0 + optimalSubTurns);
     }
 
     return expectedTurns;
