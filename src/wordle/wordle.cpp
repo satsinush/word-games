@@ -198,6 +198,12 @@ protected:
     result.totalPossibleWords = totalPossible;
     return result;
   }
+
+  double worstCaseExpectedTurns(size_t numCandidates) const override {
+    // Logarithm base 12 was found to be a good fit for Wordle's feedback system
+    // when the word length is 5.
+    return std::log(static_cast<double>(numCandidates)) / std::log(12.0);
+  }
 };
 
 Result runWordleSolver(const Config &config, std::atomic<bool> *cancel) {

@@ -48,6 +48,10 @@ protected:
   virtual TResultType createResult(const std::vector<TGuessType> &guesses,
                                    int totalPossible) const = 0;
 
+  virtual double worstCaseExpectedTurns(size_t numCandidates) const {
+    return std::log2(static_cast<double>(numCandidates));
+  }
+
 public:
   /**
    * Main solver function that returns the final result type directly
@@ -100,7 +104,7 @@ public:
         double probability = isPossible ? possibleProb : 0.0;
         TGuessType guess = createGuess(
             candidate,
-            std::log2(static_cast<double>(filteredPossibleCandidates.size())),
+            worstCaseExpectedTurns(filteredPossibleCandidates.size()),
             probability);
         guesses.push_back(guess);
       }
@@ -183,8 +187,7 @@ private:
 
     // Depth limit reached - return pessimistic estimate
     if (maxDepth <= 0)
-      return std::log2(static_cast<double>(
-          currentCandidates.size())); // Worst case: binary search depth
+      return worstCaseExpectedTurns(currentCandidates.size());
 
     double minExpectedTurns = std::numeric_limits<double>::max();
 
