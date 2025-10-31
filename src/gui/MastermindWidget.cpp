@@ -128,12 +128,14 @@ MastermindWidget::MastermindWidget(QWidget *parent)
   ui->allResultsTable->horizontalHeader()->setStretchLastSection(true);
   ui->allResultsTable->horizontalHeader()->setSectionResizeMode(
       QHeaderView::Stretch);
+  ui->allResultsTable->setSelectionMode(QAbstractItemView::NoSelection);
 
   ui->possibleResultsTable->setColumnCount(4);
   ui->possibleResultsTable->setHorizontalHeaderLabels(headers);
   ui->possibleResultsTable->horizontalHeader()->setStretchLastSection(true);
   ui->possibleResultsTable->horizontalHeader()->setSectionResizeMode(
       QHeaderView::Stretch);
+  ui->possibleResultsTable->setSelectionMode(QAbstractItemView::NoSelection);
 
   // Connect signals
   connect(ui->submitBtn, &QPushButton::clicked, this,

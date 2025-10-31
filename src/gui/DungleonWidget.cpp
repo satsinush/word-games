@@ -416,6 +416,7 @@ DungleonWidget::DungleonWidget(QWidget *parent)
       QHeaderView::Stretch);
   allResultsTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
   allResultsTable->setSelectionBehavior(QAbstractItemView::SelectRows);
+  allResultsTable->setSelectionMode(QAbstractItemView::NoSelection);
   allResultsTable->setAlternatingRowColors(true);
   connect(allResultsTable, &QTableWidget::cellClicked, this,
           &DungleonWidget::onTableRowClicked);
@@ -428,6 +429,7 @@ DungleonWidget::DungleonWidget(QWidget *parent)
       QHeaderView::Stretch);
   probablePatternsTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
   probablePatternsTable->setSelectionBehavior(QAbstractItemView::SelectRows);
+  probablePatternsTable->setSelectionMode(QAbstractItemView::NoSelection);
   probablePatternsTable->setAlternatingRowColors(true);
   connect(probablePatternsTable, &QTableWidget::cellClicked, this,
           &DungleonWidget::onTableRowClicked);

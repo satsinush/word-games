@@ -116,6 +116,7 @@ SpellingBeeWidget::SpellingBeeWidget(QWidget *parent)
   resultsTable->horizontalHeader()->setStretchLastSection(true);
   resultsTable->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
   resultsTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
+  resultsTable->setSelectionMode(QAbstractItemView::NoSelection);
   resultsTable->setSelectionBehavior(QAbstractItemView::SelectRows);
   resultsTable->setAlternatingRowColors(true);
 

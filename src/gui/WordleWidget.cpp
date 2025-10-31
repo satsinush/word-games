@@ -238,6 +238,9 @@ WordleWidget::WordleWidget(QWidget *parent)
       QHeaderView::Stretch);
   allResultsTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
   allResultsTable->setSelectionBehavior(QAbstractItemView::SelectRows);
+  // Do not show selection/highlight when a row is clicked; keep clicks
+  // usable via cellClicked signal while avoiding the visual selection.
+  allResultsTable->setSelectionMode(QAbstractItemView::NoSelection);
   allResultsTable->setAlternatingRowColors(true);
   connect(allResultsTable, &QTableWidget::cellClicked, this,
           &WordleWidget::onTableRowClicked);
@@ -250,6 +253,8 @@ WordleWidget::WordleWidget(QWidget *parent)
       QHeaderView::Stretch);
   probableWordsTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
   probableWordsTable->setSelectionBehavior(QAbstractItemView::SelectRows);
+  // Disable visible selection so rows won't remain highlighted after click
+  probableWordsTable->setSelectionMode(QAbstractItemView::NoSelection);
   probableWordsTable->setAlternatingRowColors(true);
   connect(probableWordsTable, &QTableWidget::cellClicked, this,
           &WordleWidget::onTableRowClicked);
