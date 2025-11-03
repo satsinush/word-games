@@ -229,50 +229,22 @@ WordleWidget::WordleWidget(QWidget *parent)
   connect(ui->settingsBtn, &QPushButton::clicked, this,
           &WordleWidget::onSettings);
 
-  // Create result tables
-  allResultsTable = new QTableWidget(this);
-  allResultsTable->setColumnCount(5);
-  allResultsTable->setHorizontalHeaderLabels(
-      {"Rank", "Word", "Word Score", "ENT", "Probability %"});
+  // Get result tables from UI and configure them
+  allResultsTable = ui->allResultsTable;
   allResultsTable->horizontalHeader()->setSectionResizeMode(
       QHeaderView::Stretch);
-  allResultsTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
-  allResultsTable->setSelectionBehavior(QAbstractItemView::SelectRows);
-  // Do not show selection/highlight when a row is clicked; keep clicks
-  // usable via cellClicked signal while avoiding the visual selection.
-  allResultsTable->setSelectionMode(QAbstractItemView::NoSelection);
-  allResultsTable->setAlternatingRowColors(false);
-  // Disable hover highlighting - background colors are set based on probability
   allResultsTable->setStyleSheet(
       "QTableWidget::item:hover { background-color: none; }");
   connect(allResultsTable, &QTableWidget::cellClicked, this,
           &WordleWidget::onTableRowClicked);
 
-  probableWordsTable = new QTableWidget(this);
-  probableWordsTable->setColumnCount(5);
-  probableWordsTable->setHorizontalHeaderLabels(
-      {"Rank", "Word", "Word Score", "ENT", "Probability %"});
+  probableWordsTable = ui->probableWordsTable;
   probableWordsTable->horizontalHeader()->setSectionResizeMode(
       QHeaderView::Stretch);
-  probableWordsTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
-  probableWordsTable->setSelectionBehavior(QAbstractItemView::SelectRows);
-  // Disable visible selection so rows won't remain highlighted after click
-  probableWordsTable->setSelectionMode(QAbstractItemView::NoSelection);
-  probableWordsTable->setAlternatingRowColors(false);
-  // Disable hover highlighting - background colors are set based on probability
   probableWordsTable->setStyleSheet(
       "QTableWidget::item:hover { background-color: none; }");
   connect(probableWordsTable, &QTableWidget::cellClicked, this,
           &WordleWidget::onTableRowClicked);
-
-  // Add tables to tab widget
-  QVBoxLayout *allResultsLayout = new QVBoxLayout();
-  allResultsLayout->addWidget(allResultsTable);
-  ui->resultsTabWidget->widget(0)->setLayout(allResultsLayout);
-
-  QVBoxLayout *probableWordsLayout = new QVBoxLayout();
-  probableWordsLayout->addWidget(probableWordsTable);
-  ui->resultsTabWidget->widget(1)->setLayout(probableWordsLayout);
 
   // Store reference to config info label
   configInfoLabel = ui->configInfoLabel;

@@ -36,43 +36,6 @@ WordleGame::getConfigFromArgs(const std::map<std::string, std::string> &args) {
   return config;
 }
 
-std::vector<Wordle::Feedback> WordleGame::getFeedbackFromUser() {
-  std::vector<Wordle::Feedback> feedbackHistory;
-
-  std::cout << "\n=== WORDLE SOLVER ===\n";
-  std::cout << "Enter your guesses and their feedback patterns.\n";
-  std::cout << "Format: WORD 01201 (0=grey, 1=yellow, 2=green)\n";
-  std::cout << "Word and pattern must be same length.\n";
-  std::cout << "Enter 'done' when finished entering feedback.\n\n";
-
-  while (true) {
-    std::cout << "Enter guess and feedback (or 'done'): ";
-    std::string input;
-    std::getline(std::cin, input);
-    input = Utils::trimToLower(input);
-
-    if (input.empty())
-      continue;
-    if (input == "done")
-      break;
-
-    try {
-      Wordle::Feedback fb = Wordle::parseFeedback(input);
-      feedbackHistory.push_back(fb);
-      std::cout << "Added: " << fb.word << " with pattern ";
-      for (size_t i = 0; i < fb.word.size(); ++i) {
-        std::cout << fb.getColor(i);
-      }
-      std::cout << "\n";
-    } catch (const std::exception &e) {
-      std::cout << "Error parsing feedback: " << e.what() << "\n";
-      std::cout << "Please use format: WORD 01201 (same length)\n";
-    }
-  }
-
-  return feedbackHistory;
-}
-
 std::vector<Wordle::Feedback> WordleGame::getFeedbackFromArgs(
     const std::map<std::string, std::string> &args) {
   std::vector<Wordle::Feedback> feedbackHistory;
@@ -339,9 +302,5 @@ void WordleGame::runHeadless(const Utils::Input::CommandArgs &cmdArgs) {
   } catch (const std::exception &e) {
     std::cerr << "Error: " << e.what() << "\n";
   }
-}
-
-void WordleGame::runGUI() {
-  std::cout << "GUI mode not yet implemented for Wordle.\n";
 }
 } // namespace Game

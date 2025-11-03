@@ -407,20 +407,15 @@ DungleonWidget::DungleonWidget(QWidget *parent)
   m_bankContainer->setLayout(bankLayout);
   ui->bankScrollArea->setWidget(m_bankContainer);
 
-  // Create pattern list container
-  patternListWidget = new QWidget(this);
+  // Setup pattern list container (scroll area from UI)
+  patternListScrollArea = ui->patternListScrollArea;
+  patternListWidget = new QWidget();
   patternListLayout = new QVBoxLayout(patternListWidget);
   patternListLayout->setSpacing(2);
   patternListLayout->setContentsMargins(0, 0, 0, 0);
   patternListLayout->setAlignment(Qt::AlignHCenter);
   patternListLayout->addStretch();
-
-  // Wrap in scroll area
-  patternListScrollArea = new QScrollArea(this);
   patternListScrollArea->setWidget(patternListWidget);
-  patternListScrollArea->setWidgetResizable(true);
-  patternListScrollArea->setMaximumHeight(200);
-  patternListScrollArea->setFrameShape(QFrame::NoFrame);
 
   // Create container for current input row (separate from submitted patterns)
   currentInputWidget = new QWidget(this);
@@ -430,8 +425,8 @@ DungleonWidget::DungleonWidget(QWidget *parent)
 
   // If the UI file provides a `currentInputContainer` (added to the .ui),
   // add the current input widget there so the slots appear to the right of
-  // the bank. Use findChild to avoid depending on a regenerated ui header.
-  QWidget *container = this->findChild<QWidget *>("currentInputContainer");
+  // the bank.
+  QWidget *container = ui->currentInputContainer;
   if (container) {
     // Ensure the container has a layout we can add into.
     QLayout *existing = container->layout();
@@ -450,121 +445,43 @@ DungleonWidget::DungleonWidget(QWidget *parent)
     }
   }
 
-  // Create solution list container (for Gauntlet mode past solutions)
-  solutionListWidget = new QWidget(this);
+  // Setup solution list container (scroll area from UI)
+  solutionListScrollArea = ui->solutionListScrollArea;
+  solutionListWidget = new QWidget();
   solutionListLayout = new QVBoxLayout(solutionListWidget);
   solutionListLayout->setSpacing(2);
   solutionListLayout->setContentsMargins(0, 0, 0, 0);
   solutionListLayout->setAlignment(Qt::AlignHCenter);
   solutionListLayout->addStretch();
-
-  // Wrap in scroll area
-  solutionListScrollArea = new QScrollArea(this);
   solutionListScrollArea->setWidget(solutionListWidget);
-  solutionListScrollArea->setWidgetResizable(true);
-  solutionListScrollArea->setMaximumHeight(200);
-  solutionListScrollArea->setFrameShape(QFrame::NoFrame);
-
-  // Create horizontal layout to hold both pattern and solution lists side by
-  // side
-  QWidget *historyContainer = new QWidget(this);
-  QHBoxLayout *historyLayout = new QHBoxLayout(historyContainer);
-  historyLayout->setSpacing(10);
-  historyLayout->setContentsMargins(0, 0, 0, 0);
-
-  // Add labels above each list
-  QWidget *patternColumn = new QWidget(historyContainer);
-  QVBoxLayout *patternColumnLayout = new QVBoxLayout(patternColumn);
-  patternColumnLayout->setSpacing(2);
-  patternColumnLayout->setContentsMargins(0, 0, 0, 0);
-  QLabel *patternLabel = new QLabel("Guesses:", patternColumn);
-  patternLabel->setStyleSheet("font-weight: bold;");
-  patternColumnLayout->addWidget(patternLabel);
-  patternColumnLayout->addWidget(patternListScrollArea);
-
-  QWidget *solutionColumn = new QWidget(historyContainer);
-  QVBoxLayout *solutionColumnLayout = new QVBoxLayout(solutionColumn);
-  solutionColumnLayout->setSpacing(2);
-  solutionColumnLayout->setContentsMargins(0, 0, 0, 0);
-  QLabel *solutionLabel = new QLabel("Past Solutions:", solutionColumn);
-  solutionLabel->setStyleSheet("font-weight: bold;");
-  solutionColumnLayout->addWidget(solutionLabel);
-  solutionColumnLayout->addWidget(solutionListScrollArea);
-
-  historyLayout->addWidget(patternColumn);
-  historyLayout->addWidget(solutionColumn);
-
-  // Add the history container to the main layout
-  // It should be inserted between the submit buttons and the solve button
-  QVBoxLayout *mainLayout2 = qobject_cast<QVBoxLayout *>(layout());
-  if (mainLayout2) {
-    // Find the solve button and insert history container before it
-    int solveIdx = mainLayout2->indexOf(ui->solveBtn);
-    if (solveIdx >= 0) {
-      mainLayout2->insertWidget(solveIdx, historyContainer);
-    }
-  }
 
   // Connect signals
   connect(ui->submitBtn, &QPushButton::clicked, this,
           &DungleonWidget::onSubmit);
-
-  // Find submitSolutionBtn using findChild (in case UI file hasn't been
-  // regenerated)
-  QPushButton *submitSolutionBtn =
-      this->findChild<QPushButton *>("submitSolutionBtn");
-  if (submitSolutionBtn) {
-    connect(submitSolutionBtn, &QPushButton::clicked, this,
-            &DungleonWidget::onSubmitSolution);
-  }
-
+  connect(ui->submitSolutionBtn, &QPushButton::clicked, this,
+          &DungleonWidget::onSubmitSolution);
   connect(ui->newGameBtn, &QPushButton::clicked, this,
           &DungleonWidget::onNewGame);
   connect(ui->solveBtn, &QPushButton::clicked, this, &DungleonWidget::onHint);
   connect(ui->settingsBtn, &QPushButton::clicked, this,
           &DungleonWidget::onSettings);
 
-  // Create result tables
-  allResultsTable = new QTableWidget(this);
-  allResultsTable->setColumnCount(4);
-  allResultsTable->setHorizontalHeaderLabels(
-      {"Rank", "Pattern", "ENT", "Probability"});
+  // Get result tables from UI and configure them
+  allResultsTable = ui->allResultsTable;
   allResultsTable->horizontalHeader()->setSectionResizeMode(
       QHeaderView::Stretch);
-  allResultsTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
-  allResultsTable->setSelectionBehavior(QAbstractItemView::SelectRows);
-  allResultsTable->setSelectionMode(QAbstractItemView::NoSelection);
-  allResultsTable->setAlternatingRowColors(false);
-  // Disable hover highlighting - background colors are set based on probability
   allResultsTable->setStyleSheet(
       "QTableWidget::item:hover { background-color: none; }");
   connect(allResultsTable, &QTableWidget::cellClicked, this,
           &DungleonWidget::onTableRowClicked);
 
-  probablePatternsTable = new QTableWidget(this);
-  probablePatternsTable->setColumnCount(4);
-  probablePatternsTable->setHorizontalHeaderLabels(
-      {"Rank", "Pattern", "ENT", "Probability"});
+  probablePatternsTable = ui->probablePatternsTable;
   probablePatternsTable->horizontalHeader()->setSectionResizeMode(
       QHeaderView::Stretch);
-  probablePatternsTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
-  probablePatternsTable->setSelectionBehavior(QAbstractItemView::SelectRows);
-  probablePatternsTable->setSelectionMode(QAbstractItemView::NoSelection);
-  probablePatternsTable->setAlternatingRowColors(false);
-  // Disable hover highlighting - background colors are set based on probability
   probablePatternsTable->setStyleSheet(
       "QTableWidget::item:hover { background-color: none; }");
   connect(probablePatternsTable, &QTableWidget::cellClicked, this,
           &DungleonWidget::onTableRowClicked);
-
-  // Add tables to tab widget
-  QVBoxLayout *allResultsLayout = new QVBoxLayout();
-  allResultsLayout->addWidget(allResultsTable);
-  ui->resultsTabWidget->widget(0)->setLayout(allResultsLayout);
-
-  QVBoxLayout *probablePatternsLayout = new QVBoxLayout();
-  probablePatternsLayout->addWidget(probablePatternsTable);
-  ui->resultsTabWidget->widget(1)->setLayout(probablePatternsLayout);
 
   // Store config info label reference
   configInfoLabel = ui->configInfoLabel;

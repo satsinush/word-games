@@ -109,31 +109,11 @@ SpellingBeeWidget::SpellingBeeWidget(QWidget *parent)
   // Store reference to config info label
   configInfoLabel = ui->configInfoLabel;
 
-  // Create results table
-  resultsTable = new QTableWidget(this);
-  resultsTable->setColumnCount(2);
-  resultsTable->setHorizontalHeaderLabels({"Word", "Unique Letters"});
-  resultsTable->horizontalHeader()->setStretchLastSection(true);
+  // Get results table from UI and configure it
+  resultsTable = ui->resultsTable;
   resultsTable->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
-  resultsTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
-  resultsTable->setSelectionMode(QAbstractItemView::NoSelection);
-  resultsTable->setSelectionBehavior(QAbstractItemView::SelectRows);
-  resultsTable->setAlternatingRowColors(false);
-  // Disable hover highlighting - background colors are set based on unique
-  // letters
   resultsTable->setStyleSheet(
       "QTableWidget::item:hover { background-color: none; }");
-
-  // Replace output area with results table
-  QVBoxLayout *mainLayout = qobject_cast<QVBoxLayout *>(this->layout());
-  if (mainLayout) {
-    int outputIndex = mainLayout->indexOf(ui->outputArea);
-    if (outputIndex >= 0) {
-      mainLayout->removeWidget(ui->outputArea);
-      ui->outputArea->setVisible(false);
-      mainLayout->insertWidget(outputIndex, resultsTable);
-    }
-  }
 
   // Connect signals
   connect(ui->newGameBtn, &QPushButton::clicked, this,
@@ -155,8 +135,37 @@ SpellingBeeWidget::SpellingBeeWidget(QWidget *parent)
   // Store reference to config info label
   configInfoLabel = ui->configInfoLabel;
 
-  // Create the hexagon visualization
-  createHexagons();
+  // Create the hexagon visualization in the container from UI
+  hexWidget = ui->hexagonContainer;
+
+  // Create 7 hexagon buttons
+  for (int i = 0; i < 7; ++i) {
+    hexButtons[i] = new HexagonButton(i == 0, hexWidget);
+  }
+
+  // Position them in perfect hexagon pattern
+  int centerX = 110;
+  int centerY = 125;
+  int radius = 65;
+
+  // Center hexagon (index 0)
+  hexButtons[0]->move(centerX - 35, centerY - 35);
+  // Top (index 1)
+  hexButtons[1]->move(centerX - 35, centerY - radius - 35);
+  // Top-right (index 2)
+  hexButtons[2]->move(centerX + radius * 0.866 - 35,
+                      centerY - radius * 0.5 - 35);
+  // Bottom-right (index 3)
+  hexButtons[3]->move(centerX + radius * 0.866 - 35,
+                      centerY + radius * 0.5 - 35);
+  // Bottom (index 4)
+  hexButtons[4]->move(centerX - 35, centerY + radius - 35);
+  // Bottom-left (index 5)
+  hexButtons[5]->move(centerX - radius * 0.866 - 35,
+                      centerY + radius * 0.5 - 35);
+  // Top-left (index 6)
+  hexButtons[6]->move(centerX - radius * 0.866 - 35,
+                      centerY - radius * 0.5 - 35);
 
   // Set initial state
   gameInitialized = true;
@@ -232,62 +241,6 @@ void SpellingBeeWidget::updateConfigInfo() {
         "<span style='color:#666; font-size:11pt;'>7 letters configured</span>";
   }
   configInfoLabel->setText(info);
-}
-
-void SpellingBeeWidget::createHexagons() {
-  // Create a widget to hold the hexagons
-  hexWidget = new QWidget(this);
-
-  // Use absolute positioning for perfect hexagon
-  hexWidget->setFixedSize(220, 250);
-
-  // Create 7 hexagon buttons
-  for (int i = 0; i < 7; ++i) {
-    hexButtons[i] = new HexagonButton(i == 0, hexWidget);
-  }
-
-  // Position them in perfect hexagon pattern
-  // Calculate positions based on hexagon geometry
-  int centerX = 110;
-  int centerY = 125;
-  int radius = 65; // Distance from center to outer hexagons (increased for gap)
-
-  // Center hexagon (index 0)
-  hexButtons[0]->move(centerX - 35, centerY - 35);
-
-  // Outer hexagons arranged in a circle
-  // Top (index 1)
-  hexButtons[1]->move(centerX - 35, centerY - radius - 35);
-
-  // Top-right (index 2)
-  hexButtons[2]->move(centerX + radius * 0.866 - 35,
-                      centerY - radius * 0.5 - 35);
-
-  // Bottom-right (index 3)
-  hexButtons[3]->move(centerX + radius * 0.866 - 35,
-                      centerY + radius * 0.5 - 35);
-
-  // Bottom (index 4)
-  hexButtons[4]->move(centerX - 35, centerY + radius - 35);
-
-  // Bottom-left (index 5)
-  hexButtons[5]->move(centerX - radius * 0.866 - 35,
-                      centerY + radius * 0.5 - 35);
-
-  // Top-left (index 6)
-  hexButtons[6]->move(centerX - radius * 0.866 - 35,
-                      centerY - radius * 0.5 - 35);
-
-  hexWidget->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-
-  // Insert the hex widget after the config label
-  QVBoxLayout *mainLayout = qobject_cast<QVBoxLayout *>(this->layout());
-  if (mainLayout) {
-    int labelIndex = mainLayout->indexOf(configInfoLabel);
-    if (labelIndex >= 0) {
-      mainLayout->insertWidget(labelIndex + 1, hexWidget, 0, Qt::AlignCenter);
-    }
-  }
 }
 
 void SpellingBeeWidget::updateHexagonsFromInput(const QString &text) {

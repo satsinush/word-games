@@ -13,8 +13,6 @@ private:
   Mastermind::Config
   getConfigFromArgs(const std::map<std::string, std::string> &args);
   std::vector<Mastermind::Feedback>
-  getFeedbackFromUser(const Mastermind::Config &config);
-  std::vector<Mastermind::Feedback>
   getFeedbackFromArgs(const std::map<std::string, std::string> &args,
                       const Mastermind::Config &config);
   void printResults(const Mastermind::Result &result,
@@ -28,7 +26,6 @@ public:
 
   void runCLI() override;
   void runHeadless(const Utils::Input::CommandArgs &cmdArgs) override;
-  void runGUI() override;
   std::string getGameName() const override { return "mastermind"; }
 };
 } // namespace Game

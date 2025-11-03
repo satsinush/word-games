@@ -44,42 +44,6 @@ Mastermind::Config MastermindGame::getConfigFromArgs(
   return config;
 }
 
-std::vector<Mastermind::Feedback>
-MastermindGame::getFeedbackFromUser(const Mastermind::Config &config) {
-  std::vector<Mastermind::Feedback> guessHistory;
-
-  std::cout << "\nEnter your guesses and feedback.\n";
-  std::cout << "Available colors: " << config.colorChars << "\n";
-  std::cout << "Format: rgbc 2 1 (pattern correctPos correctCol)\n";
-  std::cout << "Enter 'done' when finished entering feedback.\n\n";
-
-  while (true) {
-    std::cout << "Enter guess and feedback (or 'done'): ";
-    std::string input;
-    std::getline(std::cin, input);
-
-    if (Utils::trimToLower(input) == "done")
-      break;
-    if (input.empty())
-      continue;
-
-    try {
-      // Use the parseFeedback function
-      Mastermind::Feedback feedback = Mastermind::parseFeedback(input, config);
-      guessHistory.push_back(feedback);
-      std::cout << "Added: " << feedback.guess.toString(config)
-                << " with feedback "
-                << static_cast<int>(feedback.correctPosition) << " "
-                << static_cast<int>(feedback.correctColor) << "\n";
-    } catch (const std::exception &e) {
-      std::cout << "Error parsing input: " << e.what() << "\n";
-      std::cout << "Please use format: r g b c|2 1\n";
-    }
-  }
-
-  return guessHistory;
-}
-
 std::vector<Mastermind::Feedback> MastermindGame::getFeedbackFromArgs(
     const std::map<std::string, std::string> &args,
     const Mastermind::Config &config) {
@@ -317,9 +281,5 @@ void MastermindGame::runHeadless(const Utils::Input::CommandArgs &cmdArgs) {
   } catch (const std::exception &e) {
     std::cerr << "Error: " << e.what() << "\n";
   }
-}
-
-void MastermindGame::runGUI() {
-  std::cout << "GUI mode not yet implemented for Mastermind.\n";
 }
 } // namespace Game

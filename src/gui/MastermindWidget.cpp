@@ -99,66 +99,25 @@ MastermindWidget::MastermindWidget(QWidget *parent)
   config.allowDuplicates = true;
   config.maxDepth = 1;
 
-  // Create scroll area for feedback list
-  feedbackListScrollArea = new QScrollArea(this);
-  feedbackListScrollArea->setWidgetResizable(true);
-  feedbackListScrollArea->setMaximumHeight(200);
-
-  feedbackListContainer = new QWidget(feedbackListScrollArea);
+  // Setup feedback list container (scroll area from UI)
+  feedbackListScrollArea = ui->feedbackListScrollArea;
+  feedbackListContainer = new QWidget();
   feedbackListLayout = new QVBoxLayout(feedbackListContainer);
   feedbackListLayout->setAlignment(Qt::AlignTop | Qt::AlignHCenter);
-  feedbackListContainer->setLayout(feedbackListLayout);
   feedbackListScrollArea->setWidget(feedbackListContainer);
 
-  // Add scroll area to the main layout after feedback list label and before
-  // Solve button
-  QVBoxLayout *mainLayout = qobject_cast<QVBoxLayout *>(this->layout());
-  if (mainLayout) {
-    int solveBtnIndex = mainLayout->indexOf(ui->solveBtn);
-    if (solveBtnIndex >= 0) {
-      mainLayout->insertWidget(solveBtnIndex, feedbackListScrollArea);
-    }
-  }
-
-  // Create result tables
-  QStringList headers = {"Rank", "Pattern", "ENT", "Probability"};
-
-  allResultsTable = new QTableWidget(this);
-  allResultsTable->setColumnCount(4);
-  allResultsTable->setHorizontalHeaderLabels(headers);
-  allResultsTable->horizontalHeader()->setStretchLastSection(true);
+  // Get result tables from UI and configure them
+  allResultsTable = ui->allResultsTable;
   allResultsTable->horizontalHeader()->setSectionResizeMode(
       QHeaderView::Stretch);
-  allResultsTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
-  allResultsTable->setSelectionBehavior(QAbstractItemView::SelectRows);
-  allResultsTable->setSelectionMode(QAbstractItemView::NoSelection);
-  allResultsTable->setAlternatingRowColors(false);
-  // Disable hover highlighting - background colors are set based on probability
   allResultsTable->setStyleSheet(
       "QTableWidget::item:hover { background-color: none; }");
 
-  possibleResultsTable = new QTableWidget(this);
-  possibleResultsTable->setColumnCount(4);
-  possibleResultsTable->setHorizontalHeaderLabels(headers);
-  possibleResultsTable->horizontalHeader()->setStretchLastSection(true);
+  possibleResultsTable = ui->possibleResultsTable;
   possibleResultsTable->horizontalHeader()->setSectionResizeMode(
       QHeaderView::Stretch);
-  possibleResultsTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
-  possibleResultsTable->setSelectionBehavior(QAbstractItemView::SelectRows);
-  possibleResultsTable->setSelectionMode(QAbstractItemView::NoSelection);
-  possibleResultsTable->setAlternatingRowColors(false);
-  // Disable hover highlighting - background colors are set based on probability
   possibleResultsTable->setStyleSheet(
       "QTableWidget::item:hover { background-color: none; }");
-
-  // Add tables to tab widget
-  QVBoxLayout *allResultsLayout = new QVBoxLayout();
-  allResultsLayout->addWidget(allResultsTable);
-  ui->resultsTabWidget->widget(0)->setLayout(allResultsLayout);
-
-  QVBoxLayout *possibleResultsLayout = new QVBoxLayout();
-  possibleResultsLayout->addWidget(possibleResultsTable);
-  ui->resultsTabWidget->widget(1)->setLayout(possibleResultsLayout);
 
   // Connect signals
   connect(ui->submitBtn, &QPushButton::clicked, this,

@@ -92,7 +92,6 @@ private:
   void setUIEnabled(bool enabled) override;
   void updateConfigInfo() override;
   void populateResults(int maxRows);
-  void createLetterBox();
   void updateLetterBoxFromInput(const QString &text);
 };
 

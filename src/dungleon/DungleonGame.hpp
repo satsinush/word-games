@@ -12,10 +12,8 @@ private:
   Dungleon::Config getConfigFromUser();
   Dungleon::Config
   getConfigFromArgs(const std::map<std::string, std::string> &args);
-  std::vector<Dungleon::Feedback> getFeedbackFromUser();
   std::vector<Dungleon::Feedback>
   getFeedbackFromArgs(const std::map<std::string, std::string> &args);
-  std::vector<Dungleon::Pattern> getSolutionsFromUser();
   std::vector<Dungleon::Pattern>
   getSolutionsFromArgs(const std::map<std::string, std::string> &args);
   Dungleon::Pattern parsePattern(const std::string &input);
@@ -28,7 +26,6 @@ public:
 
   void runCLI() override;
   void runHeadless(const Utils::Input::CommandArgs &cmdArgs) override;
-  void runGUI() override;
   std::string getGameName() const override { return "dungleon"; }
 };
 } // namespace Game

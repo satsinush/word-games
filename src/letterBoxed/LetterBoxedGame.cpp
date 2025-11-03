@@ -310,8 +310,4 @@ void LetterBoxedGame::runHeadless(const Utils::Input::CommandArgs &cmdArgs) {
     std::cerr << "Error: " << e.what() << "\n";
   }
 }
-
-void LetterBoxedGame::runGUI() {
-  std::cout << "GUI mode not yet implemented for Letter Boxed.\n";
-}
 } // namespace Game

@@ -20,7 +20,6 @@ public:
 
   void runCLI() override;
   void runHeadless(const Utils::Input::CommandArgs &cmdArgs) override;
-  void runGUI() override;
   std::string getGameName() const override { return "spellingbee"; }
 };
 } // namespace Game

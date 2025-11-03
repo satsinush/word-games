@@ -214,8 +214,4 @@ void SpellingBeeGame::runHeadless(const Utils::Input::CommandArgs &cmdArgs) {
     std::cerr << "Error: " << e.what() << "\n";
   }
 }
-
-void SpellingBeeGame::runGUI() {
-  std::cout << "GUI mode not yet implemented for Spelling Bee.\n";
-}
 } // namespace Game

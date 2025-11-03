@@ -163,30 +163,11 @@ LetterBoxedWidget::LetterBoxedWidget(QWidget *parent)
   // Store reference to config info label
   configInfoLabel = ui->configInfoLabel;
 
-  // Create results table
-  resultsTable = new QTableWidget(this);
-  resultsTable->setColumnCount(2);
-  resultsTable->setHorizontalHeaderLabels({"Solution", "Words"});
-  resultsTable->horizontalHeader()->setStretchLastSection(true);
+  // Get results table from UI and configure it
+  resultsTable = ui->resultsTable;
   resultsTable->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
-  resultsTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
-  resultsTable->setSelectionMode(QAbstractItemView::NoSelection);
-  resultsTable->setSelectionBehavior(QAbstractItemView::SelectRows);
-  resultsTable->setAlternatingRowColors(false);
-  // Disable hover highlighting - rows display solution quality
   resultsTable->setStyleSheet(
       "QTableWidget::item:hover { background-color: none; }");
-
-  // Replace output area with results table
-  QVBoxLayout *mainLayout = qobject_cast<QVBoxLayout *>(this->layout());
-  if (mainLayout) {
-    int outputIndex = mainLayout->indexOf(ui->outputArea);
-    if (outputIndex >= 0) {
-      mainLayout->removeWidget(ui->outputArea);
-      ui->outputArea->setVisible(false);
-      mainLayout->insertWidget(outputIndex, resultsTable);
-    }
-  }
 
   // Connect signals
   // Enter in the input field should automatically solve
@@ -218,8 +199,11 @@ LetterBoxedWidget::LetterBoxedWidget(QWidget *parent)
   config.pruneRedundantPaths = true;
   config.pruneDominatedClasses = true;
 
-  // Create the letter box visualization
-  createLetterBox();
+  // Create the letter box visualization in the container from UI
+  QWidget *letterBoxContainer = ui->letterBoxContainer;
+  boxDisplay = new LetterBoxDisplay(letterBoxContainer);
+  boxDisplay->move((letterBoxContainer->width() - boxDisplay->width()) / 2,
+                   (letterBoxContainer->height() - boxDisplay->height()) / 2);
 
   updateConfigInfo();
 }
@@ -394,20 +378,6 @@ void LetterBoxedWidget::updateConfigInfo() {
              .arg(config.minUniqueLetters)
              .arg(config.minWordLength);
   configInfoLabel->setText(info);
-}
-
-void LetterBoxedWidget::createLetterBox() {
-  // Create the box display widget
-  boxDisplay = new LetterBoxDisplay(this);
-
-  // Insert the box widget after the config label
-  QVBoxLayout *mainLayout = qobject_cast<QVBoxLayout *>(this->layout());
-  if (mainLayout) {
-    int labelIndex = mainLayout->indexOf(configInfoLabel);
-    if (labelIndex >= 0) {
-      mainLayout->insertWidget(labelIndex + 1, boxDisplay, 0, Qt::AlignCenter);
-    }
-  }
 }
 
 void LetterBoxedWidget::updateLetterBoxFromInput(const QString &text) {

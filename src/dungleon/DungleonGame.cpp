@@ -27,47 +27,6 @@ Dungleon::Config DungleonGame::getConfigFromArgs(
   return config;
 }
 
-std::vector<Dungleon::Feedback> DungleonGame::getFeedbackFromUser() {
-  std::vector<Dungleon::Feedback> feedbackHistory;
-
-  std::cout << "\n=== DUNGLEON SOLVER ===\n";
-  std::cout << "Enter your guesses and their feedback patterns.\n";
-  std::cout
-      << "Format: 'ar kn ma bt dr 01234' (5 two-letter ids and 5 digits 0-4)\n";
-  std::cout
-      << "Colors: 0=not present, 1=diff pos no more, 2=correct pos no more,\n";
-  std::cout << "        3=diff pos one more, 4=correct pos one more\n";
-  std::cout << "Enter 'done' when finished entering feedback.\n\n";
-
-  while (true) {
-    std::cout << "Enter guess and feedback (or 'done'): ";
-    std::string input;
-    std::getline(std::cin, input);
-    input = Utils::trimToLower(input);
-
-    if (input.empty())
-      continue;
-    if (input == "done")
-      break;
-
-    try {
-      Dungleon::Feedback fb =
-          Dungleon::parseFeedback(input, Dungleon::Config{});
-      feedbackHistory.push_back(fb);
-      std::cout << "Added: " << fb.pattern.toString() << " with pattern ";
-      for (size_t i = 0; i < 5; ++i) {
-        std::cout << fb.getColor(i);
-      }
-      std::cout << "\n";
-    } catch (const std::exception &e) {
-      std::cout << "Error parsing feedback: " << e.what() << "\n";
-      std::cout << "Please use format: 'ar kn ma bt dr 01234'\n";
-    }
-  }
-
-  return feedbackHistory;
-}
-
 std::vector<Dungleon::Feedback> DungleonGame::getFeedbackFromArgs(
     const std::map<std::string, std::string> &args) {
   std::vector<Dungleon::Feedback> feedbackHistory;
@@ -132,38 +91,6 @@ Dungleon::Pattern DungleonGame::parsePattern(const std::string &input) {
   }
 
   return Dungleon::Pattern(characters);
-}
-
-std::vector<Dungleon::Pattern> DungleonGame::getSolutionsFromUser() {
-  std::vector<Dungleon::Pattern> solutionHistory;
-
-  std::cout << "\n=== GAUNTLET MODE - PAST SOLUTIONS ===\n";
-  std::cout << "Enter past solutions (patterns without feedback).\n";
-  std::cout << "Format: 'ar kn ma bt dr' (5 two-letter ids)\n";
-  std::cout << "Enter 'done' when finished entering solutions.\n\n";
-
-  while (true) {
-    std::cout << "Enter past solution (or 'done'): ";
-    std::string input;
-    std::getline(std::cin, input);
-    input = Utils::trimToLower(input);
-
-    if (input.empty())
-      continue;
-    if (input == "done")
-      break;
-
-    try {
-      Dungleon::Pattern pattern = parsePattern(input);
-      solutionHistory.push_back(pattern);
-      std::cout << "Added past solution: " << pattern.toString() << "\n";
-    } catch (const std::exception &e) {
-      std::cout << "Error parsing pattern: " << e.what() << "\n";
-      std::cout << "Please use format: 'ar kn ma bt dr'\n";
-    }
-  }
-
-  return solutionHistory;
 }
 
 std::vector<Dungleon::Pattern> DungleonGame::getSolutionsFromArgs(
@@ -406,10 +333,6 @@ void DungleonGame::runHeadless(const Utils::Input::CommandArgs &cmdArgs) {
   } catch (const std::exception &e) {
     std::cerr << "Error: " << e.what() << "\n";
   }
-}
-
-void DungleonGame::runGUI() {
-  std::cout << "GUI mode not implemented for Dungleon.\n";
 }
 
 } // namespace Game

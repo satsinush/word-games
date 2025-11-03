@@ -105,11 +105,103 @@
       <attribute name="title">
        <string>All Suggestions</string>
       </attribute>
+      <layout class="QVBoxLayout" name="allResultsTabLayout">
+       <item>
+        <widget class="QTableWidget" name="allResultsTable">
+         <property name="editTriggers">
+          <set>QAbstractItemView::NoEditTriggers</set>
+         </property>
+         <property name="alternatingRowColors">
+          <bool>false</bool>
+         </property>
+         <property name="selectionMode">
+          <enum>QAbstractItemView::NoSelection</enum>
+         </property>
+         <property name="selectionBehavior">
+          <enum>QAbstractItemView::SelectRows</enum>
+         </property>
+         <attribute name="horizontalHeaderStretchLastSection">
+          <bool>true</bool>
+         </attribute>
+         <column>
+          <property name="text">
+           <string>Rank</string>
+          </property>
+         </column>
+         <column>
+          <property name="text">
+           <string>Word</string>
+          </property>
+         </column>
+         <column>
+          <property name="text">
+           <string>Word Score</string>
+          </property>
+         </column>
+         <column>
+          <property name="text">
+           <string>ENT</string>
+          </property>
+         </column>
+         <column>
+          <property name="text">
+           <string>Probability %</string>
+          </property>
+         </column>
+        </widget>
+       </item>
+      </layout>
      </widget>
      <widget class="QWidget" name="probableWordsTab">
       <attribute name="title">
        <string>Possible Solutions</string>
       </attribute>
+      <layout class="QVBoxLayout" name="probableWordsTabLayout">
+       <item>
+        <widget class="QTableWidget" name="probableWordsTable">
+         <property name="editTriggers">
+          <set>QAbstractItemView::NoEditTriggers</set>
+         </property>
+         <property name="alternatingRowColors">
+          <bool>false</bool>
+         </property>
+         <property name="selectionMode">
+          <enum>QAbstractItemView::NoSelection</enum>
+         </property>
+         <property name="selectionBehavior">
+          <enum>QAbstractItemView::SelectRows</enum>
+         </property>
+         <attribute name="horizontalHeaderStretchLastSection">
+          <bool>true</bool>
+         </attribute>
+         <column>
+          <property name="text">
+           <string>Rank</string>
+          </property>
+         </column>
+         <column>
+          <property name="text">
+           <string>Word</string>
+          </property>
+         </column>
+         <column>
+          <property name="text">
+           <string>Word Score</string>
+          </property>
+         </column>
+         <column>
+          <property name="text">
+           <string>ENT</string>
+          </property>
+         </column>
+         <column>
+          <property name="text">
+           <string>Probability %</string>
+          </property>
+         </column>
+        </widget>
+       </item>
+      </layout>
      </widget>
     </widget>
    </item>

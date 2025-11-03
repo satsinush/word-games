@@ -6,4 +6,3 @@
   - Update Tracy to use proper thread handling
 
 - Improve test cases for all solvers
-- Use .ui files intead of programmatically creating the GUI wherever possible
