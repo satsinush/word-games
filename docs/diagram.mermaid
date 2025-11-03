@@ -1,0 +1,98 @@
+---
+title: Word Games Project - UML Class Diagram
+---
+classDiagram
+    %% Core Game Interface
+    class IGame {
+        <<interface>>
+        +runCLI()
+        +runHeadless(CommandArgs)
+        +getGameName() string
+    }
+    
+    %% Derived Game Classes
+    class WordleGame {
+        +runCLI()
+        +runHeadless(cmdArgs)
+        +getGameName() string
+    }
+    
+    class MastermindGame {
+        +runCLI()
+        +runHeadless(cmdArgs)
+        +getGameName() string
+    }
+    
+    class DungleonGame {
+        +runCLI()
+        +runHeadless(cmdArgs)
+        +getGameName() string
+    }
+    
+    class LetterBoxedGame {
+        +runCLI()
+        +runHeadless(cmdArgs)
+        +getGameName() string
+    }
+    
+    class SpellingBeeGame {
+        +runCLI()
+        +runHeadless(cmdArgs)
+        +getGameName() string
+    }
+    
+    %% Base Entropy Solver
+    class EntSolver {
+        <<abstract>>
+        +calculateEntropy(pattern, possibleWords) double
+        +findBestGuess(possibleWords) Guess
+    }
+    
+    %% Concrete Entropy-based Solvers
+    class WordleSolver {
+        <<static>>
+        +runWordleSolver(config) Result
+        +generateFeedback(target, guess) Feedback
+        +matchesFeedback(word, feedback) bool
+    }
+    
+    class MastermindSolver {
+        <<static>>
+        +runMastermindSolver(config) Result
+        +generateFeedback(target, guess) Feedback
+        +matchesFeedback(pattern, feedback) bool
+    }
+    
+    class DungleonSolver {
+        <<static>>
+        +runDungleonSolver(config) Result
+        +generateFeedback(target, guess) Feedback
+        +matchesFeedback(pattern, feedback) bool
+    }
+    
+    class LetterBoxedSolver {
+        <<static>>
+        +runLetterBoxedSolver(config) Solution[]
+    }
+    
+    class SpellingBeeSolver {
+        <<static>>
+        +runSpellingBeeSolver(config) Word[]
+    }
+    
+    %% Relationships
+    IGame <|.. WordleGame : implements
+    IGame <|.. MastermindGame : implements
+    IGame <|.. DungleonGame : implements
+    IGame <|.. LetterBoxedGame : implements
+    IGame <|.. SpellingBeeGame : implements
+    
+    EntSolver <|-- WordleSolver : extends
+    EntSolver <|-- MastermindSolver : extends
+    EntSolver <|-- DungleonSolver : extends
+    
+    WordleGame ..> WordleSolver : uses
+    MastermindGame ..> MastermindSolver : uses
+    DungleonGame ..> DungleonSolver : uses
+    LetterBoxedGame ..> LetterBoxedSolver : uses
+    SpellingBeeGame ..> SpellingBeeSolver : uses
