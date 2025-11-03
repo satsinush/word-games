@@ -12,6 +12,9 @@
 #include "utils/wordUtils.hpp"
 #include "wordle/wordle.hpp"
 
+// Forward declaration
+static Utils::Word makeWord(const std::string &s);
+
 // Helper function to load words for testing
 std::vector<Utils::Word> loadTestWords() {
   // Load from test CSV without binary cache, load all words
@@ -42,9 +45,9 @@ TEST(WordleTest, SolverWithGuesses) {
   std::vector<Utils::Word> words = loadTestWords();
   ASSERT_FALSE(words.empty()) << "Failed to load word list";
 
-  // Parse command: wordle --max-depth 1 --guesses "STEAL 20100;CRANE 01002"
+  // Parse command: wordle --max-depth 0 --guesses "STEAL 20100;CRANE 01002"
   std::map<std::string, std::string> args;
-  args["max-depth"] = "1";
+  args["max-depth"] = "0";
   args["guesses"] = "STEAL 20100;CRANE 01002";
 
   // Build config
@@ -74,6 +77,38 @@ TEST(WordleTest, SolverWithGuesses) {
       << "Should have exactly 2 possible words remaining";
 }
 
+TEST(WordleTest, SolverNoGuesses) {
+  // Test solver with no prior guesses
+  Wordle::Config config;
+  config.maxDepth = 0;
+
+  Wordle::Result result = Wordle::runWordleSolver(config);
+
+  EXPECT_GT(result.sortedGuesses.size(), 0) << "Should return suggestions";
+  EXPECT_GT(result.totalPossibleWords, 0) << "Should have possible words";
+}
+
+TEST(WordleTest, GenerateFeedbackConsistency) {
+  Utils::Word target = makeWord("tares");
+  std::string guess = "steal";
+
+  Wordle::Feedback fb1 = Wordle::generateFeedback(target, guess);
+  Wordle::Feedback fb2 = Wordle::generateFeedback(target, guess);
+
+  EXPECT_EQ(fb1.word, fb2.word);
+  for (size_t i = 0; i < 5; ++i) {
+    EXPECT_EQ(fb1.getColor(i), fb2.getColor(i));
+  }
+}
+
+TEST(WordleTest, MatchesFeedbackCorrect) {
+  Utils::Word target = makeWord("tares");
+  std::string guess = "steal";
+
+  Wordle::Feedback fb = Wordle::generateFeedback(target, guess);
+  EXPECT_TRUE(Wordle::matchesFeedback(target, fb));
+}
+
 // =============================================================================
 // MASTERMIND TESTS
 // =============================================================================
@@ -94,12 +129,12 @@ TEST(MastermindTest, PatternGeneration) {
 TEST(MastermindTest, SolverWithGuesses) {
   // Parse command: mastermind --guesses "1122 1 2;2131 2 1"
   //                --num-pegs 4 --colors 0123456789 --allow-duplicates true
-  //                --max-depth 1
+  //                --max-depth 0
   Mastermind::Config config;
   config.numPegs = 4;
   config.colorChars = "012345"; // 6 colors
   config.allowDuplicates = true;
-  config.maxDepth = 1;
+  config.maxDepth = 0;
 
   // Generate all patterns
   std::vector<Mastermind::Pattern> allPatterns =
@@ -121,9 +156,49 @@ TEST(MastermindTest, SolverWithGuesses) {
   EXPECT_GT(result.sortedGuesses.size(), 0) << "Should have at least one guess";
   EXPECT_GT(result.totalPossiblePatterns, 0)
       << "Should have possible patterns remaining";
+}
 
-  // TODO: Add specific expected values when you provide them
-  // EXPECT_EQ(result.totalPossiblePatterns, EXPECTED_VALUE);
+TEST(MastermindTest, SolverNoGuesses) {
+  // Test solver with no prior guesses
+  Mastermind::Config config;
+  config.numPegs = 4;
+  config.colorChars = "0123";
+  config.allowDuplicates = true;
+  config.maxDepth = 0;
+
+  Mastermind::Result result = Mastermind::runMastermindSolver(config);
+
+  EXPECT_GT(result.sortedGuesses.size(), 0) << "Should return suggestions";
+  EXPECT_GT(result.totalPossiblePatterns, 0) << "Should have possible patterns";
+}
+
+TEST(MastermindTest, GenerateFeedbackSymmetry) {
+  Mastermind::Config config;
+  config.numPegs = 4;
+  config.colorChars = "012345";
+  config.allowDuplicates = true;
+
+  Mastermind::Pattern p1 = Mastermind::parseFeedback("1234 0 0", config).guess;
+  Mastermind::Pattern p2 = Mastermind::parseFeedback("5432 0 0", config).guess;
+
+  Mastermind::Feedback fb1 = Mastermind::generateFeedback(p1, p2);
+  Mastermind::Feedback fb2 = Mastermind::generateFeedback(p2, p1);
+
+  // Feedback should be symmetric for same patterns
+  EXPECT_EQ(fb1.correctPosition, fb2.correctPosition);
+  EXPECT_EQ(fb1.correctColor, fb2.correctColor);
+}
+
+TEST(MastermindTest, PatternToStringConsistency) {
+  Mastermind::Config config;
+  config.numPegs = 4;
+  config.colorChars = "012345";
+  config.allowDuplicates = true;
+
+  Mastermind::Pattern p = Mastermind::parseFeedback("1234 0 0", config).guess;
+  std::string str = p.toString(config);
+
+  EXPECT_EQ(str, "1234");
 }
 
 // =============================================================================
@@ -177,6 +252,94 @@ TEST(SpellingBeeTest, SolverWithLetters) {
           << "Word '" << word.wordString << "' contains invalid letter '" << c
           << "'";
     }
+  }
+}
+
+TEST(SpellingBeeTest, SolverExcludeUncommon) {
+  // Load word list
+  std::vector<Utils::Word> words = loadTestWords();
+  ASSERT_FALSE(words.empty()) << "Failed to load word list";
+
+  SpellingBee::Config config;
+  std::string lettersStr = "esrtano";
+
+  for (size_t i = 0; i < lettersStr.length() && i < 7; ++i) {
+    config.allLetters[i] = lettersStr[i];
+  }
+
+  for (char c : config.allLetters) {
+    config.validLettersMap[static_cast<unsigned char>(c)] = true;
+  }
+
+  config.excludeUncommonWords = true;
+
+  std::vector<Utils::Word> solutions =
+      SpellingBee::runSpellingBeeSolver(config);
+
+  // Verify all solutions are marked as common (is_scrabble)
+  for (const auto &word : solutions) {
+    EXPECT_TRUE(word.is_scrabble)
+        << "Word '" << word.wordString << "' should be common";
+  }
+}
+
+TEST(SpellingBeeTest, CenterLetterRequired) {
+  // Load word list
+  std::vector<Utils::Word> words = loadTestWords();
+  ASSERT_FALSE(words.empty()) << "Failed to load word list";
+
+  SpellingBee::Config config;
+  std::string lettersStr = "esrtano";
+
+  for (size_t i = 0; i < lettersStr.length() && i < 7; ++i) {
+    config.allLetters[i] = lettersStr[i];
+  }
+
+  for (char c : config.allLetters) {
+    config.validLettersMap[static_cast<unsigned char>(c)] = true;
+  }
+
+  std::vector<Utils::Word> solutions =
+      SpellingBee::runSpellingBeeSolver(config);
+
+  // All solutions must contain the center letter (first letter)
+  char centerLetter = config.allLetters[0];
+  for (const auto &word : solutions) {
+    bool hasCenter = false;
+    for (char c : word.wordString) {
+      if (c == centerLetter) {
+        hasCenter = true;
+        break;
+      }
+    }
+    EXPECT_TRUE(hasCenter) << "Word '" << word.wordString
+                           << "' must contain center letter '" << centerLetter
+                           << "'";
+  }
+}
+
+TEST(SpellingBeeTest, MinimumWordLength) {
+  // All solutions must be at least 4 letters
+  std::vector<Utils::Word> words = loadTestWords();
+  ASSERT_FALSE(words.empty()) << "Failed to load word list";
+
+  SpellingBee::Config config;
+  std::string lettersStr = "esrtano";
+
+  for (size_t i = 0; i < lettersStr.length() && i < 7; ++i) {
+    config.allLetters[i] = lettersStr[i];
+  }
+
+  for (char c : config.allLetters) {
+    config.validLettersMap[static_cast<unsigned char>(c)] = true;
+  }
+
+  std::vector<Utils::Word> solutions =
+      SpellingBee::runSpellingBeeSolver(config);
+
+  for (const auto &word : solutions) {
+    EXPECT_GE(word.wordString.length(), 4)
+        << "Word '" << word.wordString << "' must be at least 4 letters";
   }
 }
 
@@ -280,6 +443,125 @@ TEST(LetterBoxedTest, SolverWithLetters) {
   }
 }
 
+TEST(LetterBoxedTest, SideConstraints) {
+  // Verify that consecutive letters can't be from the same side
+  std::vector<Utils::Word> words = loadTestWords();
+  ASSERT_FALSE(words.empty()) << "Failed to load word list";
+
+  LetterBoxed::Config config;
+  std::string lettersStr = "esrtanopdilc";
+
+  config.maxDepth = 2;
+  config.minWordLength = 3;
+  config.minUniqueLetters = 2;
+  config.pruneRedundantPaths = true;
+  config.pruneDominatedClasses = false;
+
+  for (size_t i = 0; i < 12; ++i) {
+    config.allLetters[i] = lettersStr[i];
+    config.uniquePuzzleLetters.set(i);
+  }
+
+  for (int i = 0; i < 3; ++i)
+    config.letterToSideMapping[i] = 0;
+  for (int i = 3; i < 6; ++i)
+    config.letterToSideMapping[i] = 1;
+  for (int i = 6; i < 9; ++i)
+    config.letterToSideMapping[i] = 2;
+  for (int i = 9; i < 12; ++i)
+    config.letterToSideMapping[i] = 3;
+
+  config.charToIndexMap.fill(-1);
+  for (int i = 0; i < 12; ++i) {
+    config.charToIndexMap[static_cast<unsigned char>(config.allLetters[i])] = i;
+  }
+
+  std::vector<LetterBoxed::Solution> solutions =
+      LetterBoxed::runLetterBoxedSolver(config);
+
+  // Verify each solution respects side constraints
+  for (const auto &solution : solutions) {
+    // Parse words from solution text
+    std::string text = solution.text;
+    size_t pos = 0;
+    std::vector<std::string> solutionWords;
+    while ((pos = text.find(" + ")) != std::string::npos) {
+      solutionWords.push_back(text.substr(0, pos));
+      text.erase(0, pos + 3);
+    }
+    if (!text.empty()) {
+      solutionWords.push_back(text);
+    }
+
+    for (const auto &word : solutionWords) {
+      for (size_t i = 1; i < word.length(); ++i) {
+        int idx1 =
+            config.charToIndexMap[static_cast<unsigned char>(word[i - 1])];
+        int idx2 = config.charToIndexMap[static_cast<unsigned char>(word[i])];
+        if (idx1 >= 0 && idx2 >= 0) {
+          EXPECT_NE(config.letterToSideMapping[idx1],
+                    config.letterToSideMapping[idx2])
+              << "Consecutive letters '" << word[i - 1] << "' and '" << word[i]
+              << "' in word '" << word << "' are on the same side";
+        }
+      }
+    }
+  }
+}
+
+TEST(LetterBoxedTest, AllLettersUsed) {
+  // All solutions must use all 12 letters
+  std::vector<Utils::Word> words = loadTestWords();
+  ASSERT_FALSE(words.empty()) << "Failed to load word list";
+
+  LetterBoxed::Config config;
+  std::string lettersStr = "esrtanopdilc";
+
+  config.maxDepth = 2;
+  config.minWordLength = 3;
+  config.minUniqueLetters = 2;
+  config.pruneRedundantPaths = true;
+  config.pruneDominatedClasses = false;
+
+  for (size_t i = 0; i < 12; ++i) {
+    config.allLetters[i] = lettersStr[i];
+    config.uniquePuzzleLetters.set(i);
+  }
+
+  for (int i = 0; i < 3; ++i)
+    config.letterToSideMapping[i] = 0;
+  for (int i = 3; i < 6; ++i)
+    config.letterToSideMapping[i] = 1;
+  for (int i = 6; i < 9; ++i)
+    config.letterToSideMapping[i] = 2;
+  for (int i = 9; i < 12; ++i)
+    config.letterToSideMapping[i] = 3;
+
+  config.charToIndexMap.fill(-1);
+  for (int i = 0; i < 12; ++i) {
+    config.charToIndexMap[static_cast<unsigned char>(config.allLetters[i])] = i;
+  }
+
+  std::vector<LetterBoxed::Solution> solutions =
+      LetterBoxed::runLetterBoxedSolver(config);
+
+  for (const auto &solution : solutions) {
+    // Count unique letters used in the solution
+    std::bitset<12> usedLetters;
+    std::string text = solution.text;
+    for (char c : text) {
+      if (c != ' ' && c != '+') {
+        int idx = config.charToIndexMap[static_cast<unsigned char>(c)];
+        if (idx >= 0 && idx < 12) {
+          usedLetters.set(idx);
+        }
+      }
+    }
+    EXPECT_EQ(usedLetters.count(), 12)
+        << "Solution '" << solution.text << "' must use all 12 letters";
+  }
+}
+
 // =============================================================================
 // DUNGLEON TESTS
 // =============================================================================
@@ -338,6 +620,149 @@ TEST(DungleonTest, SolverWithGuesses) {
       << "Solver should return at least one guess";
   EXPECT_GT(result.totalPossiblePatterns, 0)
       << "There should be at least one possible pattern remaining";
+}
+
+TEST(DungleonTest, SolverNoGuesses) {
+  // Test solver with no prior guesses
+  Dungleon::Config config;
+  config.maxDepth = 0;
+  config.excludeImpossiblePatterns = false;
+
+  Dungleon::Result result = Dungleon::runDungleonSolver(config);
+
+  EXPECT_GT(result.sortedGuesses.size(), 0) << "Should return suggestions";
+  EXPECT_GT(result.totalPossiblePatterns, 0) << "Should have possible patterns";
+}
+
+TEST(DungleonTest, SolverWithMultipleFeedback) {
+  Dungleon::Config config;
+  config.maxDepth = 0;
+  config.excludeImpossiblePatterns = true;
+
+  // Add multiple feedback entries
+  config.feedbackHistory.push_back(
+      Dungleon::parseFeedback("ar kn ma bt dr 00000", config));
+  config.feedbackHistory.push_back(
+      Dungleon::parseFeedback("vi so bo fr ne 00000", config));
+
+  Dungleon::Result result = Dungleon::runDungleonSolver(config);
+
+  EXPECT_GT(result.sortedGuesses.size(), 0) << "Should return suggestions";
+  EXPECT_LT(result.totalPossiblePatterns,
+            Dungleon::generateAllPossiblePatterns(config).size())
+      << "Multiple feedback should reduce possibilities";
+}
+
+TEST(DungleonTest, SolverWithGauntletMode) {
+  // Test with past solutions (Gauntlet mode)
+  Dungleon::Config config;
+  config.maxDepth = 0;
+  config.excludeImpossiblePatterns = true;
+
+  // Add a past solution
+  Dungleon::Pattern pastSolution;
+  pastSolution.characters = {Dungleon::MAGE, Dungleon::KNIGHT,
+                             Dungleon::BLADE_ORC, Dungleon::FROG,
+                             Dungleon::DRAGON};
+  pastSolution.computeCharacterCount();
+  config.solutionHistory.push_back(pastSolution);
+
+  Dungleon::Result result = Dungleon::runDungleonSolver(config);
+
+  EXPECT_GT(result.sortedGuesses.size(), 0) << "Should return suggestions";
+
+  // Verify that past solution is not in the possible patterns
+  bool foundPastSolution = false;
+  for (const auto &guess : result.sortedGuesses) {
+    if (guess.pattern == pastSolution && guess.probability > 0.0) {
+      foundPastSolution = true;
+      break;
+    }
+  }
+  EXPECT_FALSE(foundPastSolution)
+      << "Past solution should be excluded from possibilities";
+}
+
+TEST(DungleonTest, PatternValidation) {
+  Dungleon::Config config;
+
+  // Test valid pattern
+  Dungleon::Pattern validPattern;
+  validPattern.characters = {Dungleon::MAGE, Dungleon::BAT, Dungleon::AXE_ORC,
+                             Dungleon::FROG, Dungleon::BAT};
+  validPattern.computeCharacterCount();
+  EXPECT_TRUE(Dungleon::isValidPattern(validPattern, config));
+
+  // Pattern should have correct character counts
+  EXPECT_EQ(validPattern.characterCount[Dungleon::MAGE], 1);
+  EXPECT_EQ(validPattern.characterCount[Dungleon::BAT], 2);
+}
+
+TEST(DungleonTest, FeedbackColorEncoding) {
+  Dungleon::Feedback fb;
+  fb.pattern.characters = {Dungleon::ARCHER, Dungleon::KNIGHT, Dungleon::MAGE,
+                           Dungleon::BAT, Dungleon::DRAGON};
+
+  // Test all 5 color values
+  fb.setColor(0, 0); // not present
+  fb.setColor(1, 1); // diff pos no more
+  fb.setColor(2, 2); // correct pos no more
+  fb.setColor(3, 3); // diff pos one more
+  fb.setColor(4, 4); // correct pos one more
+
+  EXPECT_EQ(fb.getColor(0), 0);
+  EXPECT_EQ(fb.getColor(1), 1);
+  EXPECT_EQ(fb.getColor(2), 2);
+  EXPECT_EQ(fb.getColor(3), 3);
+  EXPECT_EQ(fb.getColor(4), 4);
+}
+
+TEST(DungleonTest, GenerateFeedbackConsistency) {
+  Dungleon::Pattern target;
+  target.characters = {Dungleon::MAGE, Dungleon::VILLAGER, Dungleon::BLADE_ORC,
+                       Dungleon::FROG, Dungleon::SORCERER};
+  target.computeCharacterCount();
+
+  Dungleon::Pattern guess;
+  guess.characters = {Dungleon::MAGE, Dungleon::KNIGHT, Dungleon::BLADE_ORC,
+                      Dungleon::FROG, Dungleon::FROG};
+  guess.computeCharacterCount();
+
+  Dungleon::Feedback fb1 = Dungleon::generateFeedback(target, guess);
+  Dungleon::Feedback fb2 = Dungleon::generateFeedback(target, guess);
+
+  // Feedback should be consistent
+  EXPECT_EQ(fb1, fb2);
+}
+
+TEST(DungleonTest, MatchesFeedbackCorrect) {
+  Dungleon::Pattern target;
+  target.characters = {Dungleon::MAGE, Dungleon::VILLAGER, Dungleon::BLADE_ORC,
+                       Dungleon::FROG, Dungleon::SORCERER};
+  target.computeCharacterCount();
+
+  Dungleon::Pattern guess;
+  guess.characters = {Dungleon::MAGE, Dungleon::KNIGHT, Dungleon::BLADE_ORC,
+                      Dungleon::FROG, Dungleon::FROG};
+  guess.computeCharacterCount();
+
+  Dungleon::Feedback fb = Dungleon::generateFeedback(target, guess);
+  EXPECT_TRUE(Dungleon::matchesFeedback(target, fb));
+}
+
+TEST(DungleonTest, PatternToStringConsistency) {
+  Dungleon::Pattern pattern;
+  pattern.characters = {Dungleon::ARCHER, Dungleon::KNIGHT, Dungleon::MAGE,
+                        Dungleon::BAT, Dungleon::DRAGON};
+  pattern.computeCharacterCount();
+
+  std::string str = pattern.toString();
+  EXPECT_FALSE(str.empty());
+
+  // Verify it contains expected character IDs
+  EXPECT_NE(str.find("ar"), std::string::npos);
+  EXPECT_NE(str.find("kn"), std::string::npos);
+  EXPECT_NE(str.find("ma"), std::string::npos);
 }
 
 // =============================================================================

@@ -4,5 +4,3 @@
 
 - Fix debug heap corruption error and segmentation faults when using Tracy
   - Update Tracy to use proper thread handling
-
-- Improve test cases for all solvers
