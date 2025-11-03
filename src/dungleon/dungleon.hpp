@@ -56,11 +56,17 @@ CharacterType getCharacterType(uint8_t characterId);
 
 struct Feedback; // forward declaration so Config can reference Feedback
 
+struct Pattern; // forward declaration so Config can reference Pattern
+
 struct Config {
   uint8_t maxDepth = 1; // How many moves ahead to calculate ENT
   bool excludeImpossiblePatterns =
       false; // Whether to exclude impossible patterns from guesses
   std::vector<Feedback> feedbackHistory = {}; // History of previous feedbacks
+  std::vector<Pattern> solutionHistory =
+      {}; // History of previous solutions, used for Gauntlet mode where each
+          // solution must share at least one character with all the previous
+          // ones
 };
 
 struct Pattern {
@@ -184,7 +190,8 @@ Feedback parseFeedback(const std::string &input, const Config &config);
 bool matchesFeedback(const Pattern &candidate, const Feedback &fb);
 
 // Check if a pattern is valid according to game rules
-bool isValidPattern(const Pattern &pattern, uint8_t numSlots = NUM_SLOTS);
+bool isValidPattern(const Pattern &pattern, const Config &config,
+                    uint8_t numSlots = NUM_SLOTS);
 
 // Generate feedback for a guess against a target pattern
 Feedback generateFeedback(const Pattern &target, const Pattern &guess);
@@ -193,7 +200,7 @@ Feedback generateFeedback(const Pattern &target, const Pattern &guess);
 std::vector<Pattern> generateAllPatterns();
 
 // Generate all possible patterns for the given configuration
-std::vector<Pattern> generateAllPossiblePatterns();
+std::vector<Pattern> generateAllPossiblePatterns(const Config &config);
 
 // Generic EntSolver-based version (cleaner implementation)
 Result runDungleonSolver(const Config &config = Config{},

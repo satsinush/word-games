@@ -118,7 +118,11 @@ SpellingBeeWidget::SpellingBeeWidget(QWidget *parent)
   resultsTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
   resultsTable->setSelectionMode(QAbstractItemView::NoSelection);
   resultsTable->setSelectionBehavior(QAbstractItemView::SelectRows);
-  resultsTable->setAlternatingRowColors(true);
+  resultsTable->setAlternatingRowColors(false);
+  // Disable hover highlighting - background colors are set based on unique
+  // letters
+  resultsTable->setStyleSheet(
+      "QTableWidget::item:hover { background-color: none; }");
 
   // Replace output area with results table
   QVBoxLayout *mainLayout = qobject_cast<QVBoxLayout *>(this->layout());

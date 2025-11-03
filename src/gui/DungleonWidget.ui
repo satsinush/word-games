@@ -96,11 +96,25 @@
      </layout>
     </item>
     <item>
-     <widget class="QPushButton" name="submitBtn">
-      <property name="text">
-        <string>Submit Pattern</string>
-      </property>
-     </widget>
+     <layout class="QHBoxLayout" name="submitButtonsLayout">
+      <item>
+       <widget class="QPushButton" name="submitBtn">
+        <property name="text">
+         <string>Submit Guess</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="submitSolutionBtn">
+        <property name="text">
+         <string>Submit Solution</string>
+        </property>
+        <property name="toolTip">
+         <string>Submit as past solution (Gauntlet mode)</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
     </item>
     <item>
      <widget class="QPushButton" name="solveBtn">

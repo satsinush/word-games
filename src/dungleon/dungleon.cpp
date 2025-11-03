@@ -126,10 +126,6 @@ bool matchesFeedback(const Pattern &candidate, const Feedback &fb) {
 #ifdef TRACY_ENABLE
   ZoneScoped;
 #endif
-  // Don't check if pattern is valid, assume that this has been done already
-  // if (!isValidPattern(candidate)) {
-  //   return false;
-  // }
 
   const Pattern &guess = fb.pattern;
 
@@ -247,7 +243,8 @@ Feedback generateFeedback(const Pattern &target, const Pattern &guess) {
 
 // Check if a pattern is valid according to game rules
 // TODO: Optimize and ensure checks for transformed characters is accurate
-bool isValidPattern(const Pattern &pattern, uint8_t numSlots) {
+bool isValidPattern(const Pattern &pattern, const Config &config,
+                    uint8_t numSlots) {
   std::array<uint8_t, NUM_CHARACTER_TYPES> characterTypeCounts = {};
   bool dragonNotInLast = false;
 
@@ -315,6 +312,24 @@ bool isValidPattern(const Pattern &pattern, uint8_t numSlots) {
 
   if (numSlots < NUM_SLOTS) {
     return true; // Skip count-based constraints for partial patterns
+  }
+
+  // All solutions must share at least one character with previous ones
+  for (const auto &prevPattern : config.solutionHistory) {
+    bool sharesCharacter = false;
+    for (uint8_t i = 0; i < numSlots; ++i) {
+      for (uint8_t j = 0; j < numSlots; ++j) {
+        if (pattern.characters[i] == prevPattern.characters[j]) {
+          sharesCharacter = true;
+          break;
+        }
+      }
+      if (sharesCharacter)
+        break;
+    }
+    if (!sharesCharacter) {
+      return false;
+    }
   }
 
   // Count-based constraints
@@ -396,7 +411,7 @@ std::vector<Pattern> generateAllPatterns() {
 }
 
 // Generate all possible patterns for the given configuration
-std::vector<Pattern> generateAllPossiblePatterns() {
+std::vector<Pattern> generateAllPossiblePatterns(const Config &config) {
 #ifdef TRACY_ENABLE
   ZoneScoped;
 #endif
@@ -410,7 +425,7 @@ std::vector<Pattern> generateAllPossiblePatterns() {
 
       Pattern pattern(characters);
 
-      if (!isValidPattern(pattern)) {
+      if (!isValidPattern(pattern, config, pos)) {
         return;
       }
 
@@ -419,7 +434,7 @@ std::vector<Pattern> generateAllPossiblePatterns() {
     }
 
     for (uint8_t c = 0; c < NUM_CHARACTERS; ++c) {
-      if (!isValidPattern(Pattern(characters), pos)) {
+      if (!isValidPattern(Pattern(characters), config, pos)) {
         continue;
       }
 
@@ -427,6 +442,10 @@ std::vector<Pattern> generateAllPossiblePatterns() {
       generate(pos + 1);
     }
   };
+
+  // TODO: Generate all possible patterns without frogs and zombies, then
+  // transform them according to the rules to get valid patterns with those
+  // characters, then remove any duplicates
 
   generate(0);
 
@@ -483,9 +502,9 @@ Result runDungleonSolver(const Config &config, std::atomic<bool> *cancel) {
 #endif
 
   std::vector<Pattern> allPatterns = config.excludeImpossiblePatterns
-                                         ? generateAllPossiblePatterns()
+                                         ? generateAllPossiblePatterns(config)
                                          : generateAllPatterns();
-  std::vector<Pattern> possiblePatterns = generateAllPossiblePatterns();
+  std::vector<Pattern> possiblePatterns = generateAllPossiblePatterns(config);
 
   // Use the specialized Dungleon ENT solver - returns Result directly!
   DungleonEntSolver solver(config);

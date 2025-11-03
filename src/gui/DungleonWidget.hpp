@@ -27,7 +27,8 @@ public:
   explicit CharacterSlot(QWidget *parent = nullptr);
 
   void setCharacter(int charId);
-  void setColor(int color); // 0-4 for Dungleon feedback
+  void setColor(int color);          // 0-4 for Dungleon feedback
+  void setShowBackground(bool show); // Control whether to show background color
   void clear();
   int getCharacter() const { return m_characterId; }
   int getColor() const { return m_color; }
@@ -46,6 +47,7 @@ private:
   int m_characterId; // -1 = empty
   int m_color;       // 0-4: not present, diff pos no more, correct pos no more,
                      // diff pos one more, correct pos one more
+  bool m_showBackground; // Whether to show background color based on feedback
 };
 
 // Represents one submitted pattern guess with feedback
@@ -72,6 +74,26 @@ private:
   bool isEditable;
 };
 
+// Represents one past solution (pattern without feedback) for Gauntlet mode
+class SolutionRow : public QWidget {
+  Q_OBJECT
+public:
+  explicit SolutionRow(const Dungleon::Pattern &pattern,
+                       QWidget *parent = nullptr);
+
+  Dungleon::Pattern getPattern() const;
+
+signals:
+  void deleteRequested();
+
+private slots:
+  void onDeleteClicked();
+
+private:
+  std::array<CharacterSlot *, 5> characterSlots;
+  QPushButton *deleteBtn;
+};
+
 class DungleonWidget : public GameWidget {
   Q_OBJECT
 public:
@@ -84,11 +106,13 @@ public slots:
 private slots:
   void onCharacterBankClicked(int charId);
   void onSubmit();
+  void onSubmitSolution();
   void onNewGame() override;
   void onSettings() override;
   void onSolverFinished() override;
   void onHint();
   void onPatternDeleted();
+  void onSolutionDeleted();
   void onTableRowClicked(int row, int column);
 
 private:
@@ -98,7 +122,9 @@ private:
   void updateConfigInfo() override;
   void setupCurrentPattern();
   void submitCurrentPattern();
+  void submitCurrentSolution();
   void rebuildFeedbackHistory();
+  void rebuildSolutionHistory();
   void solveDungleon();
   // Populate both results tables (All Suggestions and Possible Solutions).
   // maxRows limits the number of rows shown in each table.
@@ -144,6 +170,12 @@ private:
   QVBoxLayout *patternListLayout;
   QScrollArea *patternListScrollArea;
   std::vector<PatternRow *> patternRows;
+
+  // Past solutions (Gauntlet mode)
+  QWidget *solutionListWidget;
+  QVBoxLayout *solutionListLayout;
+  QScrollArea *solutionListScrollArea;
+  std::vector<SolutionRow *> solutionRows;
 
   // Result tables
   QTableWidget *allResultsTable;

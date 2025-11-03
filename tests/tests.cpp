@@ -307,14 +307,17 @@ TEST(DungleonTest, ParseFeedback) {
 
 TEST(DungleonTest, GeneratePossiblePatternsNonEmpty) {
   // Should produce a non-empty set of valid possible patterns
+
+  Dungleon::Config config;
+
   std::vector<Dungleon::Pattern> patterns =
-      Dungleon::generateAllPossiblePatterns();
+      Dungleon::generateAllPossiblePatterns(config);
   EXPECT_FALSE(patterns.empty())
       << "generateAllPossiblePatterns returned empty";
 
   // Spot-check that returned patterns are valid according to isValidPattern
   for (size_t i = 0; i < std::min<size_t>(patterns.size(), 10); ++i) {
-    EXPECT_TRUE(Dungleon::isValidPattern(patterns[i]))
+    EXPECT_TRUE(Dungleon::isValidPattern(patterns[i], config))
         << "Pattern failed validity check: " << patterns[i].toString();
   }
 }

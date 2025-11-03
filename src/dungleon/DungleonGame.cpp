@@ -95,6 +95,103 @@ std::vector<Dungleon::Feedback> DungleonGame::getFeedbackFromArgs(
   return feedbackHistory;
 }
 
+Dungleon::Pattern DungleonGame::parsePattern(const std::string &input) {
+  std::istringstream iss(input);
+  std::vector<std::string> tokens;
+  std::string token;
+  while (iss >> token) {
+    tokens.push_back(token);
+  }
+
+  if (tokens.size() != 5) {
+    throw std::runtime_error(
+        "Invalid pattern format. Expected 5 character pairs.");
+  }
+
+  std::array<uint8_t, 5> characters = {};
+  for (size_t i = 0; i < 5; ++i) {
+    const std::string &charPair = tokens[i];
+    if (charPair.length() != 2) {
+      throw std::runtime_error(
+          "Invalid character pair '" + charPair +
+          "'. Each character must be exactly 2 characters.");
+    }
+
+    bool found = false;
+    for (uint8_t j = 0; j < Dungleon::NUM_CHARACTERS; ++j) {
+      if (Dungleon::CHARACTER_IDS[j] == charPair) {
+        characters[i] = j;
+        found = true;
+        break;
+      }
+    }
+
+    if (!found) {
+      throw std::runtime_error("Unknown character '" + charPair + "'");
+    }
+  }
+
+  return Dungleon::Pattern(characters);
+}
+
+std::vector<Dungleon::Pattern> DungleonGame::getSolutionsFromUser() {
+  std::vector<Dungleon::Pattern> solutionHistory;
+
+  std::cout << "\n=== GAUNTLET MODE - PAST SOLUTIONS ===\n";
+  std::cout << "Enter past solutions (patterns without feedback).\n";
+  std::cout << "Format: 'ar kn ma bt dr' (5 two-letter ids)\n";
+  std::cout << "Enter 'done' when finished entering solutions.\n\n";
+
+  while (true) {
+    std::cout << "Enter past solution (or 'done'): ";
+    std::string input;
+    std::getline(std::cin, input);
+    input = Utils::trimToLower(input);
+
+    if (input.empty())
+      continue;
+    if (input == "done")
+      break;
+
+    try {
+      Dungleon::Pattern pattern = parsePattern(input);
+      solutionHistory.push_back(pattern);
+      std::cout << "Added past solution: " << pattern.toString() << "\n";
+    } catch (const std::exception &e) {
+      std::cout << "Error parsing pattern: " << e.what() << "\n";
+      std::cout << "Please use format: 'ar kn ma bt dr'\n";
+    }
+  }
+
+  return solutionHistory;
+}
+
+std::vector<Dungleon::Pattern> DungleonGame::getSolutionsFromArgs(
+    const std::map<std::string, std::string> &args) {
+  std::vector<Dungleon::Pattern> solutionHistory;
+
+  auto it = args.find("solutions");
+  if (it == args.end())
+    return solutionHistory;
+
+  std::istringstream iss(it->second);
+  std::string solutionStr;
+  while (std::getline(iss, solutionStr, ';')) {
+    std::string trimmed = Utils::trimToLower(solutionStr);
+    if (trimmed.empty())
+      continue;
+    try {
+      Dungleon::Pattern pattern = parsePattern(trimmed);
+      solutionHistory.push_back(pattern);
+    } catch (const std::exception &e) {
+      std::cerr << "Warning: Could not parse solution '" << solutionStr
+                << "': " << e.what() << "\n";
+    }
+  }
+
+  return solutionHistory;
+}
+
 void DungleonGame::printResults(const Dungleon::Result &result) {
   std::cout << "\n=== SOLVER RESULTS ===\n";
 
@@ -189,9 +286,19 @@ void DungleonGame::runCLI() {
       std::cout << "\n=== DUNGLEON SOLVER ===\n";
       std::cout << "Commands: 's' (solve), 'c' (clear), 'config' (change)\n";
       std::cout << "Format: 'ar kn ma bt dr 01234' (colors 0-4)\n";
+      std::cout
+          << "        'ar kn ma bt dr' (past solution for Gauntlet mode)\n";
       std::cout << "Colors: 0=not present, 1=diff pos no more, 2=correct pos "
                    "no more,\n";
       std::cout << "        3=diff pos one more, 4=correct pos one more\n\n";
+
+      if (!config.solutionHistory.empty()) {
+        std::cout << "Past solutions (Gauntlet mode):\n";
+        for (const auto &pattern : config.solutionHistory) {
+          std::cout << "  " << pattern.toString() << "\n";
+        }
+        std::cout << "\n";
+      }
 
       if (!feedbackHistory.empty()) {
         std::cout << "Current feedback history:\n";
@@ -218,14 +325,17 @@ void DungleonGame::runCLI() {
         continue;
       if (input == "c" || input == "clear") {
         feedbackHistory.clear();
-        std::cout << "Feedback history cleared.\n";
+        config.solutionHistory.clear();
+        std::cout << "Feedback history and past solutions cleared.\n";
         continue;
       }
       if (input == "config" || input == "reconfigure") {
         config = getConfigFromUser();
-        if (!feedbackHistory.empty()) {
+        if (!feedbackHistory.empty() || !config.solutionHistory.empty()) {
           feedbackHistory.clear();
-          std::cout << "Feedback history cleared due to config change.\n";
+          config.solutionHistory.clear();
+          std::cout << "Feedback history and past solutions cleared due to "
+                       "config change.\n";
         }
         continue;
       }
@@ -238,9 +348,7 @@ void DungleonGame::runCLI() {
               "Exclude impossible patterns from guesses?", false);
 
           std::cout << "Calculating best guesses...\n";
-          // Use all patterns for guesses (including invalid patterns)
-          std::vector<Dungleon::Pattern> allPatterns =
-              Dungleon::generateAllPossiblePatterns();
+          config.feedbackHistory = feedbackHistory;
           Dungleon::Result result = Dungleon::runDungleonSolver(config);
           printResults(result);
         } catch (const Utils::Input::UserCancelledException &) {
@@ -250,13 +358,23 @@ void DungleonGame::runCLI() {
       }
 
       try {
+        // Try to parse as full feedback first
         Dungleon::Feedback fb = Dungleon::parseFeedback(input, config);
         feedbackHistory.push_back(fb);
+        config.feedbackHistory = feedbackHistory;
         std::cout << "Added feedback for " << fb.pattern.toString() << "\n";
       } catch (const std::exception &e) {
-        std::cout << "Error: " << e.what() << "\n";
-        std::cout
-            << "Use format: 'ar kn ma bt dr 01234' or commands: s, c, config\n";
+        // If that fails, try to parse as a pattern-only input (past solution)
+        try {
+          Dungleon::Pattern pattern = parsePattern(input);
+          config.solutionHistory.push_back(pattern);
+          std::cout << "Added past solution (Gauntlet mode): "
+                    << pattern.toString() << "\n";
+        } catch (const std::exception &ex) {
+          std::cout << "Error: " << e.what() << "\n";
+          std::cout << "Use format: 'ar kn ma bt dr 01234' (with feedback) or "
+                       "'ar kn ma bt dr' (past solution)\n";
+        }
       }
 
     } catch (const Utils::Input::UserCancelledException &) {
@@ -270,11 +388,11 @@ void DungleonGame::runHeadless(const Utils::Input::CommandArgs &cmdArgs) {
   try {
     const auto &args = cmdArgs.flags;
     Dungleon::Config config = getConfigFromArgs(args);
-    std::vector<Dungleon::Feedback> feedbackHistory = getFeedbackFromArgs(args);
 
-    // Use all patterns for guesses (including invalid patterns)
-    std::vector<Dungleon::Pattern> allPatterns =
-        Dungleon::generateAllPossiblePatterns();
+    // Load feedback history and solution history from args
+    config.feedbackHistory = getFeedbackFromArgs(args);
+    config.solutionHistory = getSolutionsFromArgs(args);
+
     Dungleon::Result result = Dungleon::runDungleonSolver(config);
 
     std::string outputFile =

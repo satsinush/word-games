@@ -120,22 +120,45 @@ MastermindWidget::MastermindWidget(QWidget *parent)
     }
   }
 
-  // Setup result tables
+  // Create result tables
   QStringList headers = {"Rank", "Pattern", "ENT", "Probability"};
 
-  ui->allResultsTable->setColumnCount(4);
-  ui->allResultsTable->setHorizontalHeaderLabels(headers);
-  ui->allResultsTable->horizontalHeader()->setStretchLastSection(true);
-  ui->allResultsTable->horizontalHeader()->setSectionResizeMode(
+  allResultsTable = new QTableWidget(this);
+  allResultsTable->setColumnCount(4);
+  allResultsTable->setHorizontalHeaderLabels(headers);
+  allResultsTable->horizontalHeader()->setStretchLastSection(true);
+  allResultsTable->horizontalHeader()->setSectionResizeMode(
       QHeaderView::Stretch);
-  ui->allResultsTable->setSelectionMode(QAbstractItemView::NoSelection);
+  allResultsTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
+  allResultsTable->setSelectionBehavior(QAbstractItemView::SelectRows);
+  allResultsTable->setSelectionMode(QAbstractItemView::NoSelection);
+  allResultsTable->setAlternatingRowColors(false);
+  // Disable hover highlighting - background colors are set based on probability
+  allResultsTable->setStyleSheet(
+      "QTableWidget::item:hover { background-color: none; }");
 
-  ui->possibleResultsTable->setColumnCount(4);
-  ui->possibleResultsTable->setHorizontalHeaderLabels(headers);
-  ui->possibleResultsTable->horizontalHeader()->setStretchLastSection(true);
-  ui->possibleResultsTable->horizontalHeader()->setSectionResizeMode(
+  possibleResultsTable = new QTableWidget(this);
+  possibleResultsTable->setColumnCount(4);
+  possibleResultsTable->setHorizontalHeaderLabels(headers);
+  possibleResultsTable->horizontalHeader()->setStretchLastSection(true);
+  possibleResultsTable->horizontalHeader()->setSectionResizeMode(
       QHeaderView::Stretch);
-  ui->possibleResultsTable->setSelectionMode(QAbstractItemView::NoSelection);
+  possibleResultsTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
+  possibleResultsTable->setSelectionBehavior(QAbstractItemView::SelectRows);
+  possibleResultsTable->setSelectionMode(QAbstractItemView::NoSelection);
+  possibleResultsTable->setAlternatingRowColors(false);
+  // Disable hover highlighting - background colors are set based on probability
+  possibleResultsTable->setStyleSheet(
+      "QTableWidget::item:hover { background-color: none; }");
+
+  // Add tables to tab widget
+  QVBoxLayout *allResultsLayout = new QVBoxLayout();
+  allResultsLayout->addWidget(allResultsTable);
+  ui->resultsTabWidget->widget(0)->setLayout(allResultsLayout);
+
+  QVBoxLayout *possibleResultsLayout = new QVBoxLayout();
+  possibleResultsLayout->addWidget(possibleResultsTable);
+  ui->resultsTabWidget->widget(1)->setLayout(possibleResultsLayout);
 
   // Connect signals
   connect(ui->submitBtn, &QPushButton::clicked, this,
@@ -147,9 +170,9 @@ MastermindWidget::MastermindWidget(QWidget *parent)
   connect(ui->patternField, &QLineEdit::returnPressed, this,
           &MastermindWidget::onSubmit);
 
-  connect(ui->allResultsTable, &QTableWidget::cellClicked, this,
+  connect(allResultsTable, &QTableWidget::cellClicked, this,
           &MastermindWidget::onTableRowClicked);
-  connect(ui->possibleResultsTable, &QTableWidget::cellClicked, this,
+  connect(possibleResultsTable, &QTableWidget::cellClicked, this,
           &MastermindWidget::onTableRowClicked);
 
   // Connect settings button
@@ -353,8 +376,8 @@ void MastermindWidget::initGame() {
   ui->patternField->clear();
 
   // Clear result tables
-  ui->allResultsTable->setRowCount(0);
-  ui->possibleResultsTable->setRowCount(0);
+  allResultsTable->setRowCount(0);
+  possibleResultsTable->setRowCount(0);
 
   // Reset tab titles
   ui->resultsTabWidget->setTabText(0, "All Suggestions");
@@ -373,20 +396,20 @@ void MastermindWidget::initGame() {
 void MastermindWidget::populateResults(int maxRows) {
   // Populate All Results
   const auto &all = lastAllResults;
-  ui->allResultsTable->setRowCount(0);
+  allResultsTable->setRowCount(0);
   int limit = std::min(maxRows, static_cast<int>(all.size()));
   for (int i = 0; i < limit; ++i) {
     const auto &guess = all[i];
-    if (ui->allResultsTable->rowCount() >= maxRows)
+    if (allResultsTable->rowCount() >= maxRows)
       break;
-    int row = ui->allResultsTable->rowCount();
-    ui->allResultsTable->insertRow(row);
+    int row = allResultsTable->rowCount();
+    allResultsTable->insertRow(row);
 
     int actualRank = i + 1;
     QTableWidgetItem *rankItem =
         new QTableWidgetItem(QString::number(actualRank));
     rankItem->setTextAlignment(Qt::AlignCenter);
-    ui->allResultsTable->setItem(row, 0, rankItem);
+    allResultsTable->setItem(row, 0, rankItem);
 
     QString patternStr = QString::fromStdString(guess.pattern.toString(config));
     QTableWidgetItem *patternItem = new QTableWidgetItem(patternStr);
@@ -394,33 +417,33 @@ void MastermindWidget::populateResults(int maxRows) {
     monoFont.setBold(true);
     patternItem->setFont(monoFont);
     patternItem->setTextAlignment(Qt::AlignCenter);
-    ui->allResultsTable->setItem(row, 1, patternItem);
+    allResultsTable->setItem(row, 1, patternItem);
 
     QTableWidgetItem *entItem =
         new QTableWidgetItem(QString::number(guess.ent, 'f', 3));
     entItem->setTextAlignment(Qt::AlignCenter);
-    ui->allResultsTable->setItem(row, 2, entItem);
+    allResultsTable->setItem(row, 2, entItem);
 
     QTableWidgetItem *probItem = new QTableWidgetItem(
         QString::number(guess.probability * 100.0, 'f', 2) + "%");
     probItem->setTextAlignment(Qt::AlignCenter);
-    ui->allResultsTable->setItem(row, 3, probItem);
+    allResultsTable->setItem(row, 3, probItem);
 
     // Color coding
     if (guess.probability >= 1.0) {
       QColor bgColor(144, 238, 144);
       for (int col = 0; col < 4; ++col) {
-        if (ui->allResultsTable->item(row, col)) {
-          ui->allResultsTable->item(row, col)->setBackground(bgColor);
-          ui->allResultsTable->item(row, col)->setForeground(Qt::black);
+        if (allResultsTable->item(row, col)) {
+          allResultsTable->item(row, col)->setBackground(bgColor);
+          allResultsTable->item(row, col)->setForeground(Qt::black);
         }
       }
     } else if (guess.probability > 0.0) {
       QColor bgColor(255, 255, 153);
       for (int col = 0; col < 4; ++col) {
-        if (ui->allResultsTable->item(row, col)) {
-          ui->allResultsTable->item(row, col)->setBackground(bgColor);
-          ui->allResultsTable->item(row, col)->setForeground(Qt::black);
+        if (allResultsTable->item(row, col)) {
+          allResultsTable->item(row, col)->setBackground(bgColor);
+          allResultsTable->item(row, col)->setForeground(Qt::black);
         }
       }
     }
@@ -428,20 +451,20 @@ void MastermindWidget::populateResults(int maxRows) {
 
   // Populate Possible Results (only entries with probability > 0), preserving
   // original rank
-  ui->possibleResultsTable->setRowCount(0);
+  possibleResultsTable->setRowCount(0);
   lastProbableResults.clear();
   for (int i = 0; i < static_cast<int>(all.size()); ++i) {
     const auto &guess = all[i];
     if (guess.probability <= 0.0)
       continue;
-    int row = ui->possibleResultsTable->rowCount();
-    ui->possibleResultsTable->insertRow(row);
+    int row = possibleResultsTable->rowCount();
+    possibleResultsTable->insertRow(row);
 
     int actualRank = i + 1;
     QTableWidgetItem *rankItem =
         new QTableWidgetItem(QString::number(actualRank));
     rankItem->setTextAlignment(Qt::AlignCenter);
-    ui->possibleResultsTable->setItem(row, 0, rankItem);
+    possibleResultsTable->setItem(row, 0, rankItem);
 
     QString patternStr = QString::fromStdString(guess.pattern.toString(config));
     QTableWidgetItem *patternItem = new QTableWidgetItem(patternStr);
@@ -449,39 +472,39 @@ void MastermindWidget::populateResults(int maxRows) {
     monoFont2.setBold(true);
     patternItem->setFont(monoFont2);
     patternItem->setTextAlignment(Qt::AlignCenter);
-    ui->possibleResultsTable->setItem(row, 1, patternItem);
+    possibleResultsTable->setItem(row, 1, patternItem);
 
     QTableWidgetItem *entItem2 =
         new QTableWidgetItem(QString::number(guess.ent, 'f', 3));
     entItem2->setTextAlignment(Qt::AlignCenter);
-    ui->possibleResultsTable->setItem(row, 2, entItem2);
+    possibleResultsTable->setItem(row, 2, entItem2);
 
     QTableWidgetItem *probItem2 = new QTableWidgetItem(
         QString::number(guess.probability * 100.0, 'f', 2) + "%");
     probItem2->setTextAlignment(Qt::AlignCenter);
-    ui->possibleResultsTable->setItem(row, 3, probItem2);
+    possibleResultsTable->setItem(row, 3, probItem2);
 
     // Color coding
     if (guess.probability >= 1.0) {
       QColor bgColor(144, 238, 144);
       for (int col = 0; col < 4; ++col) {
-        if (ui->possibleResultsTable->item(row, col)) {
-          ui->possibleResultsTable->item(row, col)->setBackground(bgColor);
-          ui->possibleResultsTable->item(row, col)->setForeground(Qt::black);
+        if (possibleResultsTable->item(row, col)) {
+          possibleResultsTable->item(row, col)->setBackground(bgColor);
+          possibleResultsTable->item(row, col)->setForeground(Qt::black);
         }
       }
     } else {
       QColor bgColor(255, 255, 153);
       for (int col = 0; col < 4; ++col) {
-        if (ui->possibleResultsTable->item(row, col)) {
-          ui->possibleResultsTable->item(row, col)->setBackground(bgColor);
-          ui->possibleResultsTable->item(row, col)->setForeground(Qt::black);
+        if (possibleResultsTable->item(row, col)) {
+          possibleResultsTable->item(row, col)->setBackground(bgColor);
+          possibleResultsTable->item(row, col)->setForeground(Qt::black);
         }
       }
     }
 
     lastProbableResults.push_back(guess);
-    if (static_cast<int>(ui->possibleResultsTable->rowCount()) >= maxRows)
+    if (static_cast<int>(possibleResultsTable->rowCount()) >= maxRows)
       break;
   }
 }

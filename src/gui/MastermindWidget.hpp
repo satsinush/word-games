@@ -99,6 +99,10 @@ private:
   QWidget *feedbackListContainer;
   QVBoxLayout *feedbackListLayout;
 
+  // Result tables
+  QTableWidget *allResultsTable;
+  QTableWidget *possibleResultsTable;
+
   bool showConfigDialog();
   void initGame() override;
   void setUIEnabled(bool enabled) override;

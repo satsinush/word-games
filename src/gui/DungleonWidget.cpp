@@ -26,7 +26,7 @@
 // ============ CharacterSlot Implementation ============
 
 CharacterSlot::CharacterSlot(QWidget *parent)
-    : QLabel(parent), m_characterId(-1), m_color(0) {
+    : QLabel(parent), m_characterId(-1), m_color(0), m_showBackground(true) {
   setFixedSize(48, 48);
   setAlignment(Qt::AlignCenter);
   QFont font;
@@ -143,6 +143,11 @@ void CharacterSlot::setColor(int color) {
   }
 }
 
+void CharacterSlot::setShowBackground(bool show) {
+  m_showBackground = show;
+  updateStyle();
+}
+
 void CharacterSlot::clear() {
   m_characterId = -1;
   m_color = 0;
@@ -167,31 +172,38 @@ void CharacterSlot::clear() {
 void CharacterSlot::updateStyle() {
   QString bgColor, textColor, border;
 
-  // Dungleon colors: 0=not present, 1=diff pos no more, 2=correct pos no more,
-  // 3=diff pos one more, 4=correct pos one more
-  if (m_color == 0) {
-    bgColor = "#cd4848";
-    textColor = "white";
-    border = "#cd4848";
-  } else if (m_color == 1 || m_color == 3) {
-    bgColor = "#c9b458";
-    textColor = "white";
-    border = "#c9b458";
-  } else if (m_color == 2 || m_color == 4) {
-    bgColor = "#6aaa64";
-    textColor = "white";
-    border = "#6aaa64";
-  } else {
-    bgColor = "#787c7e";
-    textColor = "white";
-    border = "#787c7e";
-  }
-
-  // If empty, show blank box
-  if (m_characterId < 0) {
-    bgColor = "#d3d6da";
+  if (!m_showBackground) {
+    // No background color - just show character with neutral styling
+    bgColor = "transparent";
     border = "#878a8c";
     textColor = "#000";
+  } else {
+    // Dungleon colors: 0=not present, 1=diff pos no more, 2=correct pos no
+    // more, 3=diff pos one more, 4=correct pos one more
+    if (m_color == 0) {
+      bgColor = "#cd4848";
+      textColor = "white";
+      border = "#cd4848";
+    } else if (m_color == 1 || m_color == 3) {
+      bgColor = "#c9b458";
+      textColor = "white";
+      border = "#c9b458";
+    } else if (m_color == 2 || m_color == 4) {
+      bgColor = "#6aaa64";
+      textColor = "white";
+      border = "#6aaa64";
+    } else {
+      bgColor = "#787c7e";
+      textColor = "white";
+      border = "#787c7e";
+    }
+
+    // If empty, show blank box
+    if (m_characterId < 0) {
+      bgColor = "#d3d6da";
+      border = "#878a8c";
+      textColor = "#000";
+    }
   }
 
   // This stylesheet now applies to the parent slot, which acts
@@ -297,10 +309,58 @@ void PatternRow::onSlotClicked() {
 
 void PatternRow::onDeleteClicked() { emit deleteRequested(); }
 
+// ============ SolutionRow Implementation ============
+
+SolutionRow::SolutionRow(const Dungleon::Pattern &pattern, QWidget *parent)
+    : QWidget(parent) {
+  QHBoxLayout *layout = new QHBoxLayout(this);
+  layout->setSpacing(5);
+  layout->setContentsMargins(0, 5, 0, 5);
+
+  // Create character slots (show characters but no background color)
+  for (int i = 0; i < 5; ++i) {
+    CharacterSlot *slot = new CharacterSlot(this);
+    slot->setCharacter(pattern.characters[i]);
+    slot->setShowBackground(false); // No background color for past solutions
+    // Don't use setEnabled(false) as it greys out the icons
+    // Instead, block mouse events to prevent interaction
+    slot->setAttribute(Qt::WA_TransparentForMouseEvents);
+    slot->setCursor(Qt::ArrowCursor); // Change cursor to indicate not clickable
+    characterSlots[i] = slot;
+    layout->addWidget(slot);
+  }
+
+  layout->addSpacing(10);
+
+  // Delete button
+  deleteBtn = new QPushButton("✕", this);
+  deleteBtn->setFixedSize(30, 30);
+  deleteBtn->setToolTip("Delete this solution");
+  deleteBtn->setStyleSheet("QPushButton { background-color: #dc3545; color: "
+                           "white; border: none; border-radius: 4px; }");
+  connect(deleteBtn, &QPushButton::clicked, this,
+          &SolutionRow::onDeleteClicked);
+  layout->addWidget(deleteBtn);
+
+  layout->addStretch();
+}
+
+Dungleon::Pattern SolutionRow::getPattern() const {
+  Dungleon::Pattern pattern;
+  for (int i = 0; i < 5; ++i) {
+    pattern.characters[i] = characterSlots[i]->getCharacter();
+  }
+  pattern.computeCharacterCount();
+  return pattern;
+}
+
+void SolutionRow::onDeleteClicked() { emit deleteRequested(); }
+
 // ============ DungleonWidget Implementation ============
 
 DungleonWidget::DungleonWidget(QWidget *parent)
-    : GameWidget(parent), currentSlotIndex(0) {
+    : GameWidget(parent), currentPatternWidget(nullptr),
+      currentBackspaceBtn(nullptr), currentSlotIndex(0) {
   ui = new Ui::DungleonWidget();
   ui->setupUi(this);
 
@@ -390,17 +450,74 @@ DungleonWidget::DungleonWidget(QWidget *parent)
     }
   }
 
-  // Ensure the submitted-patterns scroll area is placed just below the
-  // submit button (same behavior as before).
+  // Create solution list container (for Gauntlet mode past solutions)
+  solutionListWidget = new QWidget(this);
+  solutionListLayout = new QVBoxLayout(solutionListWidget);
+  solutionListLayout->setSpacing(2);
+  solutionListLayout->setContentsMargins(0, 0, 0, 0);
+  solutionListLayout->setAlignment(Qt::AlignHCenter);
+  solutionListLayout->addStretch();
+
+  // Wrap in scroll area
+  solutionListScrollArea = new QScrollArea(this);
+  solutionListScrollArea->setWidget(solutionListWidget);
+  solutionListScrollArea->setWidgetResizable(true);
+  solutionListScrollArea->setMaximumHeight(200);
+  solutionListScrollArea->setFrameShape(QFrame::NoFrame);
+
+  // Create horizontal layout to hold both pattern and solution lists side by
+  // side
+  QWidget *historyContainer = new QWidget(this);
+  QHBoxLayout *historyLayout = new QHBoxLayout(historyContainer);
+  historyLayout->setSpacing(10);
+  historyLayout->setContentsMargins(0, 0, 0, 0);
+
+  // Add labels above each list
+  QWidget *patternColumn = new QWidget(historyContainer);
+  QVBoxLayout *patternColumnLayout = new QVBoxLayout(patternColumn);
+  patternColumnLayout->setSpacing(2);
+  patternColumnLayout->setContentsMargins(0, 0, 0, 0);
+  QLabel *patternLabel = new QLabel("Guesses:", patternColumn);
+  patternLabel->setStyleSheet("font-weight: bold;");
+  patternColumnLayout->addWidget(patternLabel);
+  patternColumnLayout->addWidget(patternListScrollArea);
+
+  QWidget *solutionColumn = new QWidget(historyContainer);
+  QVBoxLayout *solutionColumnLayout = new QVBoxLayout(solutionColumn);
+  solutionColumnLayout->setSpacing(2);
+  solutionColumnLayout->setContentsMargins(0, 0, 0, 0);
+  QLabel *solutionLabel = new QLabel("Past Solutions:", solutionColumn);
+  solutionLabel->setStyleSheet("font-weight: bold;");
+  solutionColumnLayout->addWidget(solutionLabel);
+  solutionColumnLayout->addWidget(solutionListScrollArea);
+
+  historyLayout->addWidget(patternColumn);
+  historyLayout->addWidget(solutionColumn);
+
+  // Add the history container to the main layout
+  // It should be inserted between the submit buttons and the solve button
   QVBoxLayout *mainLayout2 = qobject_cast<QVBoxLayout *>(layout());
   if (mainLayout2) {
-    int submitIdx2 = mainLayout2->indexOf(ui->submitBtn);
-    mainLayout2->insertWidget(submitIdx2 + 1, patternListScrollArea);
+    // Find the solve button and insert history container before it
+    int solveIdx = mainLayout2->indexOf(ui->solveBtn);
+    if (solveIdx >= 0) {
+      mainLayout2->insertWidget(solveIdx, historyContainer);
+    }
   }
 
   // Connect signals
   connect(ui->submitBtn, &QPushButton::clicked, this,
           &DungleonWidget::onSubmit);
+
+  // Find submitSolutionBtn using findChild (in case UI file hasn't been
+  // regenerated)
+  QPushButton *submitSolutionBtn =
+      this->findChild<QPushButton *>("submitSolutionBtn");
+  if (submitSolutionBtn) {
+    connect(submitSolutionBtn, &QPushButton::clicked, this,
+            &DungleonWidget::onSubmitSolution);
+  }
+
   connect(ui->newGameBtn, &QPushButton::clicked, this,
           &DungleonWidget::onNewGame);
   connect(ui->solveBtn, &QPushButton::clicked, this, &DungleonWidget::onHint);
@@ -417,7 +534,10 @@ DungleonWidget::DungleonWidget(QWidget *parent)
   allResultsTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
   allResultsTable->setSelectionBehavior(QAbstractItemView::SelectRows);
   allResultsTable->setSelectionMode(QAbstractItemView::NoSelection);
-  allResultsTable->setAlternatingRowColors(true);
+  allResultsTable->setAlternatingRowColors(false);
+  // Disable hover highlighting - background colors are set based on probability
+  allResultsTable->setStyleSheet(
+      "QTableWidget::item:hover { background-color: none; }");
   connect(allResultsTable, &QTableWidget::cellClicked, this,
           &DungleonWidget::onTableRowClicked);
 
@@ -430,7 +550,10 @@ DungleonWidget::DungleonWidget(QWidget *parent)
   probablePatternsTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
   probablePatternsTable->setSelectionBehavior(QAbstractItemView::SelectRows);
   probablePatternsTable->setSelectionMode(QAbstractItemView::NoSelection);
-  probablePatternsTable->setAlternatingRowColors(true);
+  probablePatternsTable->setAlternatingRowColors(false);
+  // Disable hover highlighting - background colors are set based on probability
+  probablePatternsTable->setStyleSheet(
+      "QTableWidget::item:hover { background-color: none; }");
   connect(probablePatternsTable, &QTableWidget::cellClicked, this,
           &DungleonWidget::onTableRowClicked);
 
@@ -491,6 +614,7 @@ bool DungleonWidget::showConfigDialog() {
 void DungleonWidget::initGame() {
   // Clear feedback history
   config.feedbackHistory.clear();
+  config.solutionHistory.clear();
 
   // Delete all PatternRow widgets
   for (PatternRow *row : patternRows) {
@@ -499,8 +623,16 @@ void DungleonWidget::initGame() {
   }
   patternRows.clear();
 
+  // Delete all SolutionRow widgets
+  for (SolutionRow *row : solutionRows) {
+    solutionListLayout->removeWidget(row);
+    row->deleteLater();
+  }
+  solutionRows.clear();
+
   // Remove current pattern widget if it exists
   if (currentPatternWidget) {
+    // Remove from layout and schedule for deletion
     if (currentInputLayout)
       currentInputLayout->removeWidget(currentPatternWidget);
     currentPatternWidget->deleteLater();
@@ -530,17 +662,21 @@ void DungleonWidget::setUIEnabled(bool enabled) {
 }
 
 void DungleonWidget::updateConfigInfo() {
-  QString info = QString("<span style='color:#666; font-size:11pt;'>Search "
-                         "Depth: %1 | %2</span>")
-                     .arg(config.maxDepth)
-                     .arg(config.excludeImpossiblePatterns ? "Possible Patterns"
-                                                           : "All Patterns");
+  QString info =
+      QString("<span style='color:#666; font-size:11pt;'>Search "
+              "Depth: %1 | %2 | Guesses: %3 | Past Solutions: %4</span>")
+          .arg(config.maxDepth)
+          .arg(config.excludeImpossiblePatterns ? "Possible Patterns"
+                                                : "All Patterns")
+          .arg(config.feedbackHistory.size())
+          .arg(config.solutionHistory.size());
   configInfoLabel->setText(info);
 }
 
 void DungleonWidget::setupCurrentPattern() {
   // Remove previous input if present
   if (currentPatternWidget) {
+    // Remove from layout and schedule for deletion
     if (currentInputLayout)
       currentInputLayout->removeWidget(currentPatternWidget);
     currentPatternWidget->deleteLater();
@@ -620,6 +756,8 @@ void DungleonWidget::onCharacterBankClicked(int charId) {
 
 void DungleonWidget::onSubmit() { submitCurrentPattern(); }
 
+void DungleonWidget::onSubmitSolution() { submitCurrentSolution(); }
+
 void DungleonWidget::submitCurrentPattern() {
   // Check if all 5 slots are filled
   if (currentSlotIndex < 5) {
@@ -639,10 +777,11 @@ void DungleonWidget::submitCurrentPattern() {
 
   config.feedbackHistory.push_back(fb);
 
-  // Remove current pattern from input layout
+  // Remove current pattern from input layout and schedule for deletion
   if (currentInputLayout)
     currentInputLayout->removeWidget(currentPatternWidget);
   currentPatternWidget->deleteLater();
+  currentPatternWidget = nullptr;
 
   // Create a PatternRow for this feedback
   PatternRow *patternRow = new PatternRow(fb, patternListWidget);
@@ -661,10 +800,56 @@ void DungleonWidget::submitCurrentPattern() {
   setupCurrentPattern();
 }
 
+void DungleonWidget::submitCurrentSolution() {
+  // Check if all 5 slots are filled
+  if (currentSlotIndex < 5) {
+    QMessageBox::warning(
+        this, "Incomplete Pattern",
+        "Please fill all 5 character slots before submitting.");
+    return;
+  }
+
+  // Create pattern from current slots
+  Dungleon::Pattern pattern;
+  for (int i = 0; i < 5; ++i) {
+    pattern.characters[i] = currentSlots[i]->getCharacter();
+  }
+  pattern.computeCharacterCount();
+
+  config.solutionHistory.push_back(pattern);
+
+  // Remove current pattern from input layout and schedule for deletion
+  if (currentInputLayout)
+    currentInputLayout->removeWidget(currentPatternWidget);
+  currentPatternWidget->deleteLater();
+  currentPatternWidget = nullptr;
+
+  // Create a SolutionRow for this pattern
+  SolutionRow *solutionRow = new SolutionRow(pattern, solutionListWidget);
+  connect(solutionRow, &SolutionRow::deleteRequested, this,
+          &DungleonWidget::onSolutionDeleted);
+
+  solutionRows.push_back(solutionRow);
+
+  // Add to layout before stretch
+  solutionListLayout->insertWidget(solutionListLayout->count() - 1,
+                                   solutionRow);
+
+  // Setup new current pattern
+  setupCurrentPattern();
+}
+
 void DungleonWidget::rebuildFeedbackHistory() {
   config.feedbackHistory.clear();
   for (PatternRow *row : patternRows) {
     config.feedbackHistory.push_back(row->getFeedback());
+  }
+}
+
+void DungleonWidget::rebuildSolutionHistory() {
+  config.solutionHistory.clear();
+  for (SolutionRow *row : solutionRows) {
+    config.solutionHistory.push_back(row->getPattern());
   }
 }
 
@@ -678,6 +863,20 @@ void DungleonWidget::onPatternDeleted() {
     patternListLayout->removeWidget(row);
     row->deleteLater();
     rebuildFeedbackHistory();
+    updateConfigInfo();
+  }
+}
+
+void DungleonWidget::onSolutionDeleted() {
+  SolutionRow *row = qobject_cast<SolutionRow *>(sender());
+  if (row) {
+    auto it = std::find(solutionRows.begin(), solutionRows.end(), row);
+    if (it != solutionRows.end()) {
+      solutionRows.erase(it);
+    }
+    solutionListLayout->removeWidget(row);
+    row->deleteLater();
+    rebuildSolutionHistory();
     updateConfigInfo();
   }
 }

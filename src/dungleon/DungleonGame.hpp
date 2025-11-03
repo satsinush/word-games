@@ -15,6 +15,10 @@ private:
   std::vector<Dungleon::Feedback> getFeedbackFromUser();
   std::vector<Dungleon::Feedback>
   getFeedbackFromArgs(const std::map<std::string, std::string> &args);
+  std::vector<Dungleon::Pattern> getSolutionsFromUser();
+  std::vector<Dungleon::Pattern>
+  getSolutionsFromArgs(const std::map<std::string, std::string> &args);
+  Dungleon::Pattern parsePattern(const std::string &input);
   void printResults(const Dungleon::Result &result);
   void saveResults(const Dungleon::Result &result,
                    const std::string &outputFile);

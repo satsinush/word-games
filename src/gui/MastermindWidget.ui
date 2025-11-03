@@ -115,35 +115,11 @@
       <attribute name="title">
        <string>All Suggestions</string>
       </attribute>
-      <layout class="QVBoxLayout" name="allTabLayout">
-       <item>
-        <widget class="QTableWidget" name="allResultsTable">
-         <property name="editTriggers">
-          <set>QAbstractItemView::NoEditTriggers</set>
-         </property>
-         <property name="selectionBehavior">
-          <enum>QAbstractItemView::SelectRows</enum>
-         </property>
-        </widget>
-       </item>
-      </layout>
      </widget>
      <widget class="QWidget" name="possibleTab">
       <attribute name="title">
        <string>Possible Answers</string>
       </attribute>
-      <layout class="QVBoxLayout" name="possibleTabLayout">
-       <item>
-        <widget class="QTableWidget" name="possibleResultsTable">
-         <property name="editTriggers">
-          <set>QAbstractItemView::NoEditTriggers</set>
-         </property>
-         <property name="selectionBehavior">
-          <enum>QAbstractItemView::SelectRows</enum>
-         </property>
-        </widget>
-       </item>
-      </layout>
      </widget>
     </widget>
    </item>
