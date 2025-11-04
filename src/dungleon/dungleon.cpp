@@ -332,25 +332,24 @@ bool isValidPattern(const Pattern &pattern, const Config &config,
     }
   }
 
+  uint8_t countedFrogs = 0; // Used to count the number of frogs used as
+                            // transformations, if this number is greater than
+                            // the number of frogs, the pattern is invalid
+
   // Count-based constraints
   // The Mage always turns a monster into a frog
   if (characterCounts[MAGE] > 0 && characterCounts[FROG] == 0) {
     return false;
   }
   // Bats always come in a pair
-  if (characterCounts[BAT] % 2 != 0 && characterCounts[FROG] == 0) {
-    return false;
-  }
+  countedFrogs += characterCounts[BAT] % 2; // 1 frog if odd number of bats
   // Spiders always come in triplets
-  if (characterCounts[SPIDER] % 3 != 0 && characterCounts[FROG] == 0) {
-    return false;
-  }
+  countedFrogs += characterCounts[SPIDER] % 3; // 1 or 2 frogs if not multiple
+                                               // of 3 spiders
   // Axe Orcs and Blade Orcs always appear together
-  if ((characterCounts[AXE_ORC] > 0 || characterCounts[BLADE_ORC] > 0) &&
-      characterCounts[AXE_ORC] != characterCounts[BLADE_ORC] &&
-      characterCounts[FROG] == 0) {
-    return false;
-  }
+  countedFrogs += std::abs(int(characterCounts[AXE_ORC]) -
+                           int(characterCounts[BLADE_ORC])); // Frogs needed to
+                                                             // balance
   // The necromancer always turns all heroes into zombies
   if (characterCounts[NECROMANCER] > 0 && characterTypeCounts[HERO] > 0) {
     return false;
@@ -375,6 +374,11 @@ bool isValidPattern(const Pattern &pattern, const Config &config,
   }
   // If there is a dragon not in the last position, then there is a relic
   if (dragonNotInLast && characterCounts[RELIC] == 0) {
+    return false;
+  }
+
+  // Ensure we do not exceed available frogs for transformations
+  if (countedFrogs > characterCounts[FROG]) {
     return false;
   }
 
@@ -442,10 +446,6 @@ std::vector<Pattern> generateAllPossiblePatterns(const Config &config) {
       generate(pos + 1);
     }
   };
-
-  // TODO: Generate all possible patterns without frogs and zombies, then
-  // transform them according to the rules to get valid patterns with those
-  // characters, then remove any duplicates
 
   generate(0);
 
