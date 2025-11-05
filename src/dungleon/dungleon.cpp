@@ -314,6 +314,13 @@ bool isValidPattern(const Pattern &pattern, const Config &config,
     return true; // Skip count-based constraints for partial patterns
   }
 
+  // Pattern can't be a past solution
+  for (const Pattern &pastSolution : config.solutionHistory) {
+    if (pattern == pastSolution) {
+      return false;
+    }
+  }
+
   // All solutions must have at least one character in common
   if (!config.solutionHistory.empty()) {
     bool hasSharedCharacter = false;
