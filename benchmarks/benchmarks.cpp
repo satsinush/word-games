@@ -1,5 +1,7 @@
 #include <benchmark/benchmark.h>
 
+#include "dungleon/DungleonGame.hpp"
+#include "dungleon/dungleon.hpp"
 #include "letterBoxed/LetterBoxedGame.hpp"
 #include "letterBoxed/letterBoxed.hpp"
 #include "mastermind/MastermindGame.hpp"
@@ -27,11 +29,14 @@ static void BM_Wordle_Runtime(benchmark::State &state) {
 
   config.feedbackHistory = feedbackHistory;
 
+  Utils::loadWords(); // Preload words
+
   for (auto _ : state) {
     Wordle::Result result = Wordle::runWordleSolver(config);
     benchmark::DoNotOptimize(result);
   }
 }
+
 BENCHMARK(BM_Wordle_Runtime);
 
 // ============================================================================
@@ -46,6 +51,8 @@ static void BM_SpellingBee_Runtime(benchmark::State &state) {
     config.allLetters[i] = testLetters[i];
     config.validLettersMap[static_cast<unsigned char>(testLetters[i])] = true;
   }
+
+  Utils::loadWords(); // Preload words
 
   for (auto _ : state) {
     std::vector<Utils::Word> solutions =
@@ -89,6 +96,8 @@ static void BM_LetterBoxed_Runtime(benchmark::State &state) {
   for (int i = 9; i < 12; ++i)
     config.letterToSideMapping[i] = 3;
 
+  Utils::loadWords(); // Preload words
+
   for (auto _ : state) {
     std::vector<LetterBoxed::Solution> solutions =
         LetterBoxed::runLetterBoxedSolver(config);
@@ -108,9 +117,6 @@ static void BM_Mastermind_Runtime(benchmark::State &state) {
   config.allowDuplicates = true;
   config.maxDepth = 1;
 
-  std::vector<Mastermind::Pattern> allPatterns =
-      Mastermind::generateAllPatterns(config);
-
   // Parse feedback using parseFeedback function
   std::vector<Mastermind::Feedback> feedback;
   feedback.push_back(Mastermind::parseFeedback("11223 1 2", config));
@@ -124,6 +130,28 @@ static void BM_Mastermind_Runtime(benchmark::State &state) {
   }
 }
 BENCHMARK(BM_Mastermind_Runtime);
+
+// ============================================================================
+// Dungleon Benchmarks
+// ============================================================================
+
+static void BM_Dungleon_Runtime(benchmark::State &state) {
+  Dungleon::Config config;
+  config.maxDepth = 0;
+
+  // Parse feedback using parseFeedback function
+  std::vector<Dungleon::Feedback> feedback;
+  feedback.push_back(Dungleon::parseFeedback("ar kn bo ne fr 00010", config));
+  feedback.push_back(Dungleon::parseFeedback("vi zo ne sk bt 22120", config));
+
+  config.feedbackHistory = feedback;
+
+  for (auto _ : state) {
+    Dungleon::Result result = Dungleon::runDungleonSolver(config);
+    benchmark::DoNotOptimize(result);
+  }
+}
+BENCHMARK(BM_Dungleon_Runtime);
 
 // Run the benchmarks
 BENCHMARK_MAIN();

@@ -185,6 +185,7 @@ void DungleonGame::printResults(const Dungleon::Result &result) {
 
 void DungleonGame::saveResults(const Dungleon::Result &result,
                                const std::string &outputFile) {
+  // Save to single output file
   std::filesystem::path outputPath(outputFile);
   if (!outputPath.parent_path().empty() &&
       !std::filesystem::exists(outputPath.parent_path())) {
@@ -192,16 +193,25 @@ void DungleonGame::saveResults(const Dungleon::Result &result,
   }
 
   std::ofstream out(outputFile);
-  if (!out.is_open()) {
+  if (out.is_open()) {
+    // Write possible patterns first (those with probability > 0)
+    for (const auto &guess : result.sortedGuesses) {
+      if (guess.probability > 0.0) {
+        out << guess.pattern.toString() << "\n";
+      }
+    }
+    for (const auto &guess : result.sortedGuesses) {
+      out << guess.pattern.toString() << "," << guess.ent << ","
+          << guess.probability << "\n";
+    }
+    out.close();
+  } else {
     std::cerr << "Could not write to file: " << outputFile << "\n";
-    return;
   }
 
-  for (const auto &g : result.sortedGuesses) {
-    out << g.pattern.toString() << "," << g.ent << "," << g.probability << "\n";
-  }
-
-  out.close();
+  std::cout << result.totalPossiblePatterns << "\n";
+  std::cout << result.sortedGuesses.size() << "\n";
+  std::cout << outputFile;
 }
 
 void DungleonGame::runCLI() {
