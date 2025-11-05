@@ -314,20 +314,16 @@ bool isValidPattern(const Pattern &pattern, const Config &config,
     return true; // Skip count-based constraints for partial patterns
   }
 
-  // All solutions must share at least one character with previous ones
-  for (const auto &prevPattern : config.solutionHistory) {
-    bool sharesCharacter = false;
-    for (uint8_t i = 0; i < numSlots; ++i) {
-      for (uint8_t j = 0; j < numSlots; ++j) {
-        if (pattern.characters[i] == prevPattern.characters[j]) {
-          sharesCharacter = true;
-          break;
-        }
-      }
-      if (sharesCharacter)
+  // All solutions must have at least one character in common
+  if (!config.solutionHistory.empty()) {
+    bool hasSharedCharacter = false;
+    for (uint8_t c = 0; c < NUM_CHARACTERS; ++c) {
+      if (config.sharedCharacters[c] && pattern.characterCount[c] > 0) {
+        hasSharedCharacter = true;
         break;
+      }
     }
-    if (!sharesCharacter) {
+    if (!hasSharedCharacter) {
       return false;
     }
   }
@@ -342,10 +338,11 @@ bool isValidPattern(const Pattern &pattern, const Config &config,
     return false;
   }
   // Bats always come in a pair
-  countedFrogs += characterCounts[BAT] % 2; // 1 frog if odd number of bats
-  // Spiders always come in triplets
-  countedFrogs += characterCounts[SPIDER] % 3; // 1 or 2 frogs if not multiple
-                                               // of 3 spiders
+  countedFrogs +=
+      characterCounts[BAT] % 2 != 0 ? 1 : 0; // Frogs needed to balance
+  countedFrogs += characterCounts[SPIDER] % 3 != 0
+                      ? (3 - (characterCounts[SPIDER] % 3))
+                      : 0; // Frogs needed to balance
   // Axe Orcs and Blade Orcs always appear together
   countedFrogs += std::abs(int(characterCounts[AXE_ORC]) -
                            int(characterCounts[BLADE_ORC])); // Frogs needed to
@@ -496,10 +493,22 @@ protected:
   }
 };
 
-Result runDungleonSolver(const Config &config, std::atomic<bool> *cancel) {
+Result runDungleonSolver(const Config &_config, std::atomic<bool> *cancel) {
 #ifdef TRACY_ENABLE
   ZoneScoped;
 #endif
+
+  Config config = _config; // Make a copy to modify
+  if (!config.solutionHistory.empty()) {
+    config.sharedCharacters.fill(true);
+    for (const Pattern &p : config.solutionHistory) {
+      for (uint8_t c = 0; c < NUM_CHARACTERS; ++c) {
+        if (p.characterCount[c] == 0) {
+          config.sharedCharacters[c] = false;
+        }
+      }
+    }
+  }
 
   std::vector<Pattern> allPatterns = config.excludeImpossiblePatterns
                                          ? generateAllPossiblePatterns(config)

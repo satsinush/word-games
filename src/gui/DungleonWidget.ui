@@ -119,7 +119,7 @@
     <item>
      <widget class="QWidget" name="historyContainer" native="true">
       <property name="sizePolicy">
-       <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+       <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
         <horstretch>0</horstretch>
         <verstretch>0</verstretch>
        </sizepolicy>
@@ -141,8 +141,14 @@
         <number>0</number>
        </property>
        <item>
-        <widget class="QWidget" name="patternColumn" native="true">
-         <layout class="QVBoxLayout" name="patternColumnLayout">
+  <widget class="QWidget" name="patternColumn" native="true">
+   <property name="sizePolicy">
+    <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
+     <horstretch>0</horstretch>
+     <verstretch>0</verstretch>
+    </sizepolicy>
+   </property>
+   <layout class="QVBoxLayout" name="patternColumnLayout">
           <property name="spacing">
            <number>2</number>
           </property>
@@ -174,7 +180,7 @@
           <item>
            <widget class="QScrollArea" name="patternListScrollArea">
             <property name="maximumHeight">
-             <number>200</number>
+             <number>320</number>
             </property>
             <property name="widgetResizable">
              <bool>true</bool>
@@ -188,8 +194,14 @@
         </widget>
        </item>
        <item>
-        <widget class="QWidget" name="solutionColumn" native="true">
-         <layout class="QVBoxLayout" name="solutionColumnLayout">
+  <widget class="QWidget" name="solutionColumn" native="true">
+   <property name="sizePolicy">
+    <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
+     <horstretch>0</horstretch>
+     <verstretch>0</verstretch>
+    </sizepolicy>
+   </property>
+   <layout class="QVBoxLayout" name="solutionColumnLayout">
           <property name="spacing">
            <number>2</number>
           </property>
@@ -221,7 +233,7 @@
           <item>
            <widget class="QScrollArea" name="solutionListScrollArea">
             <property name="maximumHeight">
-             <number>200</number>
+             <number>320</number>
             </property>
             <property name="widgetResizable">
              <bool>true</bool>

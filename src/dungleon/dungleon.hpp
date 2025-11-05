@@ -67,6 +67,7 @@ struct Config {
       {}; // History of previous solutions, used for Gauntlet mode where each
           // solution must share at least one character with all the previous
           // ones
+  std::array<bool, NUM_CHARACTERS> sharedCharacters;
 };
 
 struct Pattern {
