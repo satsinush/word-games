@@ -183,7 +183,6 @@ void runInteractiveMode() {
 
     // Check for EOF
     if (std::cin.eof()) {
-      std::cout << "\nGoodbye!\n";
       return;
     }
 
