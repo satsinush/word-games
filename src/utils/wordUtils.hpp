@@ -44,6 +44,8 @@ std::string trimToLower(const std::string &str);
 // Loads words from a CSV file. If csvFile is empty, uses word_scores.csv.
 // If useBinaryCache is true, tries to load from/save to .bin file.
 // If maxWords is 0, loads all words.
+// Max of 500002 used based on word analysis data.
+// All scrabble words are in the top 500002 by score.
 std::vector<Word> loadWords(const std::string &csvFile = "",
                             bool useBinaryCache = true,
                             size_t maxWords = 500002);

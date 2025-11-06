@@ -131,19 +131,10 @@ public:
 
       double probability = isPossible ? possibleProb : 0.0;
 
-      // If there is only one candidate left, the expected turns after guessing
-      // the correct candidate is 0, otherwise it is 1
-      double expectedTurns = isPossible ? 0.0 : 1.0;
-      // If there are multiple possible candidates, calculate the expected turns
-      // calculateExpectedTurns gets the ENT after this guess, assuming the
-      // guess is not correct So we multiply by (1 - probability) to weight it
-      // by the chance the guess is wrong
-      if (filteredPossibleCandidates.size() > 1) {
-        expectedTurns =
-            (1 - probability) *
-            calculateExpectedTurns(guessCandidate, filteredPossibleCandidates,
-                                   allCandidates, config.maxDepth);
-      }
+      double expectedTurns =
+          (1 - probability) *
+          calculateExpectedTurns(guessCandidate, filteredPossibleCandidates,
+                                 allCandidates, config.maxDepth);
 
       TGuessType guess =
           createGuess(guessCandidate, expectedTurns, probability);
@@ -225,6 +216,15 @@ private:
 #ifdef TRACY_ENABLE
     ZoneScoped;
 #endif
+
+    // Base Cases
+    if (currentCandidates.size() <= 0) {
+      // No candidates left (should not happen in normal play)
+      return 0.0;
+    } else if (currentCandidates.size() == 1) {
+      // Only one candidate left - if we guess it, ENT is 0; else ENT is 1
+      return guessCandidate == currentCandidates[0] ? 0.0 : 1.0;
+    }
 
     // Calculate total score for normalization
     double totalScore = 0.0;
