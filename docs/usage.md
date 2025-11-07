@@ -13,7 +13,7 @@ The program can be launched in several ways:
 
 **Syntax:**
 ```bash
-./solver-cli [OPTIONS] [MODE]
+./p++ [OPTIONS] [MODE]
 ````
 
 ### Global Options
@@ -42,7 +42,7 @@ Solves the Letter Boxed puzzle.
 **Syntax:**
 
 ```bash
-./solver-cli letterboxed --letters <12letters> [OPTIONS]
+./p++ letterboxed --letters <12letters> [OPTIONS]
 ```
 
 **Options:**
@@ -67,7 +67,7 @@ Solves the Spelling Bee puzzle.
 **Syntax:**
 
 ```bash
-./solver-cli spellingbee --letters <letters> [OPTIONS]
+./p++ spellingbee --letters <letters> [OPTIONS]
 ```
 
 **Options:**
@@ -85,7 +85,7 @@ Provides entropy-based suggestions for Wordle puzzles.
 **Syntax:**
 
 ```bash
-./solver-cli wordle [OPTIONS]
+./p++ wordle [OPTIONS]
 ```
 
 **Options:**
@@ -105,7 +105,7 @@ Provides entropy-based suggestions for Mastermind puzzles.
 **Syntax:**
 
 ```bash
-./solver-cli mastermind [OPTIONS]
+./p++ mastermind [OPTIONS]
 ```
 
 **Options:**
@@ -125,7 +125,7 @@ Provides entropy-based suggestions for Dungleon puzzles.
 **Syntax:**
 
 ```bash
-./solver-cli dungleon [OPTIONS]
+./p++ dungleon [OPTIONS]
 ```
 
 **Options:**
@@ -146,7 +146,7 @@ Reads and displays results from a previously generated file.
 **Syntax:**
 
 ```bash
-./solver-cli read [FILE] [OPTIONS]
+./p++ read [FILE] [OPTIONS]
 ```
 
 **Options:**
@@ -166,7 +166,7 @@ The program includes benchmarking tools to measure performance.
 **Syntax:**
 
 ```bash
-./solver-cli --benchmark runtime <mode> [OPTIONS]
+./p++ --benchmark runtime <mode> [OPTIONS]
 ```
 
   * `--iterations <n>`: Number of times to run the test. (Default: `1`).
@@ -177,7 +177,7 @@ The program includes benchmarking tools to measure performance.
 **Syntax:**
 
 ```bash
-./solver-cli --benchmark performance <mode> [OPTIONS]
+./p++ --benchmark performance <mode> [OPTIONS]
 ```
 
   * **Note:** Currently only implemented for Wordle mode.
@@ -199,47 +199,47 @@ For any option that accepts a boolean value (`<bool>`), the following inputs are
 **1. Solve a Letter Boxed puzzle with a fast preset and save to a specific file:**
 
 ```bash
-./solver-cli letterboxed --letters abcdefghijkl --preset 2 -o results/solutions.txt
+./p++ letterboxed --letters abcdefghijkl --preset 2 -o results/solutions.txt
 ```
 
 **1b. Use a preset but override specific settings:**
 
 ```bash
-./solver-cli letterboxed --letters abcdefghijkl --preset 2 --max-depth 3 --min-word-length 3
+./p++ letterboxed --letters abcdefghijkl --preset 2 --max-depth 3 --min-word-length 3
 ```
 
 **2. Solve a Spelling Bee puzzle with all optional parameters:**
 
 ```bash
-./solver-cli spellingbee --letters abcdefg --exclude-uncommon-words false --must-include-first-letter true --reuse-letters true -o results/spellingbee.txt
+./p++ spellingbee --letters abcdefg --exclude-uncommon-words false --must-include-first-letter true --reuse-letters true -o results/spellingbee.txt
 ```
 
 **3. Get Wordle suggestions for 6-letter words with previous guesses:**
 
 ```bash
-./solver-cli wordle --word-length 6 --guesses "STRAFE 010200;COINED 102010" --max-depth 1 --exclude-uncommon-words false -o results/wordle.txt
+./p++ wordle --word-length 6 --guesses "STRAFE 010200;COINED 102010" --max-depth 1 --exclude-uncommon-words false -o results/wordle.txt
 ```
 
 **4. Solve a Mastermind puzzle with custom configuration:**
 
 ```bash
-./solver-cli mastermind --guesses "RGBC 1 2;MYRC 1 2" --pegs 4 --colors "RGBCMY" --allow-duplicates true --max-depth 1 -o results/mastermind.txt
+./p++ mastermind --guesses "RGBC 1 2;MYRC 1 2" --pegs 4 --colors "RGBCMY" --allow-duplicates true --max-depth 1 -o results/mastermind.txt
 ```
 
 **5. Get Dungleon suggestions with previous guesses and solutions:**
 
 ```bash
-./solver-cli dungleon --guesses "ar kn bo ne fr 00010" --solutions "vi zo ne sk bt" --max-depth 0 --exclude-impossible false -o results/dungleon.txt
+./p++ dungleon --guesses "ar kn bo ne fr 00010" --solutions "vi zo ne sk bt" --max-depth 0 --exclude-impossible false -o results/dungleon.txt
 ```
 
 **6. Start the interactive CLI mode:**
 
 ```bash
-./solver-cli -i
+./p++ -i
 ```
 
 **7. Read the first 10 results from a saved file:**
 
 ```bash
-./solver-cli read results/wordle.txt --start 0 --end 10
+./p++ read results/wordle.txt --start 0 --end 10
 ```
