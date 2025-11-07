@@ -33,9 +33,42 @@ SpellingBee::Config SpellingBeeGame::getConfigFromUser() {
   SpellingBee::Config config;
 
   // Get puzzle letters (any number of letters, minimum 3, duplicates allowed)
-  std::string letters = Utils::Input::promptLetters(
-      "Enter puzzle letters (minimum 3, duplicates allowed, ex. a bcdefg):", 3,
-      true);
+  std::string letters;
+  while (true) {
+    try {
+      letters = Utils::Input::promptString(
+          "Enter puzzle letters (minimum 3, duplicates allowed, ex. abcdefg)",
+          "");
+
+      // Remove whitespace and convert to lowercase
+      letters.erase(std::remove_if(letters.begin(), letters.end(), ::isspace),
+                    letters.end());
+      std::transform(letters.begin(), letters.end(), letters.begin(),
+                     ::tolower);
+
+      if (letters.size() < 3) {
+        std::cout << "Invalid input. Please enter at least 3 letters."
+                  << std::endl;
+        continue;
+      }
+
+      // Validate all characters are letters
+      bool valid = true;
+      for (char c : letters) {
+        if (!isalpha(static_cast<unsigned char>(c))) {
+          std::cout << "Invalid input. All characters must be letters."
+                    << std::endl;
+          valid = false;
+          break;
+        }
+      }
+
+      if (valid)
+        break;
+    } catch (const Utils::Input::UserCancelledException &) {
+      throw; // Re-throw to be handled by caller
+    }
+  }
 
   // Store letters in vector
   config.allLetters.clear();

@@ -17,13 +17,7 @@
             "type": "cppdbg",
             "request": "launch",
             "program": "${command:cmake.launchTargetPath}",
-            "args": [
-                "dungleon",
-                "--max-depth",
-                "0",
-                "--guesses",
-                "ar kn bo ne fr 00010"
-            ],
+            "args": [],
             "stopAtEntry": false,
             "cwd": "${command:cmake.launchTargetDirectory}",
             "environment": [],

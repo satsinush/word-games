@@ -16,12 +16,9 @@ Mastermind::Config MastermindGame::getConfigFromUser() {
   config.numPegs = static_cast<uint8_t>(
       Utils::Input::promptInt("Enter number of pegs", 4, 1, 20));
 
-  std::cout
-      << "Enter available color characters (e.g., 'rgbcmyk' or '012345'): ";
-  std::getline(std::cin, config.colorChars);
-  if (config.colorChars.empty()) {
-    config.colorChars = "RGBCMY"; // Default
-  }
+  config.colorChars = Utils::Input::promptString(
+      "Enter available color characters (e.g., 'RGBCMY' or '012345')", 
+      "RGBCMY");
 
   config.allowDuplicates =
       Utils::Input::promptBool("Allow duplicate colors?", true);
@@ -207,15 +204,8 @@ void MastermindGame::runCLI() {
         std::cout << "\n";
       }
 
-      std::cout << "Enter guess (or command): ";
-      std::getline(std::cin, input);
-
-      // Check for EOF
-      if (std::cin.eof()) {
-        std::cin.clear();
-        std::cout << "\n";
-        throw Utils::Input::UserCancelledException();
-      }
+      // Use promptString helper which handles EOF automatically
+      input = Utils::Input::promptString("Enter guess (or command)", "");
 
       // Trim whitespace but preserve case for case-sensitive color matching
       trimmed = Utils::trim(input);
