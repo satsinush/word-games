@@ -34,7 +34,7 @@
    <item>
     <widget class="QLabel" name="configInfoLabel">
      <property name="text">
-      <string>Enter 7 letters below (first is center)</string>
+      <string>Enter letters below (minimum 3, duplicates allowed, first is special)</string>
      </property>
      <property name="alignment">
       <set>Qt::AlignCenter</set>
@@ -73,55 +73,80 @@
     </layout>
    </item>
    <item>
-    <layout class="QHBoxLayout" name="hexagonLayout">
-     <item>
-      <spacer name="hexLeftSpacer">
-       <property name="orientation">
-        <enum>Qt::Horizontal</enum>
+    <widget class="QScrollArea" name="lettersScrollArea">
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+       <horstretch>0</horstretch>
+       <verstretch>0</verstretch>
+      </sizepolicy>
+     </property>
+     <property name="minimumSize">
+      <size>
+       <width>0</width>
+       <height>80</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>16777215</width>
+       <height>80</height>
+      </size>
+     </property>
+     <property name="widgetResizable">
+      <bool>true</bool>
+     </property>
+     <property name="horizontalScrollBarPolicy">
+      <enum>Qt::ScrollBarAsNeeded</enum>
+     </property>
+     <property name="verticalScrollBarPolicy">
+      <enum>Qt::ScrollBarAlwaysOff</enum>
+     </property>
+     <widget class="QWidget" name="lettersScrollWidget">
+      <property name="geometry">
+       <rect>
+        <x>0</x>
+        <y>0</y>
+        <width>596</width>
+        <height>78</height>
+       </rect>
+      </property>
+      <layout class="QHBoxLayout" name="lettersButtonsLayout">
+       <property name="spacing">
+        <number>10</number>
        </property>
-       <property name="sizeHint" stdset="0">
-        <size>
-         <width>40</width>
-         <height>20</height>
-        </size>
+       <property name="leftMargin">
+        <number>10</number>
        </property>
-      </spacer>
-     </item>
-     <item>
-      <widget class="QWidget" name="hexagonContainer" native="true">
-       <property name="sizePolicy">
-        <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-         <horstretch>0</horstretch>
-         <verstretch>0</verstretch>
-        </sizepolicy>
+       <property name="topMargin">
+        <number>10</number>
        </property>
-       <property name="minimumSize">
-        <size>
-         <width>220</width>
-         <height>250</height>
-        </size>
+       <property name="rightMargin">
+        <number>10</number>
        </property>
-      </widget>
-     </item>
-     <item>
-      <spacer name="hexRightSpacer">
-       <property name="orientation">
-        <enum>Qt::Horizontal</enum>
+       <property name="bottomMargin">
+        <number>10</number>
        </property>
-       <property name="sizeHint" stdset="0">
-        <size>
-         <width>40</width>
-         <height>20</height>
-        </size>
-       </property>
-      </spacer>
-     </item>
-    </layout>
+       <item>
+        <spacer name="lettersLayoutSpacer">
+         <property name="orientation">
+          <enum>Qt::Horizontal</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>40</width>
+           <height>20</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+      </layout>
+     </widget>
+    </widget>
    </item>
    <item>
     <widget class="QLineEdit" name="inputField">
      <property name="placeholderText">
-      <string>Enter 7 letters (e.g., abcdefg) and press Enter...</string>
+      <string>Enter letters (min 3, duplicates allowed, e.g., abc or aabbcc) and press Enter...</string>
      </property>
     </widget>
    </item>

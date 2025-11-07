@@ -95,7 +95,7 @@ MastermindWidget::MastermindWidget(QWidget *parent)
 
   // Initialize config defaults
   config.numPegs = 4;
-  config.colorChars = "012345"; // Default to 6 colors represented as digits
+  config.colorChars = "RGBCMY"; // Default to 6 colors represented as letters
   config.allowDuplicates = true;
   config.maxDepth = 1;
 
@@ -196,7 +196,7 @@ bool MastermindWidget::showConfigDialog() {
     config.numPegs = numPegsSpinBox->value();
     config.colorChars = colorCharsLineEdit->text().toStdString();
     if (config.colorChars.empty()) {
-      config.colorChars = "012345"; // Default if empty
+      config.colorChars = "RGBCMY"; // Default if empty
     }
     config.maxDepth = maxDepthSpinBox->value();
 

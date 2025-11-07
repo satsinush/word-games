@@ -7,16 +7,14 @@
 #include <QDialog>
 #include <QDialogButtonBox>
 #include <QFormLayout>
-#include <QGridLayout>
+#include <QHBoxLayout>
 #include <QHeaderView>
 #include <QLineEdit>
 #include <QMessageBox>
-#include <QPainter>
-#include <QPainterPath>
-#include <QPolygonF>
 #include <QPushButton>
+#include <QScrollArea>
 #include <QSizePolicy>
-#include <QVBoxLayout>
+#include <QWidget>
 #include <algorithm>
 #include <cmath>
 #include <random>
@@ -26,68 +24,40 @@
 #define M_PI 3.14159265358979323846
 #endif
 
-// ============ HexagonButton Implementation ============
+// ============ LetterButton Implementation ============
 
-HexagonButton::HexagonButton(bool isCenter, QWidget *parent)
-    : QPushButton(parent), isCenterHex(isCenter), currentLetter('\0') {
-  setFixedSize(70, 70);
+LetterButton::LetterButton(bool isFirst, QWidget *parent)
+    : QPushButton(parent), isFirstLetter(isFirst), currentLetter('\0') {
+  setFixedSize(50, 50);
   QFont font;
-  font.setPointSize(24);
+  font.setPointSize(20);
   font.setBold(true);
   setFont(font);
-  setFlat(true);
+  setFlat(false);
+
+  // Style the button with black letters
+  if (isFirst) {
+    setStyleSheet("LetterButton { background-color: #f7da21; color: black; "
+                  "border: 2px solid "
+                  "#3a3a3c; border-radius: 25px; }");
+  } else {
+    setStyleSheet("LetterButton { background-color: white; color: black; "
+                  "border: 2px solid "
+                  "#3a3a3c; border-radius: 25px; }");
+  }
 }
 
-void HexagonButton::setLetter(char letter) {
+void LetterButton::setLetter(char letter) {
   currentLetter = letter;
   if (letter == '\0') {
     setText("");
   } else {
     setText(QString(QChar(letter).toUpper()));
   }
-  update();
 }
 
-void HexagonButton::paintEvent(QPaintEvent *event) {
-  Q_UNUSED(event);
-
-  QPainter painter(this);
-  painter.setRenderHint(QPainter::Antialiasing);
-
-  // Draw hexagon
-  QPolygonF hexagon;
-  double centerX = width() / 2.0;
-  double centerY = height() / 2.0;
-  double radius = 35.0;
-
-  for (int i = 0; i < 6; ++i) {
-    double angle = M_PI / 3.0 * i;
-    double x = centerX + radius * cos(angle);
-    double y = centerY + radius * sin(angle);
-    hexagon << QPointF(x, y);
-  }
-
-  // Fill hexagon
-  QPainterPath path;
-  path.addPolygon(hexagon);
-
-  if (isCenterHex) {
-    painter.fillPath(path, QColor("#f7da21")); // Yellow for center
-  } else {
-    painter.fillPath(path, QColor("#e6e6e6")); // Light gray for outer
-  }
-
-  // Draw border
-  painter.setPen(QPen(QColor("#3a3a3c"), 2));
-  painter.drawPolygon(hexagon);
-
-  // Draw letter
-  if (currentLetter != '\0') {
-    painter.setPen(Qt::black);
-    painter.setFont(font());
-    painter.drawText(rect(), Qt::AlignCenter,
-                     QString(QChar(currentLetter).toUpper()));
-  }
+void LetterButton::paintEvent(QPaintEvent *event) {
+  QPushButton::paintEvent(event);
 }
 
 // ============ SpellingBeeWidget Implementation ============
@@ -96,15 +66,13 @@ SpellingBeeWidget::SpellingBeeWidget(QWidget *parent)
     : GameWidget(parent), ui(new Ui::SpellingBeeWidget) {
   ui->setupUi(this);
 
-  // Limit input to 7 characters
-  ui->inputField->setMaxLength(7);
+  // Remove input length limit
+  ui->inputField->setMaxLength(100);
 
   // Initialize config
-  config.allLetters.fill('\0');
   config.validLettersMap.fill(false);
-
-  // Initialize hex buttons
-  hexButtons.fill(nullptr);
+  config.mustIncludeFirstLetter = true;
+  config.reuseLetters = true;
 
   // Store reference to config info label
   configInfoLabel = ui->configInfoLabel;
@@ -132,40 +100,10 @@ SpellingBeeWidget::SpellingBeeWidget(QWidget *parent)
   connect(ui->settingsBtn, &QPushButton::clicked, this,
           &SpellingBeeWidget::onSettings);
 
-  // Store reference to config info label
-  configInfoLabel = ui->configInfoLabel;
-
-  // Create the hexagon visualization in the container from UI
-  hexWidget = ui->hexagonContainer;
-
-  // Create 7 hexagon buttons
-  for (int i = 0; i < 7; ++i) {
-    hexButtons[i] = new HexagonButton(i == 0, hexWidget);
-  }
-
-  // Position them in perfect hexagon pattern
-  int centerX = 110;
-  int centerY = 125;
-  int radius = 65;
-
-  // Center hexagon (index 0)
-  hexButtons[0]->move(centerX - 35, centerY - 35);
-  // Top (index 1)
-  hexButtons[1]->move(centerX - 35, centerY - radius - 35);
-  // Top-right (index 2)
-  hexButtons[2]->move(centerX + radius * 0.866 - 35,
-                      centerY - radius * 0.5 - 35);
-  // Bottom-right (index 3)
-  hexButtons[3]->move(centerX + radius * 0.866 - 35,
-                      centerY + radius * 0.5 - 35);
-  // Bottom (index 4)
-  hexButtons[4]->move(centerX - 35, centerY + radius - 35);
-  // Bottom-left (index 5)
-  hexButtons[5]->move(centerX - radius * 0.866 - 35,
-                      centerY + radius * 0.5 - 35);
-  // Top-left (index 6)
-  hexButtons[6]->move(centerX - radius * 0.866 - 35,
-                      centerY - radius * 0.5 - 35);
+  // Get references to UI elements for letters
+  lettersScrollArea = ui->lettersScrollArea;
+  lettersScrollWidget = ui->lettersScrollWidget;
+  lettersButtonsLayout = ui->lettersButtonsLayout;
 
   // Set initial state
   gameInitialized = true;
@@ -193,6 +131,16 @@ bool SpellingBeeWidget::showConfigDialog() {
   excludeCheckbox->setChecked(config.excludeUncommonWords);
   formLayout->addRow("Exclude Uncommon Words:", excludeCheckbox);
 
+  // Must Include First Letter
+  QCheckBox *mustIncludeFirstCheckbox = new QCheckBox(&dialog);
+  mustIncludeFirstCheckbox->setChecked(config.mustIncludeFirstLetter);
+  formLayout->addRow("Must Include First Letter:", mustIncludeFirstCheckbox);
+
+  // Reuse Letters
+  QCheckBox *reuseLettersCheckbox = new QCheckBox(&dialog);
+  reuseLettersCheckbox->setChecked(config.reuseLetters);
+  formLayout->addRow("Allow Reuse of Letters:", reuseLettersCheckbox);
+
   layout->addLayout(formLayout);
 
   QDialogButtonBox *buttonBox = new QDialogButtonBox(
@@ -203,6 +151,8 @@ bool SpellingBeeWidget::showConfigDialog() {
 
   if (dialog.exec() == QDialog::Accepted) {
     config.excludeUncommonWords = excludeCheckbox->isChecked();
+    config.mustIncludeFirstLetter = mustIncludeFirstCheckbox->isChecked();
+    config.reuseLetters = reuseLettersCheckbox->isChecked();
     return true;
   }
   return false;
@@ -211,15 +161,19 @@ bool SpellingBeeWidget::showConfigDialog() {
 void SpellingBeeWidget::initGame() {
   solutions.clear();
   resultsTable->setRowCount(0);
-  config.allLetters.fill('\0');
+  config.allLetters.clear();
   config.validLettersMap.fill(false);
 
-  // Clear all hexagons
-  for (int i = 0; i < 7; ++i) {
-    if (hexButtons[i]) {
-      hexButtons[i]->setLetter('\0');
+  // Clear all letter buttons from layout (keeping the spacer at the end)
+  QLayoutItem *item;
+  while (lettersButtonsLayout->count() > 1) { // Keep the last item (spacer)
+    item = lettersButtonsLayout->takeAt(0);
+    if (item->widget()) {
+      item->widget()->deleteLater();
     }
+    delete item;
   }
+  letterButtons.clear();
 
   updateConfigInfo();
 }
@@ -231,34 +185,59 @@ void SpellingBeeWidget::setUIEnabled(bool enabled) {
 
 void SpellingBeeWidget::updateConfigInfo() {
   QString info;
-  if (config.allLetters[0] == '\0') {
-    info = "<span style='color:#666; font-size:11pt;'>Enter 7 unique letters "
-           "(first is "
-           "center)</span>";
+  if (config.allLetters.empty()) {
+    info = "<span style='color:#666; font-size:11pt;'>Enter letters "
+           "(minimum 3, duplicates allowed, first is special)</span>";
     ui->scoreLabel->setText("");
   } else {
-    info =
-        "<span style='color:#666; font-size:11pt;'>7 letters configured</span>";
+    info = QString("<span style='color:#666; font-size:11pt;'>%1 letters "
+                   "configured</span>")
+               .arg(config.allLetters.size());
   }
   configInfoLabel->setText(info);
 }
 
-void SpellingBeeWidget::updateHexagonsFromInput(const QString &text) {
+void SpellingBeeWidget::createLetterButtons(int count) {
+  // Clear existing buttons from layout (keeping the spacer at the end)
+  QLayoutItem *item;
+  while (lettersButtonsLayout->count() > 1) { // Keep the last item (spacer)
+    item = lettersButtonsLayout->takeAt(0);
+    if (item->widget()) {
+      item->widget()->deleteLater();
+    }
+    delete item;
+  }
+  letterButtons.clear();
+
+  // Create new buttons and add to layout (before the spacer)
+  for (int i = 0; i < count; ++i) {
+    LetterButton *btn = new LetterButton(i == 0, lettersScrollWidget);
+    letterButtons.push_back(btn);
+    lettersButtonsLayout->insertWidget(i, btn); // Insert before the spacer
+  }
+}
+
+void SpellingBeeWidget::updateLetterButtonsFromInput(const QString &text) {
   QString cleaned = text.trimmed().toLower();
   cleaned.remove(' ');
 
-  // Update each hexagon based on input
-  for (int i = 0; i < 7; ++i) {
+  // Create buttons if count changed
+  if (letterButtons.size() != cleaned.length()) {
+    createLetterButtons(cleaned.length());
+  }
+
+  // Update each button based on input
+  for (int i = 0; i < letterButtons.size(); ++i) {
     if (i < cleaned.length()) {
-      hexButtons[i]->setLetter(cleaned[i].toLatin1());
+      letterButtons[i]->setLetter(cleaned[i].toLatin1());
     } else {
-      hexButtons[i]->setLetter('\0');
+      letterButtons[i]->setLetter('\0');
     }
   }
 }
 
 void SpellingBeeWidget::onInputChanged(const QString &text) {
-  updateHexagonsFromInput(text);
+  updateLetterButtonsFromInput(text);
 }
 
 void SpellingBeeWidget::populateResults(int maxRows) {
@@ -308,7 +287,7 @@ void SpellingBeeWidget::populateResults(int maxRows) {
 void SpellingBeeWidget::onInputSubmit() {
   QString lettersInput = ui->inputField->text().trimmed().toLower();
   if (lettersInput.isEmpty()) {
-    QMessageBox::information(this, "Input Required", "Please enter 7 letters!");
+    QMessageBox::information(this, "Input Required", "Please enter letters!");
     return;
   }
 
@@ -317,31 +296,25 @@ void SpellingBeeWidget::onInputSubmit() {
   letters.erase(std::remove_if(letters.begin(), letters.end(), ::isspace),
                 letters.end());
 
-  if (letters.size() != 7) {
+  if (letters.size() < 3) {
     QMessageBox::warning(this, "Invalid Input",
-                         "Must provide exactly 7 letters!");
+                         "Must provide at least 3 letters!");
     return;
   }
 
-  // Check for duplicates
-  std::set<char> seen;
+  // Validate letters (duplicates now allowed)
   for (char c : letters) {
     if (!isalpha(static_cast<unsigned char>(c))) {
       QMessageBox::warning(this, "Invalid Input",
                            "All characters must be letters!");
       return;
     }
-    if (seen.count(c)) {
-      QMessageBox::warning(this, "Invalid Input",
-                           "Duplicate letters not allowed!");
-      return;
-    }
-    seen.insert(c);
   }
 
   // Set up config
-  for (size_t i = 0; i < 7; ++i) {
-    config.allLetters[i] = letters[i];
+  config.allLetters.clear();
+  for (char c : letters) {
+    config.allLetters.push_back(c);
   }
 
   config.validLettersMap.fill(false);
@@ -349,10 +322,8 @@ void SpellingBeeWidget::onInputSubmit() {
     config.validLettersMap[static_cast<unsigned char>(c)] = true;
   }
 
-  // Update the visual hexagons
-  for (int i = 0; i < 7; ++i) {
-    hexButtons[i]->setLetter(config.allLetters[i]);
-  }
+  // Update the visual letter buttons
+  updateLetterButtonsFromInput(lettersInput);
 
   updateConfigInfo();
 

@@ -38,6 +38,9 @@ extern std::vector<Word> g_words;
 void writeBinary(std::ostream &os, const Word &word);
 void readBinary(std::istream &is, Word &word);
 
+// Trims whitespace only (preserves case)
+std::string trim(const std::string &str);
+
 // Trims whitespace and converts a string to lowercase
 std::string trimToLower(const std::string &str);
 

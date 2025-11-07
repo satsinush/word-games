@@ -5,9 +5,11 @@
 #include "gui/GameWidget.hpp"
 #include "spellingBee/spellingBee.hpp"
 #include "utils/wordUtils.hpp"
+#include <QHBoxLayout>
 #include <QLabel>
 #include <QProgressDialog>
 #include <QPushButton>
+#include <QScrollArea>
 #include <QTableWidget>
 #include <QThread>
 #include <QWidget>
@@ -19,17 +21,17 @@ namespace Ui {
 class SpellingBeeWidget;
 }
 
-class HexagonButton : public QPushButton {
+class LetterButton : public QPushButton {
   Q_OBJECT
 public:
-  explicit HexagonButton(bool isCenter = false, QWidget *parent = nullptr);
+  explicit LetterButton(bool isFirst = false, QWidget *parent = nullptr);
   void setLetter(char letter);
 
 protected:
   void paintEvent(QPaintEvent *event) override;
 
 private:
-  bool isCenterHex;
+  bool isFirstLetter;
   char currentLetter;
 };
 
@@ -79,15 +81,18 @@ private:
   std::vector<Utils::Word> solutions;
 
   QTableWidget *resultsTable;
-  QWidget *hexWidget;
-  std::array<HexagonButton *, 7> hexButtons;
+  QScrollArea *lettersScrollArea;
+  QWidget *lettersScrollWidget;
+  QHBoxLayout *lettersButtonsLayout;
+  std::vector<LetterButton *> letterButtons;
 
   bool showConfigDialog();
   void initGame() override;
   void setUIEnabled(bool enabled) override;
   void updateConfigInfo() override;
   void populateResults(int maxRows = 1000);
-  void updateHexagonsFromInput(const QString &text);
+  void updateLetterButtonsFromInput(const QString &text);
+  void createLetterButtons(int count);
 };
 
 #endif // WITH_GUI

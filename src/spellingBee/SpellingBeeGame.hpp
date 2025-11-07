@@ -9,7 +9,7 @@ namespace Game {
 class SpellingBeeGame : public IGame {
 private:
   // UI methods
-  void drawPuzzle(const std::array<char, 7> &letters);
+  void drawPuzzle(const std::vector<char> &letters);
   SpellingBee::Config getConfigFromUser();
   SpellingBee::Config
   getConfigFromArgs(const std::map<std::string, std::string> &args);

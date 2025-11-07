@@ -20,7 +20,7 @@ Mastermind::Config MastermindGame::getConfigFromUser() {
       << "Enter available color characters (e.g., 'rgbcmyk' or '012345'): ";
   std::getline(std::cin, config.colorChars);
   if (config.colorChars.empty()) {
-    config.colorChars = "012345"; // Default
+    config.colorChars = "RGBCMY"; // Default
   }
 
   config.allowDuplicates =
@@ -35,7 +35,7 @@ Mastermind::Config MastermindGame::getConfigFromArgs(
   config.numPegs =
       static_cast<uint8_t>(Utils::Input::getArgValue(args, "pegs", 4));
   config.colorChars =
-      Utils::Input::getArgValue(args, "colors", std::string("012345"));
+      Utils::Input::getArgValue(args, "colors", std::string("RGBCMY"));
   config.allowDuplicates =
       Utils::Input::getArgValue(args, "allow-duplicates", true);
   config.maxDepth =
@@ -61,7 +61,8 @@ std::vector<Mastermind::Feedback> MastermindGame::getFeedbackFromArgs(
 
   // Parse each guess separated by semicolons
   while (std::getline(iss, guessStr, ';')) {
-    std::string trimmed = Utils::trimToLower(guessStr);
+    // Trim whitespace but preserve case for case-sensitive color matching
+    std::string trimmed = Utils::trim(guessStr);
     if (trimmed.empty())
       continue;
 
@@ -183,6 +184,7 @@ void MastermindGame::runCLI() {
 
   while (true) {
     std::string input;
+    std::string trimmed;
     try {
       std::cout << "\n=== MASTERMIND SOLVER ===\n";
       std::cout << "Commands: 's' (solve), 'c' (clear)\n";
@@ -215,18 +217,22 @@ void MastermindGame::runCLI() {
         throw Utils::Input::UserCancelledException();
       }
 
-      input = Utils::trimToLower(input);
+      // Trim whitespace but preserve case for case-sensitive color matching
+      trimmed = Utils::trim(input);
 
-      if (input.empty())
+      if (trimmed.empty())
         continue;
 
-      if (input == "c" || input == "clear") {
+      // Convert to lowercase only for command checking
+      std::string inputLower = Utils::trimToLower(input);
+
+      if (inputLower == "c" || inputLower == "clear") {
         config.feedbackHistory.clear();
         std::cout << "Guess history cleared.\n";
         continue;
       }
 
-      if (input == "s" || input == "solve") {
+      if (inputLower == "s" || inputLower == "solve") {
         try {
           config.maxDepth = static_cast<uint8_t>(
               Utils::Input::promptInt("Enter search depth (0-2)", 1, 0, 2));
@@ -249,8 +255,9 @@ void MastermindGame::runCLI() {
 
     // Try to parse as pattern and feedback
     try {
-      // Use the parseFeedback function
-      Mastermind::Feedback feedback = Mastermind::parseFeedback(input, config);
+      // Use the parseFeedback function with case-preserved input
+      Mastermind::Feedback feedback =
+          Mastermind::parseFeedback(trimmed, config);
       config.feedbackHistory.push_back(feedback);
       std::cout << "Added guess: " << feedback.guess.toString(config)
                 << " with feedback "
@@ -258,7 +265,7 @@ void MastermindGame::runCLI() {
                 << static_cast<int>(feedback.correctColor) << "\n\n";
     } catch (const std::exception &e) {
       std::cout << "Error: " << e.what() << "\n";
-      std::cout << "Please use format: rgbc 2 1\n\n";
+      std::cout << "Please use format: RGBC 2 1\n\n";
     }
   }
 }

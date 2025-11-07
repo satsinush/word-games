@@ -151,9 +151,10 @@ LetterBoxed::Config LetterBoxedGame::getConfigFromArgs(
     config.charToIndexMap[static_cast<unsigned char>(config.allLetters[i])] = i;
   }
 
-  // Parse preset or custom settings
+  // Parse preset settings first, then override with any additional args
   int preset = Utils::Input::getArgValue(args, "preset", 1);
 
+  // Apply preset defaults
   if (preset == 1) {
     config.maxDepth = 2;
     config.minWordLength = 3;
@@ -172,17 +173,35 @@ LetterBoxed::Config LetterBoxedGame::getConfigFromArgs(
     config.minUniqueLetters = 2;
     config.pruneRedundantPaths = true;
     config.pruneDominatedClasses = false;
-  } else if (preset == 0) {
-    // Custom - read individual settings
-    config.maxDepth = Utils::Input::getArgValue(args, "max-depth", 2);
-    config.minWordLength =
-        Utils::Input::getArgValue(args, "min-word-length", 3);
-    config.minUniqueLetters =
-        Utils::Input::getArgValue(args, "min-unique-letters", 2);
-    config.pruneRedundantPaths =
-        Utils::Input::getArgValue(args, "prune-paths", true);
-    config.pruneDominatedClasses =
-        Utils::Input::getArgValue(args, "prune-classes", false);
+  } else {
+    // preset == 0 (custom) - use default values that will be overridden below
+    config.maxDepth = 2;
+    config.minWordLength = 3;
+    config.minUniqueLetters = 2;
+    config.pruneRedundantPaths = true;
+    config.pruneDominatedClasses = false;
+  }
+
+  // Override with any explicitly provided arguments
+  if (args.find("max-depth") != args.end()) {
+    config.maxDepth = static_cast<uint8_t>(Utils::Input::getArgValue(
+        args, "max-depth", static_cast<int>(config.maxDepth)));
+  }
+  if (args.find("min-word-length") != args.end()) {
+    config.minWordLength = static_cast<uint8_t>(Utils::Input::getArgValue(
+        args, "min-word-length", static_cast<int>(config.minWordLength)));
+  }
+  if (args.find("min-unique-letters") != args.end()) {
+    config.minUniqueLetters = static_cast<uint8_t>(Utils::Input::getArgValue(
+        args, "min-unique-letters", static_cast<int>(config.minUniqueLetters)));
+  }
+  if (args.find("prune-paths") != args.end()) {
+    config.pruneRedundantPaths = Utils::Input::getArgValue(
+        args, "prune-paths", config.pruneRedundantPaths);
+  }
+  if (args.find("prune-classes") != args.end()) {
+    config.pruneDominatedClasses = Utils::Input::getArgValue(
+        args, "prune-classes", config.pruneDominatedClasses);
   }
 
   return config;

@@ -9,9 +9,11 @@
 
 namespace SpellingBee {
 struct Config {
-  std::array<char, 7> allLetters;
+  std::vector<char> allLetters;
   std::array<bool, 256> validLettersMap = {false};
   bool excludeUncommonWords = false;
+  bool mustIncludeFirstLetter = true;
+  bool reuseLetters = true;
 };
 
 struct Result {

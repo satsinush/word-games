@@ -28,13 +28,50 @@ bool isValidWord(Utils::Word &word, const Config &config) {
   if (word.wordString.size() <= 3)
     return false;
 
-  bool hasMiddleLetter = false;
-  for (char c : word.wordString) {
-    if (!config.validLettersMap[static_cast<unsigned char>(c)])
-      return false;
-    hasMiddleLetter |= (c == config.allLetters[0]);
+  // Check if first letter is required and present
+  bool hasFirstLetter = false;
+  if (!config.allLetters.empty()) {
+    for (char c : word.wordString) {
+      if (c == config.allLetters[0]) {
+        hasFirstLetter = true;
+        break;
+      }
+    }
   }
-  return hasMiddleLetter;
+
+  if (config.mustIncludeFirstLetter && !config.allLetters.empty() &&
+      !hasFirstLetter)
+    return false;
+
+  // Check letter validity
+  if (config.reuseLetters) {
+    // Allow reuse of letters
+    for (char c : word.wordString) {
+      if (!config.validLettersMap[static_cast<unsigned char>(c)])
+        return false;
+    }
+  } else {
+    // Check that word doesn't use more of any letter than available
+    std::array<int, 256> letterCounts = {0};
+    std::array<int, 256> availableCounts = {0};
+
+    // Count available letters
+    for (char c : config.allLetters) {
+      availableCounts[static_cast<unsigned char>(c)]++;
+    }
+
+    // Count letters in word
+    for (char c : word.wordString) {
+      if (!config.validLettersMap[static_cast<unsigned char>(c)])
+        return false;
+      letterCounts[static_cast<unsigned char>(c)]++;
+      if (letterCounts[static_cast<unsigned char>(c)] >
+          availableCounts[static_cast<unsigned char>(c)])
+        return false;
+    }
+  }
+
+  return true;
 }
 
 void filterWords(std::vector<Utils::Word> &words, const Config &config) {

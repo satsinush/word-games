@@ -11,29 +11,36 @@
 namespace Game {
 SpellingBeeGame::SpellingBeeGame() {}
 
-void SpellingBeeGame::drawPuzzle(const std::array<char, 7> &letters) {
+void SpellingBeeGame::drawPuzzle(const std::vector<char> &letters) {
   auto up = [](char c) {
     return static_cast<char>(std::toupper(static_cast<unsigned char>(c)));
   };
   std::cout << std::endl;
-  std::cout << "      " << up(letters[1]) << std::endl;
-  std::cout << "   " << up(letters[6]) << "     " << up(letters[2])
+  std::cout << "Letters: ";
+  for (size_t i = 0; i < letters.size(); ++i) {
+    if (i == 0) {
+      std::cout << "[" << up(letters[i]) << "]"; // Brackets for first letter
+    } else {
+      std::cout << " " << up(letters[i]);
+    }
+  }
+  std::cout << std::endl;
+  std::cout << "(First letter in brackets must be included)" << std::endl
             << std::endl;
-  std::cout << "      " << up(letters[0]) << std::endl;
-  std::cout << "   " << up(letters[5]) << "     " << up(letters[3])
-            << std::endl;
-  std::cout << "      " << up(letters[4]) << std::endl << std::endl;
 }
 
 SpellingBee::Config SpellingBeeGame::getConfigFromUser() {
   SpellingBee::Config config;
 
-  // Get puzzle letters (7 unique letters)
+  // Get puzzle letters (any number of letters, minimum 3, duplicates allowed)
   std::string letters = Utils::Input::promptLetters(
-      "Enter the 7 puzzle letters (ex. a bcdefg):", 7, false);
+      "Enter puzzle letters (minimum 3, duplicates allowed, ex. a bcdefg):", 3,
+      true);
 
-  for (size_t i = 0; i < 7; ++i) {
-    config.allLetters[i] = letters[i];
+  // Store letters in vector
+  config.allLetters.clear();
+  for (char c : letters) {
+    config.allLetters.push_back(c);
   }
 
   // Set up valid letters map
@@ -43,6 +50,12 @@ SpellingBee::Config SpellingBeeGame::getConfigFromUser() {
 
   config.excludeUncommonWords =
       Utils::Input::promptBool("Exclude uncommon words?", false);
+
+  config.mustIncludeFirstLetter =
+      Utils::Input::promptBool("Must include first letter?", true);
+
+  config.reuseLetters =
+      Utils::Input::promptBool("Allow reuse of letters?", true);
 
   drawPuzzle(config.allLetters);
 
@@ -64,22 +77,17 @@ SpellingBee::Config SpellingBeeGame::getConfigFromArgs(
                 letters.end());
   std::transform(letters.begin(), letters.end(), letters.begin(), ::tolower);
 
-  if (letters.size() != 7) {
+  if (letters.size() < 3) {
     throw std::invalid_argument(
-        "Must provide exactly 7 letters for Spelling Bee.");
+        "Must provide at least 3 letters for Spelling Bee.");
   }
 
-  // Check for duplicates and validate letters
-  std::set<char> seen;
-  for (size_t i = 0; i < 7; ++i) {
-    char c = letters[i];
+  // Validate letters (duplicates now allowed)
+  config.allLetters.clear();
+  for (char c : letters) {
     if (!isalpha(static_cast<unsigned char>(c)))
       throw std::invalid_argument("All characters must be letters.");
-    if (seen.count(c))
-      throw std::invalid_argument(
-          "Duplicate letters not allowed in Spelling Bee.");
-    seen.insert(c);
-    config.allLetters[i] = c;
+    config.allLetters.push_back(c);
   }
 
   // Set up valid letters map
@@ -89,6 +97,11 @@ SpellingBee::Config SpellingBeeGame::getConfigFromArgs(
 
   config.excludeUncommonWords =
       Utils::Input::getArgValue(args, "exclude-uncommon-words", false);
+
+  config.mustIncludeFirstLetter =
+      Utils::Input::getArgValue(args, "must-include-first-letter", true);
+
+  config.reuseLetters = Utils::Input::getArgValue(args, "reuse-letters", true);
 
   return config;
 }

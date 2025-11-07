@@ -1,19 +1,24 @@
 ## Wordle
 ```
-wordle --max-depth 1 --guesses "STEAL 20100;CRANE 01002" -o results/wordle.txt
+wordle --word-length 5 --max-depth 1 --exclude-uncommon-words true --guesses "STEAL 20100;CRANE 01002" -o results/wordle.txt
 ```
 
 ## Mastermind
 ```
-mastermind --guesses "1 1 2 2 3|1 2;3 4 5 6 7|1 2" --num-pegs 5 --num-colors 8 --allow-duplicates true --max-depth 1 -o results/mastermind.txt
+mastermind --guesses "RGBC 1 2;MYRC 1 2" --pegs 4 --colors "RGBCMY" --allow-duplicates true --max-depth 1 -o results/mastermind.txt
 ```
 
 ## Spelling Bee
 ```
-spellingbee --letters nhmkace -o results/spellingbee.txt
+spellingbee --letters nhmkace --exclude-uncommon-words false --must-include-first-letter true --reuse-letters true -o results/spellingbee.txt
 ```
 
 ## Letter Boxed
 ```
-letterboxed --preset 1 --letters uvjswitgebac -o results/letterboxed.txt
+letterboxed --letters uvjswitgebac --preset 0 --max-depth 3 --min-word-length 4 --min-unique-letters 3 --prune-paths true --prune-classes false -o results/letterboxed.txt
+```
+
+## Dungleon
+```
+dungleon --guesses "ar kn bo ne fr 00010" --solutions "vi zo ne sk bt" --max-depth 0 --exclude-impossible false -o results/dungleon.txt
 ```

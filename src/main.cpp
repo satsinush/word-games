@@ -45,6 +45,7 @@ Modes:
   spellingbee            Solve the Spelling Bee puzzle
   wordle                 Solve Wordle puzzles with entropy-based suggestions
   mastermind             Solve Mastermind puzzles with entropy-based suggestions
+  dungleon               Solve Dungleon puzzles with entropy-based suggestions
   read                   Read and display results from a file
 
 Letter Boxed:
@@ -52,37 +53,52 @@ Letter Boxed:
     --letters <letters>         12 letters for the puzzle (required)
     --preset <1|2|3|0>         Preset configuration (default: 1)
                                  1=Default, 2=Fast, 3=Thorough, 0=Custom
-    --max-depth <n>            Maximum words per solution (required if preset=0)
-    --min-word-length <n>      Minimum word length (required if preset=0)
-    --min-unique-letters <n>   Minimum unique letters per word (required if preset=0)
-    --prune-paths              Enable pruning redundant paths (1/true/yes or 0/false/no)
-    --prune-classes            Enable pruning dominated classes (1/true/yes or 0/false/no)
+                                 Note: Individual options override preset values
+    --max-depth <n>            Maximum words per solution (can override preset)
+    --min-word-length <n>      Minimum word length (can override preset)
+    --min-unique-letters <n>   Minimum unique letters per word (can override preset)
+    --prune-paths              Enable pruning redundant paths (can override preset)
+    --prune-classes            Enable pruning dominated classes (can override preset)
     -o, --output <file>        Output file (default: results/temp.txt)
 
 Spelling Bee:
-  %s spellingbee --letters <7letters> [OPTIONS]
-    --letters <letters>         7 letters for the puzzle (required)
+  %s spellingbee --letters <letters> [OPTIONS]
+    --letters <letters>         Letters for the puzzle, minimum 3, duplicates allowed (required)
+    --exclude-uncommon-words    Exclude uncommon words (1/true/yes or 0/false/no, default: 0)
+    --must-include-first-letter Must include first letter (1/true/yes or 0/false/no, default: 1)
+    --reuse-letters            Allow reuse of letters (1/true/yes or 0/false/no, default: 1)
     -o, --output <file>        Output file (default: results/temp.txt)
 
 Wordle:
   %s wordle [OPTIONS]
     --guesses <guesses>        Guess/feedback pairs. Format: "STEAL 01201;CRANE 00120"
                                  0=grey, 1=yellow, 2=green
+    --word-length <n>          Word length (default: 5, range: 1-32)
     --max-depth <0-2>          Search depth for entropy (default: 0)
+    --exclude-uncommon-words   Exclude uncommon words (1/true/yes or 0/false/no, default: 0)
     -o, --output <file>        Output file with possible words and all guesses
                                  (default: results/guesses.txt)
-    --exclude-uncommon-words   Exclude uncommon words (1/true/yes or 0/false/no)
 
 Mastermind:
   %s mastermind [OPTIONS]
-    --guesses <guesses>        Guess/feedback pairs. Format: "1 1 2 2|1 2;3 4 5 6|1 2"
-                                 Pattern|Feedback (pos color)
-    --num-pegs <n>             Number of pegs (default: 4)
-    --num-colors <n>           Number of colors (default: 6)
+    --guesses <guesses>        Guess/feedback pairs. Format: "RGBC 1 2;MYRC 1 2"
+                                 Pattern then black pegs and white pegs
+    --pegs <n>                 Number of pegs (default: 4, range: 1-20)
+    --colors <chars>           Available color characters (default: "RGBCMY")
     --allow-duplicates         Allow duplicate colors (1/true/yes or 0/false/no, default: 1)
-    --max-depth <1-3>          Search depth for entropy (default: 1)
+    --max-depth <0-2>          Search depth for entropy (default: 1, range: 0-2)
     -o, --output <file>        Output file with possible patterns and all guesses
                                  (default: results/guesses.txt)
+
+Dungleon:
+  %s dungleon [OPTIONS]
+    --guesses <guesses>        Guess/feedback pairs. Format: "ar kn ma bt dr 01234"
+                                 Character pairs with colors (0-4)
+    --solutions <solutions>    Past solutions for Gauntlet mode. Format: "ar kn ma bt dr"
+    --max-depth <0-2>          Search depth for entropy (default: 0, range: 0-2)
+    --exclude-impossible       Exclude impossible patterns from guesses (1/true/yes or 0/false/no, default: 0)
+    -o, --output <file>        Output file with possible patterns and all guesses
+                                 (default: results/dungleon.txt)
 
 Read Mode:
   %s read [FILE] [OPTIONS]
@@ -96,14 +112,17 @@ Boolean Values:
 
 Examples:
   %s letterboxed --letters abcdefghijkl --preset 2 -o results/solutions.txt
+  %s spellingbee --letters abcdefg --must-include-first-letter 1 --reuse-letters 1
+  %s wordle --guesses "STEAL 01201;CRANE 00120" --word-length 5 --max-depth 1
+  %s mastermind --guesses "RGBC 1 2" --pegs 4 --colors "RGBCMY" --max-depth 1
+  %s dungleon --guesses "ar kn bo ne fr 00010" --max-depth 1
   %s -i
-  %s wordle --guesses "STEAL 01201;CRANE 00120" --max-depth 1 -o results/wordle.txt
   %s read results/wordle.txt --start 0 --end 10
 )";
 
   printf(usage_message, programName, programName, programName, programName,
          programName, programName, programName, programName, programName,
-         programName);
+         programName, programName, programName, programName, programName);
 }
 
 void runReadMode(const std::map<std::string, std::string> &args,
