@@ -107,3 +107,7 @@ This project uses several third-party libraries with their respective licenses:
 - **Google Benchmark**: **Apache License 2.0** - Used for performance benchmarking (development dependency).
 
 All third-party dependencies are automatically fetched during the CMake build process and do not need to be installed separately.
+
+### Game Assets
+
+- **Dungleon Images**: The character and item images in `resources/dungleon/` are sourced from the official [Dungleon website](https://www.dungleon.com/) and are used in this puzzle solver implementation.
