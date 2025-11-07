@@ -64,11 +64,13 @@ public:
     // Store cancellation pointer so internal helpers can check it
     cancellationFlag = cancel;
 
-    // Filter candidates based on feedback history
-    std::vector<TCandidateType> filteredPossibleCandidates;
+    // Filter candidates based on feedback history using pointers for
+    // performance
+    std::vector<const TCandidateType *> filteredPossibleCandidatePtrs;
+    filteredPossibleCandidatePtrs.reserve(possibleCandidates.size());
 
     // Create unordered_set using std::hash and std::equal_to (default template
-    // specializations)
+    // specializations) - still need objects for hash/equality
     std::unordered_set<TCandidateType> filteredPossibleCandidateSet;
 
     for (const auto &candidate : possibleCandidates) {
@@ -80,7 +82,7 @@ public:
         }
       }
       if (matches) {
-        filteredPossibleCandidates.push_back(candidate);
+        filteredPossibleCandidatePtrs.push_back(&candidate);
         filteredPossibleCandidateSet.insert(candidate);
       }
       if (cancellationFlag && cancellationFlag->load()) {
@@ -88,6 +90,13 @@ public:
         cancellationFlag = nullptr;
         return createResult(std::vector<TGuessType>{}, 0);
       }
+    }
+
+    // Convert pointers back to objects only when needed for calculations
+    std::vector<TCandidateType> filteredPossibleCandidates;
+    filteredPossibleCandidates.reserve(filteredPossibleCandidatePtrs.size());
+    for (const auto *candidatePtr : filteredPossibleCandidatePtrs) {
+      filteredPossibleCandidates.push_back(*candidatePtr);
     }
 
     std::vector<TGuessType> guesses;

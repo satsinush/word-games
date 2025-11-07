@@ -154,6 +154,23 @@ std::vector<Pattern> generateAllPatterns(const Config &config) {
   std::vector<Pattern> patterns;
   uint8_t numColors = config.numColors();
 
+  // Pre-calculate total patterns and reserve space
+  size_t totalPatterns;
+  if (config.allowDuplicates) {
+    // n^k combinations with repetition
+    totalPatterns = 1;
+    for (uint8_t i = 0; i < config.numPegs; ++i) {
+      totalPatterns *= numColors;
+    }
+  } else {
+    // P(n,k) = n!/(n-k)! permutations without repetition
+    totalPatterns = 1;
+    for (uint8_t i = 0; i < config.numPegs; ++i) {
+      totalPatterns *= (numColors - i);
+    }
+  }
+  patterns.reserve(totalPatterns);
+
   if (config.allowDuplicates) {
     // Generate all possible combinations with repetition
     std::array<uint8_t, MAX_PEGS> colors = {};
