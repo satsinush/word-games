@@ -55,9 +55,8 @@ static void BM_SpellingBee_Runtime(benchmark::State &state) {
   Utils::loadWords(); // Preload words
 
   for (auto _ : state) {
-    std::vector<Utils::Word> solutions =
-        SpellingBee::runSpellingBeeSolver(config);
-    benchmark::DoNotOptimize(solutions);
+    SpellingBee::Result result = SpellingBee::runSpellingBeeSolver(config);
+    benchmark::DoNotOptimize(result);
   }
 }
 BENCHMARK(BM_SpellingBee_Runtime);
@@ -99,9 +98,8 @@ static void BM_LetterBoxed_Runtime(benchmark::State &state) {
   Utils::loadWords(); // Preload words
 
   for (auto _ : state) {
-    std::vector<LetterBoxed::Solution> solutions =
-        LetterBoxed::runLetterBoxedSolver(config);
-    benchmark::DoNotOptimize(solutions);
+    LetterBoxed::Result result = LetterBoxed::runLetterBoxedSolver(config);
+    benchmark::DoNotOptimize(result);
   }
 }
 BENCHMARK(BM_LetterBoxed_Runtime);

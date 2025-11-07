@@ -38,8 +38,7 @@ bool operator==(const EquivalenceKey &a, const EquivalenceKey &b) {
 // Helper to reconstruct a string from a path of WordPath pointers.
 std::string
 reconstructPrintString(const std::vector<const WordPath *> &wordPathPtrs,
-                       const Config &config,
-                       const std::vector<int> &allPathIndices) {
+                       const Config &config) {
 #ifdef TRACY_ENABLE
   ZoneScoped;
 #endif
@@ -50,7 +49,7 @@ reconstructPrintString(const std::vector<const WordPath *> &wordPathPtrs,
   // 1. Calculate final string size
   size_t totalLen = wordPathPtrs.size() - 1; // For spaces between words
   for (const auto *wp : wordPathPtrs) {
-    totalLen += wp->indicesLength;
+    totalLen += wp->indices.size();
   }
 
   // 2. Reserve and build
@@ -61,9 +60,8 @@ reconstructPrintString(const std::vector<const WordPath *> &wordPathPtrs,
       printStr += ' ';
     }
     // Append characters directly
-    for (int j = 0; j < wordPathPtrs[i]->indicesLength; ++j) {
-      printStr +=
-          config.allLetters[allPathIndices[wordPathPtrs[i]->indicesOffset + j]];
+    for (uint8_t idx : wordPathPtrs[i]->indices) {
+      printStr += config.allLetters[idx];
     }
   }
   return printStr;
@@ -73,22 +71,19 @@ reconstructPrintString(const std::vector<const WordPath *> &wordPathPtrs,
 // word.
 void findWordPathsRecursive(const Utils::Word &wordObj, const Config &config,
                             std::vector<WordPath> &results,
-                            std::vector<int> &currentPathGlobalIndexes,
+                            std::vector<uint8_t> &currentPathGlobalIndexes,
                             const int lastUsedSide, const uint8_t depth,
-                            std::vector<int> &allPathIndices,
                             std::atomic<bool> *cancel) {
 #ifdef TRACY_ENABLE
   ZoneScoped;
 #endif
   if (depth == wordObj.wordString.length()) {
-    int offset = static_cast<int>(allPathIndices.size());
-    allPathIndices.insert(allPathIndices.end(),
-                          currentPathGlobalIndexes.begin(),
-                          currentPathGlobalIndexes.end());
-    results.push_back(
-        {offset, static_cast<int>(currentPathGlobalIndexes.size()),
-         config.letterToSideMapping[currentPathGlobalIndexes.back()],
-         wordObj.score});
+    WordPath path;
+    path.indices = currentPathGlobalIndexes;
+    path.lastCharSide =
+        config.letterToSideMapping[currentPathGlobalIndexes.back()];
+    path.word = wordObj;
+    results.push_back(std::move(path));
     return;
   }
 
@@ -96,7 +91,7 @@ void findWordPathsRecursive(const Utils::Word &wordObj, const Config &config,
     return;
 
   char targetChar = wordObj.wordString[depth];
-  for (unsigned int globalIdx = 0; globalIdx < config.allLetters.size();
+  for (uint8_t globalIdx = 0; globalIdx < config.allLetters.size();
        ++globalIdx) {
     if (config.allLetters[globalIdx] == targetChar) {
       int currentSide = config.letterToSideMapping[globalIdx];
@@ -105,7 +100,7 @@ void findWordPathsRecursive(const Utils::Word &wordObj, const Config &config,
       }
       currentPathGlobalIndexes.push_back(globalIdx);
       findWordPathsRecursive(wordObj, config, results, currentPathGlobalIndexes,
-                             currentSide, depth + 1, allPathIndices, cancel);
+                             currentSide, depth + 1, cancel);
       currentPathGlobalIndexes.pop_back(); // Backtrack
     }
   }
@@ -113,11 +108,10 @@ void findWordPathsRecursive(const Utils::Word &wordObj, const Config &config,
 
 // Update WordPath to include order (already in header, just use here)
 
-// Update filterWords to take vector<Word> and propagate order to WordPath
+// Filter words and generate all valid WordPath objects
 void filterWords(std::vector<WordPath> &allValidWordPaths,
                  const std::vector<Utils::Word> &allDictionaryWords,
-                 const Config &config, std::vector<int> &allPathIndices,
-                 std::atomic<bool> *cancel) {
+                 const Config &config, std::atomic<bool> *cancel) {
 #ifdef TRACY_ENABLE
   ZoneScoped;
 #endif
@@ -142,11 +136,11 @@ void filterWords(std::vector<WordPath> &allValidWordPaths,
     if (uniqueChars.count() < config.minUniqueLetters)
       continue;
 
-    std::vector<int> currentPathGlobalIndexes;
+    std::vector<uint8_t> currentPathGlobalIndexes;
     currentPathGlobalIndexes.reserve(word.length());
     std::vector<WordPath> paths;
     findWordPathsRecursive(wordObj, config, paths, currentPathGlobalIndexes, -1,
-                           0, allPathIndices, cancel);
+                           0, cancel);
     allValidWordPaths.insert(allValidWordPaths.end(), paths.begin(),
                              paths.end());
   }
@@ -160,26 +154,26 @@ void expandAndStoreSolutions(
     const std::vector<const EquivalenceClass *> &classPath,
     std::vector<const WordPath *> &currentWordChain, const uint8_t depth,
     std::vector<Solution> &finalSolutions, const Config &config,
-    const std::vector<int> &allPathIndices, std::atomic<bool> *cancel) {
+    std::atomic<bool> *cancel) {
 #ifdef TRACY_ENABLE
   ZoneScoped;
 #endif
   // Base case: We have selected one word for each class in the path.
   if (depth == classPath.size()) {
     double scoreMin =
-        currentWordChain.empty() ? 0.0 : currentWordChain[0]->score;
+        currentWordChain.empty() ? 0.0 : currentWordChain[0]->word.score;
     double scoreMax = scoreMin;
     double scoreSum = 0.0;
     for (const WordPath *wp : currentWordChain) {
-      if (wp->score < scoreMin)
-        scoreMin = wp->score;
-      if (wp->score > scoreMax)
-        scoreMax = wp->score;
-      scoreSum += wp->score;
+      if (wp->word.score < scoreMin)
+        scoreMin = wp->word.score;
+      if (wp->word.score > scoreMax)
+        scoreMax = wp->word.score;
+      scoreSum += wp->word.score;
     }
-    finalSolutions.push_back(
-        {reconstructPrintString(currentWordChain, config, allPathIndices),
-         (int)currentWordChain.size(), scoreMin, scoreMax, scoreSum});
+    finalSolutions.push_back({reconstructPrintString(currentWordChain, config),
+                              (int)currentWordChain.size(), scoreMin, scoreMax,
+                              scoreSum});
     return;
   }
 
@@ -193,7 +187,7 @@ void expandAndStoreSolutions(
       return;
     currentWordChain.push_back(wordPtr);
     expandAndStoreSolutions(classPath, currentWordChain, depth + 1,
-                            finalSolutions, config, allPathIndices, cancel);
+                            finalSolutions, config, cancel);
     currentWordChain.pop_back(); // Backtrack
   }
 }
@@ -313,8 +307,7 @@ void pruneDominatedClasses(std::vector<EquivalenceClass> &allEqClasses) {
 
 // --- Solver Entry Point ---
 
-std::vector<Solution> runLetterBoxedSolver(const Config &config,
-                                           std::atomic<bool> *cancel) {
+Result runLetterBoxedSolver(const Config &config, std::atomic<bool> *cancel) {
 #ifdef TRACY_ENABLE
   ZoneScoped;
 #endif
@@ -322,22 +315,19 @@ std::vector<Solution> runLetterBoxedSolver(const Config &config,
   // Load all words
   const std::vector<Utils::Word> words = Utils::loadWords();
 
-  // Create a vector to hold all character indices for all valid word paths.
-  std::vector<int> allPathIndices;
-  allPathIndices.reserve(words.size() / 100); // Reserve space for indices
+  // Filter words and create valid word paths
   std::vector<WordPath> allValidWordPaths;
   allValidWordPaths.reserve(words.size() / 100);
-  filterWords(allValidWordPaths, words, config, allPathIndices, cancel);
+  filterWords(allValidWordPaths, words, config, cancel);
 
   // Create equivalence classes based on the valid word paths.
   std::unordered_map<EquivalenceKey, EquivalenceClass> eqClassMap;
   eqClassMap.reserve(allValidWordPaths.size()); // Reserve space for classes
   for (const auto &wp : allValidWordPaths) {
     EquivalenceKey key;
-    key.startIndex = allPathIndices[wp.indicesOffset];
-    key.endIndex = allPathIndices[wp.indicesOffset + wp.indicesLength - 1];
-    for (int i = 0; i < wp.indicesLength; ++i) {
-      int idx = allPathIndices[wp.indicesOffset + i];
+    key.startIndex = wp.indices.front();
+    key.endIndex = wp.indices.back();
+    for (uint8_t idx : wp.indices) {
       key.usedChars.set(idx);
     }
     eqClassMap[key].words.push_back(&wp);
@@ -405,7 +395,7 @@ std::vector<Solution> runLetterBoxedSolver(const Config &config,
   for (const auto &classPath : classSolutions) {
     std::vector<const WordPath *> currentWordChain;
     expandAndStoreSolutions(classPath, currentWordChain, 0, finalSolutions,
-                            config, allPathIndices, cancel);
+                            config, cancel);
   }
 
   std::sort(finalSolutions.begin(), finalSolutions.end());
@@ -422,6 +412,10 @@ std::vector<Solution> runLetterBoxedSolver(const Config &config,
       deduped.push_back(sol);
     }
   }
-  return deduped;
+
+  Result result;
+  result.solutions = std::move(deduped);
+  result.totalValidWords = static_cast<int>(allValidWordPaths.size());
+  return result;
 }
 } // namespace LetterBoxed

@@ -14,6 +14,11 @@ struct Config {
   bool excludeUncommonWords = false;
 };
 
-std::vector<Utils::Word>
-runSpellingBeeSolver(const Config &config, std::atomic<bool> *cancel = nullptr);
+struct Result {
+  std::vector<Utils::Word> words;
+  int totalValidWords = 0;
+};
+
+Result runSpellingBeeSolver(const Config &config,
+                            std::atomic<bool> *cancel = nullptr);
 } // namespace SpellingBee

@@ -135,10 +135,9 @@ void SpellingBeeGame::runCLI() {
       SpellingBee::Config config = getConfigFromUser();
 
       std::cout << "Running solver...\n";
-      std::vector<Utils::Word> solutions =
-          SpellingBee::runSpellingBeeSolver(config);
+      SpellingBee::Result result = SpellingBee::runSpellingBeeSolver(config);
 
-      printSolutions(solutions);
+      printSolutions(result.words);
 
       while (true) {
         try {
@@ -180,8 +179,7 @@ void SpellingBeeGame::runHeadless(const Utils::Input::CommandArgs &cmdArgs) {
     const auto &args = cmdArgs.flags;
     SpellingBee::Config config = getConfigFromArgs(args);
 
-    std::vector<Utils::Word> solutions =
-        SpellingBee::runSpellingBeeSolver(config);
+    SpellingBee::Result result = SpellingBee::runSpellingBeeSolver(config);
 
     // Output to file if specified
     std::string outputFile =
@@ -200,7 +198,7 @@ void SpellingBeeGame::runHeadless(const Utils::Input::CommandArgs &cmdArgs) {
 
     std::ofstream out(outputFile);
     if (out.is_open()) {
-      for (const auto &word : solutions) {
+      for (const auto &word : result.words) {
         out << word.wordString << "\n";
       }
       out.close();
@@ -208,7 +206,7 @@ void SpellingBeeGame::runHeadless(const Utils::Input::CommandArgs &cmdArgs) {
       std::cerr << "Could not write to file: " << outputFile << "\n";
     }
 
-    std::cout << solutions.size() << "\n";
+    std::cout << result.words.size() << "\n";
     std::cout << outputFile;
   } catch (const std::exception &e) {
     std::cerr << "Error: " << e.what() << "\n";

@@ -48,8 +48,7 @@ void filterWords(std::vector<Utils::Word> &words, const Config &config) {
               words.end());
 }
 
-std::vector<Utils::Word> runSpellingBeeSolver(const Config &config,
-                                              std::atomic<bool> *cancel) {
+Result runSpellingBeeSolver(const Config &config, std::atomic<bool> *cancel) {
 #ifdef TRACY_ENABLE
   ZoneScoped;
 #endif
@@ -57,7 +56,7 @@ std::vector<Utils::Word> runSpellingBeeSolver(const Config &config,
   filterWords(wordsCopy, config);
 
   if (cancel && cancel->load()) {
-    return {};
+    return {{}, 0};
   }
 
   std::sort(wordsCopy.begin(), wordsCopy.end(),
@@ -66,6 +65,10 @@ std::vector<Utils::Word> runSpellingBeeSolver(const Config &config,
                 return a.uniqueLetters > b.uniqueLetters;
               return a < b; // Sort by word last
             });
-  return wordsCopy;
+
+  Result result;
+  result.words = std::move(wordsCopy);
+  result.totalValidWords = static_cast<int>(result.words.size());
+  return result;
 }
 } // namespace SpellingBee

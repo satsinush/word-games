@@ -68,3 +68,42 @@ BM_SpellingBee_Runtime       15.7 ms         12.9 ms           64
 BM_LetterBoxed_Runtime       19.4 ms         7.08 ms           75
 BM_Mastermind_Runtime         655 ms          302 ms           10
 BM_Dungleon_Runtime           472 ms          191 ms            4
+
+
+
+C:\Users\needhama\Local Documents\GitHub\word-games\build\mingw-release>"p++-benchmarks.exe" --benchmark_time_unit=ms
+2025-11-07T14:25:47-00:00
+Running p++-benchmarks.exe
+Run on (12 X 2496 MHz CPU s)
+CPU Caches:
+  L1 Data 48 KiB (x6)
+  L1 Instruction 32 KiB (x6)
+  L2 Unified 1280 KiB (x6)
+  L3 Unified 12288 KiB (x1)
+-----------------------------------------------------------------
+Benchmark                       Time             CPU   Iterations
+-----------------------------------------------------------------
+BM_Wordle_Runtime            1234 ms          625 ms            1
+BM_SpellingBee_Runtime       29.3 ms         8.44 ms          100
+BM_LetterBoxed_Runtime       38.3 ms         10.2 ms           87
+BM_Mastermind_Runtime        1361 ms          531 ms            1
+BM_Dungleon_Runtime           988 ms          484 ms            2
+
+
+C:\Users\needhama\Local Documents\GitHub\word-games\build\mingw-release>"p++-benchmarks.exe" --benchmark_time_unit=ms
+2025-11-07T14:38:54-00:00
+Running p++-benchmarks.exe
+Run on (12 X 2496 MHz CPU s)
+CPU Caches:
+  L1 Data 48 KiB (x6)
+  L1 Instruction 32 KiB (x6)
+  L2 Unified 1280 KiB (x6)
+  L3 Unified 12288 KiB (x1)
+-----------------------------------------------------------------
+Benchmark                       Time             CPU   Iterations
+-----------------------------------------------------------------
+BM_Wordle_Runtime            1149 ms          828 ms            1
+BM_SpellingBee_Runtime       27.8 ms         21.6 ms           34
+BM_LetterBoxed_Runtime       32.3 ms         24.5 ms           37
+BM_Mastermind_Runtime        1228 ms          750 ms            1
+BM_Dungleon_Runtime           911 ms          562 ms            1

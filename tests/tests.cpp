@@ -239,14 +239,13 @@ TEST(SpellingBeeTest, SolverWithLetters) {
   }
 
   // Run solver
-  std::vector<Utils::Word> solutions =
-      SpellingBee::runSpellingBeeSolver(config);
+  SpellingBee::Result result = SpellingBee::runSpellingBeeSolver(config);
 
   // Verify results
-  EXPECT_EQ(solutions.size(), 4) << "Should find exactly 4 solutions";
+  EXPECT_EQ(result.words.size(), 4) << "Should find exactly 4 solutions";
 
   // Verify all solutions only use allowed letters
-  for (const auto &word : solutions) {
+  for (const auto &word : result.words) {
     for (char c : word.wordString) {
       EXPECT_TRUE(config.validLettersMap[static_cast<unsigned char>(c)])
           << "Word '" << word.wordString << "' contains invalid letter '" << c
@@ -273,11 +272,10 @@ TEST(SpellingBeeTest, SolverExcludeUncommon) {
 
   config.excludeUncommonWords = true;
 
-  std::vector<Utils::Word> solutions =
-      SpellingBee::runSpellingBeeSolver(config);
+  SpellingBee::Result result = SpellingBee::runSpellingBeeSolver(config);
 
   // Verify all solutions are marked as common (is_scrabble)
-  for (const auto &word : solutions) {
+  for (const auto &word : result.words) {
     EXPECT_TRUE(word.is_scrabble)
         << "Word '" << word.wordString << "' should be common";
   }
@@ -299,12 +297,11 @@ TEST(SpellingBeeTest, CenterLetterRequired) {
     config.validLettersMap[static_cast<unsigned char>(c)] = true;
   }
 
-  std::vector<Utils::Word> solutions =
-      SpellingBee::runSpellingBeeSolver(config);
+  SpellingBee::Result result = SpellingBee::runSpellingBeeSolver(config);
 
   // All solutions must contain the center letter (first letter)
   char centerLetter = config.allLetters[0];
-  for (const auto &word : solutions) {
+  for (const auto &word : result.words) {
     bool hasCenter = false;
     for (char c : word.wordString) {
       if (c == centerLetter) {
@@ -334,10 +331,9 @@ TEST(SpellingBeeTest, MinimumWordLength) {
     config.validLettersMap[static_cast<unsigned char>(c)] = true;
   }
 
-  std::vector<Utils::Word> solutions =
-      SpellingBee::runSpellingBeeSolver(config);
+  SpellingBee::Result result = SpellingBee::runSpellingBeeSolver(config);
 
-  for (const auto &word : solutions) {
+  for (const auto &word : result.words) {
     EXPECT_GE(word.wordString.length(), 4)
         << "Word '" << word.wordString << "' must be at least 4 letters";
   }
@@ -429,16 +425,15 @@ TEST(LetterBoxedTest, SolverWithLetters) {
   }
 
   // Run solver
-  std::vector<LetterBoxed::Solution> solutions =
-      LetterBoxed::runLetterBoxedSolver(config);
+  LetterBoxed::Result result = LetterBoxed::runLetterBoxedSolver(config);
 
   // Verify results
-  EXPECT_EQ(solutions.size(), 4) << "Should find exactly 4 solutions";
+  EXPECT_EQ(result.solutions.size(), 4) << "Should find exactly 4 solutions";
 
   // Verify solutions are sorted correctly
-  for (size_t i = 1; i < solutions.size(); ++i) {
-    EXPECT_TRUE(solutions[i - 1] < solutions[i] ||
-                !(solutions[i] < solutions[i - 1]))
+  for (size_t i = 1; i < result.solutions.size(); ++i) {
+    EXPECT_TRUE(result.solutions[i - 1] < result.solutions[i] ||
+                !(result.solutions[i] < result.solutions[i - 1]))
         << "Solutions should be sorted";
   }
 }
@@ -476,11 +471,10 @@ TEST(LetterBoxedTest, SideConstraints) {
     config.charToIndexMap[static_cast<unsigned char>(config.allLetters[i])] = i;
   }
 
-  std::vector<LetterBoxed::Solution> solutions =
-      LetterBoxed::runLetterBoxedSolver(config);
+  LetterBoxed::Result result = LetterBoxed::runLetterBoxedSolver(config);
 
   // Verify each solution respects side constraints
-  for (const auto &solution : solutions) {
+  for (const auto &solution : result.solutions) {
     // Parse words from solution text
     std::string text = solution.text;
     size_t pos = 0;
@@ -542,10 +536,9 @@ TEST(LetterBoxedTest, AllLettersUsed) {
     config.charToIndexMap[static_cast<unsigned char>(config.allLetters[i])] = i;
   }
 
-  std::vector<LetterBoxed::Solution> solutions =
-      LetterBoxed::runLetterBoxedSolver(config);
+  LetterBoxed::Result result = LetterBoxed::runLetterBoxedSolver(config);
 
-  for (const auto &solution : solutions) {
+  for (const auto &solution : result.solutions) {
     // Count unique letters used in the solution
     std::bitset<12> usedLetters;
     std::string text = solution.text;

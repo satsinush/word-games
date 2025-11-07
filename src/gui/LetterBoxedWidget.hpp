@@ -59,20 +59,22 @@ private:
     SolverThread(const LetterBoxed::Config &cfg, std::atomic<bool> *cancelFlag)
         : config(cfg), cancellationFlag(cancelFlag) {}
 
-    std::vector<LetterBoxed::Solution> getResult() const { return solutions; }
+    std::vector<LetterBoxed::Solution> getResult() const {
+      return result.solutions;
+    }
 
   protected:
     void run() override {
       // Call solver with our local copy and pass cancellation pointer so the
       // solver can stop cooperatively.
-      solutions = LetterBoxed::runLetterBoxedSolver(config, cancellationFlag);
+      result = LetterBoxed::runLetterBoxedSolver(config, cancellationFlag);
     }
 
   private:
     LetterBoxed::Config config;
-    // Store a copy so the GUI may modify or destroy its vector without
+    // Store a copy so the GUI may modify or destroy its result without
     // affecting the running worker.
-    std::vector<LetterBoxed::Solution> solutions;
+    LetterBoxed::Result result;
     std::atomic<bool> *cancellationFlag;
   };
 

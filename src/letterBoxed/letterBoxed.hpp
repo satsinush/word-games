@@ -24,10 +24,10 @@ struct Config {
 };
 
 struct WordPath {
-  int indicesOffset;
-  int indicesLength;
-  int lastCharSide;
-  double score;
+  std::vector<uint8_t> indices;
+  uint8_t lastCharSide;
+  Utils::Word
+      word; // Store the actual word object for better sorting and information
 };
 
 struct Solution {
@@ -46,14 +46,19 @@ struct Solution {
   }
 };
 
+struct Result {
+  std::vector<Solution> solutions;
+  int totalValidWords = 0;
+};
+
 struct CharStartIndexer {
   int start = 0;
   int end = 0;
 };
 
 struct EquivalenceKey {
-  int startIndex;
-  int endIndex;
+  uint8_t startIndex;
+  uint8_t endIndex;
   std::bitset<12> usedChars;
   bool operator<(const EquivalenceKey &other) const;
 };
@@ -63,8 +68,8 @@ struct EquivalenceClass {
   std::vector<const WordPath *> words;
 };
 
-std::vector<Solution> runLetterBoxedSolver(const Config &config,
-                                           std::atomic<bool> *cancel = nullptr);
+Result runLetterBoxedSolver(const Config &config,
+                            std::atomic<bool> *cancel = nullptr);
 } // namespace LetterBoxed
 
 namespace std {
@@ -72,8 +77,8 @@ namespace std {
 // namespace
 template <> struct hash<LetterBoxed::EquivalenceKey> {
   std::size_t operator()(const LetterBoxed::EquivalenceKey &k) const {
-    std::size_t h1 = std::hash<int>{}(k.startIndex);
-    std::size_t h2 = std::hash<int>{}(k.endIndex);
+    std::size_t h1 = std::hash<uint8_t>{}(k.startIndex);
+    std::size_t h2 = std::hash<uint8_t>{}(k.endIndex);
 
     // Hash the bitset
     std::size_t h3 = 0;

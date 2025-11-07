@@ -57,18 +57,18 @@ private:
     SolverThread(const SpellingBee::Config &cfg, std::atomic<bool> *cancelFlag)
         : config(cfg), cancellationFlag(cancelFlag) {}
 
-    std::vector<Utils::Word> getResult() const { return solutions; }
+    std::vector<Utils::Word> getResult() const { return result.words; }
 
   protected:
     void run() override {
-      solutions = SpellingBee::runSpellingBeeSolver(config, cancellationFlag);
+      result = SpellingBee::runSpellingBeeSolver(config, cancellationFlag);
     }
 
   private:
     SpellingBee::Config config;
-    // Copy of the word vector so the worker thread doesn't hold references
+    // Copy of the result so the worker thread doesn't hold references
     // to GUI-owned data.
-    std::vector<Utils::Word> solutions;
+    SpellingBee::Result result;
     std::atomic<bool> *cancellationFlag;
   };
 

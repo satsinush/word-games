@@ -226,11 +226,11 @@ void LetterBoxedGame::runCLI() {
                 << (config.pruneDominatedClasses ? "true" : "false") << "\n\n";
 
       std::cout << "Running solver...\n";
-      std::vector<LetterBoxed::Solution> solutions =
+      LetterBoxed::Result result =
           LetterBoxed::runLetterBoxedSolver(config, nullptr);
 
       int printLimit = 100;
-      printSolutions(solutions, printLimit);
+      printSolutions(result.solutions, printLimit);
 
       while (true) {
         try {
@@ -254,7 +254,8 @@ void LetterBoxedGame::runCLI() {
           if (input == "s" || input == "solve")
             break;
           if (input == "a" || input == "all") {
-            printSolutions(solutions, static_cast<int>(solutions.size()));
+            printSolutions(result.solutions,
+                           static_cast<int>(result.solutions.size()));
             continue;
           }
         } catch (const Utils::Input::UserCancelledException &) {
@@ -276,8 +277,7 @@ void LetterBoxedGame::runHeadless(const Utils::Input::CommandArgs &cmdArgs) {
     const auto &args = cmdArgs.flags;
     LetterBoxed::Config config = getConfigFromArgs(args);
 
-    std::vector<LetterBoxed::Solution> solutions =
-        LetterBoxed::runLetterBoxedSolver(config);
+    LetterBoxed::Result result = LetterBoxed::runLetterBoxedSolver(config);
 
     // Output to file if specified
     std::string outputFile =
@@ -296,7 +296,7 @@ void LetterBoxedGame::runHeadless(const Utils::Input::CommandArgs &cmdArgs) {
 
     std::ofstream out(outputFile);
     if (out.is_open()) {
-      for (const auto &solution : solutions) {
+      for (const auto &solution : result.solutions) {
         out << solution.text << "\n";
       }
       out.close();
@@ -304,7 +304,7 @@ void LetterBoxedGame::runHeadless(const Utils::Input::CommandArgs &cmdArgs) {
       std::cerr << "Could not write to file: " << outputFile << "\n";
     }
 
-    std::cout << solutions.size() << "\n";
+    std::cout << result.solutions.size() << "\n";
     std::cout << outputFile;
   } catch (const std::exception &e) {
     std::cerr << "Error: " << e.what() << "\n";
