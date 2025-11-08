@@ -12,7 +12,7 @@
 #include "mastermind/MastermindGame.hpp"
 #include "spellingBee/SpellingBeeGame.hpp"
 #include "utils/inputUtils.hpp"
-#include "utils/wordUtils.hpp"
+#include "utils/utils.hpp"
 
 #include "dungleon/DungleonGame.hpp"
 #include "wordle/WordleGame.hpp"
@@ -22,6 +22,12 @@
 #include <QIcon>
 
 #include "gui/MainWindow.hpp"
+#endif
+
+#ifdef _WIN32
+#include <fcntl.h>
+#include <io.h>
+#include <windows.h>
 #endif
 
 #ifdef TRACY_ENABLE
@@ -283,12 +289,9 @@ int run(int argc, char *argv[]) {
     // Set application name shown by the windowing system and used by Qt
     QApplication::setApplicationName("Puzzle++");
 
-    // Load the SVG icon from the repository resources folder and set it as
-    // the application / window icon. Use a relative path; this assumes the
-    // working directory contains the project resources at runtime (typical
-    // when running from the project root during development). If you use a
-    // Qt resource (.qrc) in the future, switch to the ":/" prefix.
-    QApplication::setWindowIcon(QIcon(QStringLiteral("resources/icon.svg")));
+    // Load the application icon using the configured resource path
+    std::string iconPath = Utils::getResourceFile("icon.ico");
+    QApplication::setWindowIcon(QIcon(QString::fromStdString(iconPath)));
 
     MainWindow window;
     window.show();
@@ -343,15 +346,50 @@ int run(int argc, char *argv[]) {
 }
 
 int main(int argc, char *argv[]) {
+#if defined(WITH_GUI) && defined(_WIN32)
+  // For Windows GUI applications, attach to parent console if available
+  bool needsConsole = (argc > 1); // Has command line arguments
+  bool attachedToConsole = false;
+
+  if (needsConsole) {
+    // Try to attach to parent console (if launched from cmd/powershell)
+    if (AttachConsole(ATTACH_PARENT_PROCESS)) {
+      // Successfully attached to parent console
+      freopen_s((FILE **)stdout, "CONOUT$", "w", stdout);
+      freopen_s((FILE **)stderr, "CONOUT$", "w", stderr);
+      freopen_s((FILE **)stdin, "CONIN$", "r", stdin);
+      attachedToConsole = true;
+
+      // Print a newline to separate from the command that launched us
+      std::cout << std::endl;
+    }
+    // If AttachConsole fails, we're likely launched from GUI (file explorer,
+    // etc.) In that case, we just won't have console output, which is fine for
+    // GUI apps
+  }
+#endif
+
 #ifdef TRACY_ENABLE
   ZoneScoped;
-  std::cout << "Tracy Profiler enabled." << std::endl;
+#if defined(WITH_GUI) && defined(_WIN32)
+  if (attachedToConsole)
+#endif
+    std::cout << "Tracy Profiler enabled." << std::endl;
 #endif
 
   int result = run(argc, argv);
 
 #ifdef TRACY_ENABLE
   FrameMark;
+#endif
+
+#if defined(WITH_GUI) && defined(_WIN32)
+  // Clean up console if we attached to it
+  if (attachedToConsole) {
+    // Print a newline before returning control to parent console
+    std::cout << std::endl;
+    FreeConsole();
+  }
 #endif
 
   return result;

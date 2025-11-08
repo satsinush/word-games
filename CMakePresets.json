@@ -126,6 +126,13 @@
             ]
         },
         {
+            "name": "package-mingw-release",
+            "configurePreset": "mingw-release",
+            "targets": [
+                "package_release_installer"
+            ]
+        },
+        {
             "name": "msvc-debug",
             "configurePreset": "msvc-debug",
             "configuration": "Debug",
@@ -147,6 +154,13 @@
             "configuration": "Release",
             "targets": [
                 "ALL_BUILD"
+            ]
+        },
+        {
+            "name": "package-msvc-release",
+            "configurePreset": "msvc-release",
+            "targets": [
+                "package_release_installer"
             ]
         }
     ]

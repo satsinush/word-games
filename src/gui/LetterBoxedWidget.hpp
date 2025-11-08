@@ -4,7 +4,7 @@
 
 #include "gui/GameWidget.hpp"
 #include "letterBoxed/letterBoxed.hpp"
-#include "utils/wordUtils.hpp"
+#include "utils/utils.hpp"
 #include <QLabel>
 #include <QProgressDialog>
 #include <QTableWidget>

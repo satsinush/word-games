@@ -1,6 +1,9 @@
 cmake_minimum_required(VERSION 3.16)
 project(p++ LANGUAGES CXX)
 
+# Define project version
+set(p++_VERSION "1.0.0")
+
 # ===================================================================
 # 1. PROJECT-WIDE SETTINGS
 # ===================================================================
@@ -71,6 +74,21 @@ target_include_directories(p++-base PUBLIC
     ${CMAKE_CURRENT_BINARY_DIR}
 )
 
+# Define resource paths for different build contexts
+if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
+    set(CMAKE_INSTALL_PREFIX "${CMAKE_BINARY_DIR}/install" CACHE PATH "Installation prefix" FORCE)
+endif()
+
+# Set resource directory paths
+set(INSTALLED_RESOURCE_DIR "${CMAKE_INSTALL_PREFIX}/resources")
+set(DEVELOPMENT_RESOURCE_DIR "${CMAKE_SOURCE_DIR}/resources")
+
+# Define compile-time resource paths
+target_compile_definitions(p++-base PUBLIC
+    "INSTALLED_RESOURCE_DIR=\"${INSTALLED_RESOURCE_DIR}\""
+    "DEVELOPMENT_RESOURCE_DIR=\"${DEVELOPMENT_RESOURCE_DIR}\""
+)
+
 # Add Tracy include path to base library (for IntelliSense), but don't enable it
 # DO NOT define TRACY_ENABLE here - leave it undefined so Tracy macros become no-ops
 if(BUILD_TRACY)
@@ -101,6 +119,12 @@ if(BUILD_TRACY)
     else()
         target_compile_options(p++-profiled PRIVATE -Wall -Wextra -fdiagnostics-color=always -Wno-stringop-overread)
     endif()
+
+    # Apply the same resource path definitions
+    target_compile_definitions(p++-profiled PUBLIC
+        "INSTALLED_RESOURCE_DIR=\"${INSTALLED_RESOURCE_DIR}\""
+        "DEVELOPMENT_RESOURCE_DIR=\"${DEVELOPMENT_RESOURCE_DIR}\""
+    )
 
     # Apply the Tracy-specific properties to this version
     target_compile_definitions(p++-profiled PUBLIC TRACY_ENABLE=1)
@@ -133,7 +157,47 @@ if(BUILD_GUI)
 endif()
 
 # -- Define the main executable once --
-add_executable(p++ src/main.cpp)
+if(BUILD_GUI AND WIN32)
+    # Windows application (no console window)
+    add_executable(p++ WIN32 src/main.cpp)
+    
+    # Add icon resource for both Debug and Release builds
+    # Work around windres path issues by using custom command
+    if(EXISTS "${CMAKE_SOURCE_DIR}/resources/icon.ico")
+        # Copy icon to build directory (no spaces in path within build dir)
+        configure_file(
+            "${CMAKE_SOURCE_DIR}/resources/icon.ico"
+            "${CMAKE_CURRENT_BINARY_DIR}/app_icon.ico"
+            COPYONLY
+        )
+        
+        # Create simple resource file
+        file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/app_icon.rc" 
+             "1 ICON \"app_icon.ico\"\n")
+        
+        # Find windres
+        find_program(RC_COMPILER windres)
+        if(RC_COMPILER)
+            # Custom command to compile resource with minimal paths
+            add_custom_command(
+                OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/app_icon.res"
+                COMMAND ${RC_COMPILER}
+                ARGS -i "${CMAKE_CURRENT_BINARY_DIR}/app_icon.rc" 
+                     -o "${CMAKE_CURRENT_BINARY_DIR}/app_icon.res"
+                DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/app_icon.rc" 
+                        "${CMAKE_CURRENT_BINARY_DIR}/app_icon.ico"
+                WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
+                COMMENT "Compiling Windows resource file"
+            )
+            
+            # Add the compiled resource to the executable
+            target_sources(p++ PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/app_icon.res")
+        endif()
+    endif()
+else()
+    # Console application (shows command prompt)
+    add_executable(p++ src/main.cpp)
+endif()
 
 if(BUILD_TRACY)
     target_compile_definitions(p++ PRIVATE TRACY_ENABLE=1)
@@ -149,13 +213,14 @@ if(BUILD_GUI)
     target_link_libraries(p++ PRIVATE p++-gui)
     set_target_properties(p++ PROPERTIES AUTOMOC ON)
 
-    if(WIN32)
+    # For development/debug builds, still use windeployqt for immediate testing
+    if(WIN32 AND CMAKE_BUILD_TYPE STREQUAL "Debug")
         find_program(WINDEPLOYQT_EXECUTABLE windeployqt HINTS ${CMAKE_PREFIX_PATH}/bin)
         if(WINDEPLOYQT_EXECUTABLE)
             add_custom_command(TARGET p++ POST_BUILD
                 COMMAND ${WINDEPLOYQT_EXECUTABLE} ARGS $<TARGET_FILE:p++>
                 WORKING_DIRECTORY $<TARGET_FILE_DIR:p++>
-                COMMENT "Running windeployqt...")
+                COMMENT "Running windeployqt for debug build...")
         endif()
     endif()
 endif()
@@ -229,3 +294,80 @@ if(BUILD_BENCHMARKS)
 else()
     message(STATUS "Benchmarks disabled.")
 endif()
+
+# ===================================================================
+# 8. INSTALLATION AND PACKAGING (CPack)
+# ===================================================================
+
+# Define where to install the core executable
+install(TARGETS p++
+    RUNTIME DESTINATION bin
+)
+
+# Define where to install the resources directory
+install(DIRECTORY "${RESOURCE_DIR}/"
+    DESTINATION resources
+    USE_SOURCE_PERMISSIONS
+)
+
+# Handle Qt deployment for GUI builds
+if(WIN32 AND BUILD_GUI)
+    # Use Qt's built-in CMake functionality to handle deployment
+    qt_generate_deploy_app_script(
+        TARGET p++
+        OUTPUT_SCRIPT DEPLOYMENT_SCRIPT_FILE
+        NO_UNSUPPORTED_PLATFORM_ERROR
+    )
+    
+    # Install the deployment script to run during packaging
+    install(SCRIPT ${DEPLOYMENT_SCRIPT_FILE})
+endif()
+
+# Include CPack to enable packaging
+include(InstallRequiredSystemLibraries)
+include(CPack)
+
+# --- CPack Settings ---
+
+# Set the CPack generator to NSIS (Nullsoft Scriptable Install System)
+set(CPACK_GENERATOR "NSIS")
+
+# General package information
+set(CPACK_PACKAGE_NAME "Puzzle++")
+set(CPACK_PACKAGE_VENDOR "Puzzle++ Project")
+set(CPACK_PACKAGE_VERSION "${p++_VERSION}")
+set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Advanced word game and puzzle solver with Qt GUI")
+set(CPACK_PACKAGE_DESCRIPTION "A comprehensive C++ application that solves multiple popular word puzzles and games with both GUI and command-line interfaces.")
+
+# NSIS specific settings
+set(CPACK_NSIS_DISPLAY_NAME "Puzzle++ Installer")
+set(CPACK_NSIS_INSTALL_ROOT "$PROGRAMFILES")
+set(CPACK_NSIS_MENU_LINKS "bin/p++.exe" "Puzzle++ Application")
+
+# Set installer and application icons
+set(CPACK_NSIS_MUI_ICON "${CMAKE_SOURCE_DIR}/resources/icon.ico")
+set(CPACK_NSIS_MUI_UNIICON "${CMAKE_SOURCE_DIR}/resources/icon.ico")
+set(CPACK_PACKAGE_ICON "${CMAKE_SOURCE_DIR}/resources/icon.ico")
+set(CPACK_NSIS_CREATE_ICONS_EXTRA
+    "CreateShortCut '$SMPROGRAMS\\\\$STARTMENU_FOLDER\\\\Puzzle++.lnk' '$INSTDIR\\\\bin\\\\p++.exe'"
+)
+set(CPACK_NSIS_DELETE_ICONS_EXTRA
+    "Delete '$SMPROGRAMS\\\\$STARTMENU_FOLDER\\\\Puzzle++.lnk'"
+)
+
+# ===================================================================
+# 9. DEDICATED PACKAGING TARGET (Recommended VS Code Method)
+# ===================================================================
+
+# This target is NOT part of the 'all' build. It must be run manually 
+# in VS Code after a successful 'Release' build.
+
+add_custom_target(package_release_installer
+    # 1. Run the 'package' target. This automatically handles 
+    #    building, staging (installing), and packaging.
+    COMMAND ${CMAKE_COMMAND} --build . --target package --config Release
+    
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    COMMENT "Building and packaging the final installer for RELEASE."
+    DEPENDS p++
+)

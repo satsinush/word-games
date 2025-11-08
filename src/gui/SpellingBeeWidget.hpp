@@ -4,7 +4,7 @@
 
 #include "gui/GameWidget.hpp"
 #include "spellingBee/spellingBee.hpp"
-#include "utils/wordUtils.hpp"
+#include "utils/utils.hpp"
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QProgressDialog>

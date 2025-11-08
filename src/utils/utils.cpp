@@ -17,7 +17,7 @@
 #include <unistd.h>
 #endif
 
-#include "utils/wordUtils.hpp"
+#include "utils/utils.hpp"
 
 namespace Utils {
 
@@ -58,6 +58,32 @@ std::string trimToLower(const std::string &str) {
                 trimmed.end());
   std::transform(trimmed.begin(), trimmed.end(), trimmed.begin(), ::tolower);
   return trimmed;
+}
+
+// Resource path management - uses compile-time definitions
+std::string getResourcePath() {
+#ifndef INSTALLED_RESOURCE_DIR
+// Fallback definitions if not provided by build system
+#define INSTALLED_RESOURCE_DIR "resources"
+#define DEVELOPMENT_RESOURCE_DIR "resources"
+#endif
+
+  // Try installed path first, fall back to development path
+  std::filesystem::path installedPath(INSTALLED_RESOURCE_DIR);
+  std::filesystem::path developmentPath(DEVELOPMENT_RESOURCE_DIR);
+
+  if (std::filesystem::exists(installedPath)) {
+    return installedPath.string();
+  } else if (std::filesystem::exists(developmentPath)) {
+    return developmentPath.string();
+  } else {
+    // Final fallback - relative to current working directory
+    return "resources";
+  }
+}
+
+std::string getResourceFile(const std::string &filename) {
+  return getResourcePath() + "/" + filename;
 }
 
 // Binary I/O functions for efficient binary serialization
@@ -104,7 +130,7 @@ std::vector<Word> loadWords(const std::string &csvFile, bool useBinaryCache,
     return g_words;
   }
 
-  std::filesystem::path data_dir = getExecutableDir() / "resources";
+  std::filesystem::path data_dir = getResourcePath();
   std::filesystem::path csv_file =
       csvFile.empty() ? (data_dir / "word_scores.csv") : (data_dir / csvFile);
   std::filesystem::path bin_file = data_dir / "words.bin";

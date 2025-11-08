@@ -5,7 +5,7 @@
 #include <vector>
 
 #include "utils/inputUtils.hpp"
-#include "utils/wordUtils.hpp"
+#include "utils/utils.hpp"
 #include <atomic>
 
 namespace LetterBoxed {

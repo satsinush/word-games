@@ -7,7 +7,7 @@
 #include <string>
 
 #include "utils/inputUtils.hpp"
-#include "utils/wordUtils.hpp"
+#include "utils/utils.hpp"
 
 namespace Utils {
 namespace Input {

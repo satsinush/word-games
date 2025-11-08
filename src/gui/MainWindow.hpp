@@ -2,7 +2,7 @@
 
 #pragma once
 
-#include "utils/wordUtils.hpp"
+#include "utils/utils.hpp"
 #include <QButtonGroup>
 #include <QMainWindow>
 #include <vector>

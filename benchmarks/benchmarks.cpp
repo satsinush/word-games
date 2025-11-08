@@ -9,7 +9,7 @@
 #include "spellingBee/SpellingBeeGame.hpp"
 #include "spellingBee/spellingBee.hpp"
 #include "utils/inputUtils.hpp"
-#include "utils/wordUtils.hpp"
+#include "utils/utils.hpp"
 #include "wordle/WordleGame.hpp"
 #include "wordle/wordle.hpp"
 

@@ -8,6 +8,10 @@
 namespace Utils {
 std::filesystem::path getExecutableDir();
 
+// Resource path management
+std::string getResourcePath();
+std::string getResourceFile(const std::string &filename);
+
 // Represents a word with its properties
 struct Word {
   // The word string in lowercase

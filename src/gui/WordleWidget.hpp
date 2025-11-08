@@ -3,7 +3,7 @@
 #pragma once
 
 #include "gui/GameWidget.hpp"
-#include "utils/wordUtils.hpp"
+#include "utils/utils.hpp"
 #include "wordle/wordle.hpp"
 #include <QLabel>
 #include <QProgressDialog>

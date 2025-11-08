@@ -10,7 +10,7 @@
 
 #include "utils/EntSolver.hpp"
 #include "utils/inputUtils.hpp"
-#include "utils/wordUtils.hpp"
+#include "utils/utils.hpp"
 
 namespace Dungleon {
 
