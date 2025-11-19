@@ -113,7 +113,7 @@ If using the CLI, run the executable directly:
 
 For comprehensive usage instructions, all command-line options, game modes, and detailed examples, see:
 
-**📖 [Complete Usage Guide](https://www.google.com/search?q=docs/usage.md)**
+**📖 [Complete Usage Guide](./docs/usage.md)**
 
 The usage guide covers:
 
