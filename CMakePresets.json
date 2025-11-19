@@ -46,8 +46,6 @@
             "binaryDir": "${sourceDir}/build/mingw-core",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Release",
-                "CMAKE_CXX_COMPILER": "C:/Qt/Tools/mingw1310_64/bin/g++.exe",
-                "CMAKE_PREFIX_PATH": "C:/Qt/6.9.3/mingw_64",
                 "BUILD_GUI": "OFF",
                 "BUILD_TESTING": "OFF",
                 "BUILD_BENCHMARKS": "OFF",
@@ -95,7 +93,6 @@
             "binaryDir": "${sourceDir}/build/msvc-core",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Release",
-                "CMAKE_PREFIX_PATH": "C:/Qt/6.9.3/msvc2022_64",
                 "BUILD_GUI": "OFF",
                 "BUILD_TESTING": "OFF",
                 "BUILD_BENCHMARKS": "OFF",
