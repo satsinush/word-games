@@ -1,0 +1,158 @@
+#ifdef WITH_GUI
+
+#pragma once
+
+#include "gui/GameWidget.hpp"
+#include "utils/utils.hpp"
+#include "wordle/wordle.hpp"
+#include <QLabel>
+#include <QProgressDialog>
+#include <QPushButton>
+#include <QScrollArea>
+#include <QTabWidget>
+#include <QTableWidget>
+#include <QThread>
+#include <QVBoxLayout>
+#include <QWidget>
+#include <array>
+#include <atomic>
+#include <vector>
+
+namespace Ui {
+class WordleWidget;
+}
+
+// Custom clickable letter box widget
+class LetterBox : public QLabel {
+  Q_OBJECT
+
+public:
+  explicit LetterBox(QWidget *parent = nullptr);
+
+  void setLetter(char letter);
+  char getLetter() const { return currentLetter; }
+
+  void setColor(int color); // 0=grey, 1=yellow, 2=green
+  int getColor() const { return currentColor; }
+
+  void clear();
+
+signals:
+  void clicked();
+
+protected:
+  void mousePressEvent(QMouseEvent *event) override;
+
+private:
+  char currentLetter;
+  int currentColor; // 0=grey, 1=yellow, 2=green
+  void updateStyle();
+};
+
+// Widget representing one complete guess (variable-length boxes + delete
+// button)
+class GuessRow : public QWidget {
+  Q_OBJECT
+
+public:
+  explicit GuessRow(const Wordle::Feedback &feedback,
+                    QWidget *parent = nullptr);
+
+  Wordle::Feedback getFeedback() const;
+  void setEditable(bool editable);
+
+signals:
+  void deleteRequested();
+  void editRequested();
+
+private slots:
+  void onLetterBoxClicked();
+  void onDeleteClicked();
+
+private:
+  std::vector<LetterBox *> boxes;
+  QPushButton *deleteBtn;
+  QPushButton *editBtn;
+  bool isEditable;
+};
+
+class WordleWidget : public GameWidget {
+  Q_OBJECT
+
+public:
+  explicit WordleWidget(QWidget *parent = nullptr);
+  ~WordleWidget() override;
+
+public slots:
+  void newGame() override;
+
+private slots:
+  void onSubmit();
+  void onNewGame() override;
+  void onHint();
+  void onLetterBoxClicked();
+  void onInputChanged(const QString &text);
+  void onGuessDeleted();
+  void onTableRowClicked(int row, int column);
+  void onSettings() override;
+  void onSolverFinished() override;
+
+private:
+  // Worker thread for solving
+  class SolverThread : public QThread {
+  public:
+    SolverThread(const Wordle::Config &cfg, std::atomic<bool> *cancelFlag)
+        : config(cfg), cancellationFlag(cancelFlag) {}
+
+    Wordle::Result getResult() const { return result; }
+
+  protected:
+    void run() override {
+      result = Wordle::runWordleSolver(config, cancellationFlag);
+    }
+
+  private:
+    // Copy locally so the worker doesn't reference GUI-owned storage.
+    Wordle::Config config;
+    Wordle::Result result;
+    std::atomic<bool> *cancellationFlag;
+  };
+
+private:
+  Ui::WordleWidget *ui;
+
+  Wordle::Config config;
+
+  // Current guess row
+  std::vector<LetterBox *> currentBoxes;
+  QWidget *currentRowWidget;
+
+  // Container for past guesses
+  QScrollArea *guessListScrollArea;
+  QWidget *guessListWidget;
+  QVBoxLayout *guessListLayout;
+  std::vector<GuessRow *> guessRows;
+
+  // Result tables
+  QTabWidget *resultsTabWidget;
+  QTableWidget *allResultsTable;
+  QTableWidget *probableWordsTable;
+
+  bool showConfigDialog();
+  void initGame() override;
+  void setUIEnabled(bool enabled) override;
+  void updateConfigInfo() override;
+  void solveWordle();
+  void setupCurrentRow();
+  void submitCurrentGuess();
+  void rebuildFeedbackHistory();
+  // Populate both results tables (All Suggestions and Possible Solutions).
+  // maxRows limits the number of rows shown in each table.
+  void populateResults(int maxRows = 1000);
+
+  // Cached results for table click handling
+  std::vector<Wordle::WordGuess> lastAllResults;
+  std::vector<Wordle::WordGuess> lastProbableResults;
+};
+
+#endif // WITH_GUI

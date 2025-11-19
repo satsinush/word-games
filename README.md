@@ -1,103 +1,145 @@
-# Word Games Solver 🧩
+# Puzzle++ 🧩
 
-This is a C++ command-line tool designed to solve two popular word puzzles: **New York Times Letter Boxed** and **Spelling Bee**. It can be run interactively or by using command-line arguments for automated solving.
+**Advanced word game and puzzle solver created in C++**
+
+A comprehensive C++ application that solves multiple popular word puzzles and games with both GUI and command-line interfaces. Supports interactive solving, automated batch processing, and entropy-based game assistance.
 
 -----
 
 ## Features
 
-  * **Letter Boxed Solver**: Finds words and solutions to the Letter Boxed puzzle.
-  * **Spelling Bee Solver**: Finds all valid words and pangrams for the Spelling Bee puzzle.
-  * **Interactive Mode**: Guides you through entering puzzle letters and solver options.
-  * **Command-Line Mode**: Allows you to solve puzzles directly from the terminal with specified arguments, which is great for scripting or automated tasks.
-  * **Configurable Solver**: The Letter Boxed solver offers different presets (Fast, Default, Thorough) and custom options to balance speed and completeness.
-  * **Output Management**: Solutions can be saved to a file for later viewing.
+* **Multiple Game Solvers**: Letter Boxed, Spelling Bee, Wordle, Mastermind, and Dungleon
+* **Dual Interface**: Qt-based GUI and full-featured command-line interface
+* **Interactive & Automated Modes**: User-guided solving or scriptable batch processing
+* **Entropy-Based Suggestions**: Advanced algorithms for optimal move recommendations
+* **Configurable Solvers**: Multiple presets and custom options for performance tuning
+* **Output Management**: Save results to files, read previous solutions, benchmarking tools
 
 -----
 
-## How to Use
+## Installation & Building
+
+### 1. Windows GUI (Recommended)
+
+For the best Windows experience, use the Installer from the latest GitHub Release:
+
+[Download the latest installer](https://github.com/satsinush/word-games/releases/)
+
+This installer bundles the GUI and required runtimes so no separate Qt or compiler setup is needed.
+
+* **No Setup Required:** No need to install Qt or compilers.
+* **Easy Access:** The installer creates an application shortcut in your Start Menu which can be used to launch the main application with the GUI.
+* **Uninstall:** Easily removable via Windows "Add or Remove programs".
+
+### 2. Building from Source
+
+If you are on Linux/macOS, or prefer to build from source on Windows, follow the instructions below.
+
+**Requirements:**
+
+* **C++ Compiler**: Supports C++20 (GCC 10+, Clang 10+, MSVC 2019+)
+* **CMake**: Version 3.16 or later
+* **Qt Framework**: Version 6.0+ (Only required if building the GUI)
+
+#### Preparation
+```bash
+git clone <repository-url>
+cd word-games
+```
+
+#### Option A: Core Build Only (CLI)
+
+For a lightweight build with **no GUI dependency** (command-line interface only), you can build using the core preset. This requires only a C++ compiler and CMake.
+
+```bash
+# Build using the core preset (No Qt required)
+cmake --preset mingw-core
+cmake --build --preset mingw-core
+
+# Run the application (Interactive Mode)
+cd build/mingw-core
+./p++
+```
+
+*Note: Since there is no GUI, running the executable directly enters interactive CLI mode.*
+
+#### Option B: Full Build (GUI + CLI)
+
+To build the full application with the GUI, you must have Qt 6 installed.
+
+*Note: You may need to adjust the CMake presets (`CMakePresets.json`) to point to your specific Qt installation paths.*
+
+```bash
+# Build using the release preset (Requires Qt)
+cmake --preset mingw-release
+cmake --build --preset mingw-release
+
+# Run the application
+cd build/mingw-release
+./p++
+```
+
+-----
+
+## Quick Start
 
 ### Interactive Mode
 
-To run the program in interactive mode, simply execute the compiled binary without any arguments.
+If you installed via the Windows Installer, simply launch **Puzzle++** from your Start Menu.
+
+If using the CLI, run the executable directly:
 
 ```bash
-./word_solver
+./p++ -i
 ```
 
-The program will then prompt you to select a game mode and enter the puzzle's letters.
-
-### Command-Line Mode
-
-You can also solve puzzles by providing command-line arguments. This is useful for quickly getting results without going through the interactive prompts.
-
-#### Letter Boxed
-
-To solve a Letter Boxed puzzle, specify the letters and a preset.
+### Direct Command Examples
 
 ```bash
-./word_solver --mode letterboxed --letters abcdefghijkl --preset 1
+# Solve Letter Boxed puzzle
+./p++ letterboxed --letters abcdefghijkl --preset 2
+
+# Solve Spelling Bee with custom letters
+./p++ spellingbee --letters nyhacked --reuse-letters true
+
+# Get Wordle suggestions
+./p++ wordle --guesses "CRANE 01120" --max-depth 1
+
+# Mastermind solver assistance
+./p++ mastermind --guesses "RGBC 1 2" --pegs 4 --colors "RGBCMY"
 ```
 
-  * `--mode letterboxed`: Specifies the game mode.
-  * `--letters <12letters>`: The 12 letters on the puzzle.
-  * `--preset <1|2|3|0>`: The solver preset.
-      * **1**: Default (balanced, finds solutions up to 2 words)
-      * **2**: Fast (less thorough, quick results)
-      * **3**: Thorough (exhaustive, finds solutions up to 3 words)
-      * **0**: Custom (requires additional arguments for full control)
+## Complete Documentation
 
-You can override preset settings or use a custom configuration (`--preset 0`) by providing the following optional arguments:
+For comprehensive usage instructions, all command-line options, game modes, and detailed examples, see:
 
-  * `--maxDepth <num>`: Max number of words per solution (e.g., `2` for two-word solutions).
-  * `--minWordLength <num>`: Minimum length of a word (e.g., `3`).
-  * `--minUniqueLetters <num>`: Minimum number of unique letters a word must contain.
-  * `--pruneRedundantPaths <0|1>`: `1` to enable, `0` to disable.
-  * `--pruneDominatedClasses <0|1>`: `1` to enable, `0` to disable.
-  * `--file <filename>`: Path to a file to save the solutions.
-  * `--maxResults <num>`: Maximum number of solutions to display.
+**📖 [Complete Usage Guide](https://www.google.com/search?q=docs/usage.md)**
 
-#### Spelling Bee
+The usage guide covers:
 
-To solve a Spelling Bee puzzle, provide the 7 letters.
-
-```bash
-./word_solver --mode spellingbee --letters abcdefg
-```
-
-  * `--mode spellingbee`: Specifies the game mode.
-  * `--letters <7letters>`: The 7 letters for the puzzle. The first letter you enter is the center letter.
-  * `--file <filename>`: Path to a file to save the solutions.
-  * `--maxResults <num>`: Maximum number of solutions to display.
-
-#### Read Solutions from File
-
-You can view saved solutions from a file without rerunning the solver.
-
-```bash
-./word_solver --mode read --file solutions.txt --start 0 --end 10
-```
-
-  * `--mode read`: Specifies read mode.
-  * `--file <filename>`: The file to read from.
-  * `--start <startIndex>`: The starting index of the solutions to display.
-  * `--end <endIndex>`: The ending index of the solutions to display.
+  * All supported game modes and solvers
+  * Complete command-line reference
+  * Advanced configuration options
+  * Benchmarking and performance tools
+  * Boolean value formats and examples
 
 -----
 
-## Building the Project
+## Licensing
 
-The project is written in C++ and uses standard libraries. You'll need a C++ compiler (like g++ or Clang) that supports C++17 or later.
+The source code for this project is licensed under the **MIT License**. See the `LICENSE` file for details.
 
-1.  Clone the repository.
-2.  Navigate to the project directory.
-3.  Compile the source files.
+### Third-Party Dependencies
 
-<!-- end list -->
+This project uses several third-party libraries with their respective licenses:
 
-```bash
-g++ main.cpp utils.cpp letterBoxed.cpp spellingBee.cpp -o word_solver -std=c++17 -Wall -Wextra
-```
+  * **Qt Framework**: **LGPLv3 License** - See `LICENSE-QT` for full license text. Qt source code is available at the [official Qt website](https://www.qt.io/download-open-source). To enable relinking against a modified Qt library, the full source code for this application and its build scripts (CMake files) are provided here.
+  * **Tracy Profiler**: **3-Clause BSD License** - Used for optional performance profiling support (development dependency).
+  * **Google Test**: **3-Clause BSD License** - Used for unit testing framework (development dependency).
+  * **Google Benchmark**: **Apache License 2.0** - Used for performance benchmarking (development dependency).
 
-You may need to include additional header and source files if the project is structured differently.
-The compiled executable will be named `word_solver`.
+All third-party dependencies are automatically fetched during the CMake build process and do not need to be installed separately.
+
+### Game Assets
+
+  * **Dungleon Images**: The character and item images in `resources/dungleon/` are sourced from the official [Dungleon website](https://www.dungleon.com/) and are used in this puzzle solver implementation.

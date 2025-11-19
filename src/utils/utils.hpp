@@ -1,0 +1,71 @@
+#pragma once
+#include <array>
+#include <cstdint>
+#include <filesystem>
+#include <string>
+#include <vector>
+
+namespace Utils {
+std::filesystem::path getExecutableDir();
+
+// Resource path management
+std::string getResourcePath();
+std::string getResourceFile(const std::string &filename);
+
+// Represents a word with its properties
+struct Word {
+  // The word string in lowercase
+  std::string wordString;
+  // The score associated with the word
+  double score;
+  // Whether the word is valid in Scrabble
+  bool is_scrabble;
+  // Number of unique letters in the word
+  int uniqueLetters;
+  // Count of each letter a-z
+  std::array<uint8_t, 26> letterCount;
+  // Comparison operator for sorting words alphabetically
+  bool operator<(const Word &other) const {
+    if (score != other.score)
+      return score > other.score; // Higher score first
+    return wordString < other.wordString;
+  }
+  // Equality operator for comparing words
+  bool operator==(const Word &other) const {
+    return wordString == other.wordString;
+  }
+};
+
+extern std::vector<Word> g_words;
+
+// Binary stream operators for efficient binary I/O
+void writeBinary(std::ostream &os, const Word &word);
+void readBinary(std::istream &is, Word &word);
+
+// Trims whitespace only (preserves case)
+std::string trim(const std::string &str);
+
+// Trims whitespace and converts a string to lowercase
+std::string trimToLower(const std::string &str);
+
+// Loads words from a CSV file. If csvFile is empty, uses word_scores.csv.
+// If useBinaryCache is true, tries to load from/save to .bin file.
+// If maxWords is 0, loads all words.
+// Max of 500002 used based on word analysis data.
+// All scrabble words are in the top 500002 by score.
+std::vector<Word> loadWords(const std::string &csvFile = "",
+                            bool useBinaryCache = true,
+                            size_t maxWords = 500002);
+
+} // namespace Utils
+
+// Provide std::hash specialization for Utils::Word so it can be used as an
+// unordered_map/unordered_set key in generic code (like the EntropySolver).
+namespace std {
+template <> struct hash<Utils::Word> {
+  size_t operator()(const Utils::Word &word) const noexcept {
+    // Use the standard string hash for the wordString
+    return std::hash<std::string>{}(word.wordString);
+  }
+};
+} // namespace std
