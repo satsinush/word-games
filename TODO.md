@@ -12,3 +12,5 @@
   - Update license info in installer
   - Update publisher name maybe, currently see "Humanity" in windows app list
   - Ensure icon works properly
+- Fix Letter Boxed bug where you have to use Enter button first before solving
+- Add length column to spelling bee results

@@ -23,7 +23,7 @@ A comprehensive C++ application that solves multiple popular word puzzles and ga
 
 For the best Windows experience, use the Installer from the latest GitHub Release:
 
-[Download the latest installer](https://github.com/satsinush/word-games/releases/)
+[Download the latest installer](https://github.com/satsinush/word-games/releases/latest)
 
 This installer bundles the GUI and required runtimes so no separate Qt or compiler setup is needed.
 

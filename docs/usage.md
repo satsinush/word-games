@@ -1,66 +1,144 @@
-# Puzzle++ CLI Usage
+# Puzzle++ Usage Guide
 
-This document outlines the usage, options, and modes for the Puzzle++ command-line interface.
+This document outlines the complete usage instructions for the Puzzle++ application, covering both the Command Line Interface (CLI) and the Graphical User Interface (GUI).
+
+## Launching the Application
+
+The program can be launched in three ways:
+
+1.  **GUI Mode:** Run the executable with no arguments (requires GUI compilation support).
+2.  **Interactive CLI:** Use the `-i` flag to enter a session-based command line.
+3.  **Direct Command:** Pass specific game modes and options as arguments.
 
 ---
 
-## General Usage
+# Part 1: GUI Usage
 
-The program can be launched in several ways:
-- **GUI Mode:** Running the executable with no arguments will launch the GUI, provided it was compiled with GUI support.
-- **Interactive CLI Mode:** Use the `-i` flag to enter an interactive command-line session.
-- **Direct Command Mode:** Specify a game mode and its options directly as arguments.
+## Wordle
 
-**Syntax:**
+![Wordle screenshot](./screenshots/wordle.png)
+
+1.  **Configuration (⚙️):**
+      * **Word Length:** Default is 5.
+      * **Search Depth:** `0` (Fast, Probability only), `1` (Balanced), `2+` (Slow, High Accuracy).
+      * **Exclude Uncommon:** Recommended for standard Wordle to filter non-Scrabble words.
+2.  **Playing:**
+      * Enter a word and press **Enter** or **Add Word**.
+      * Click the letters in the history to cycle feedback colors:
+          * ⬛ **Gray:** Incorrect.
+          * 🟨 **Yellow:** Wrong position.
+          * 🟩 **Green:** Correct position.
+      * Click **Solve** to generate suggestions.
+3.  **Results Table:**
+      * **ENT (Entropy):** Estimated turns to solve. `1.0` means the next guess guarantees a solution. Lower is better (0.0 is the solution).
+      * **Word Score:** Heuristic tie-breaker based on frequency/length.
+      * **Probability:** Likelihood of the word being the specific answer.
+
+## Spelling Bee
+
+![Spelling Bee screenshot](./screenshots/spellingbee.png)
+
+1.  **Configuration (⚙️):**
+      * **Exclude Uncommon:** Filter out obscure words.
+      * **Must Include First:** Required for standard Spelling Bee.
+      * **Reuse Letters:** Toggle `false` to play "Anagram" mode (use letters exactly once).
+2.  **Playing:**
+      * Enter letters. **The first letter entered is the special center letter.**
+      * The table updates automatically with all valid words and their unique letter counts.
+
+## Letter Boxed
+
+![Letter Boxed screenshot](./screenshots/letterboxed.png)
+
+1.  **Configuration (⚙️):**
+      * **Preset:** Choose `Default`, `Fast`, or `Thorough` based on your time constraints.
+      * **Max Words:** Limit the solution length (Standard is 2).
+      * **Pruning:** Keep "Prune Redundant Paths" enabled for speed.
+2.  **Playing:**
+      * Enter the 12 letters as a continuous string.
+      * Press **Enter** to solve.
+      * The table displays solutions and the number of words used.
+
+## Mastermind
+
+![Mastermind screenshot](./screenshots/mastermind.png)
+
+1.  **Configuration (⚙️):**
+      * **Pegs:** Number of slots in the board.
+      * **Colors:** The characters available for guessing (Default: `RGBCMY`).
+2.  **Playing:**
+      * Type a guess using your color characters (e.g., `RGBC`).
+      * **Feedback Input:**
+          * **Positions (Black Pegs):** Correct color, correct place.
+          * **Colors (White Pegs):** Correct color, wrong place.
+      * Click **Solve** to calculate the best next move based on entropy.
+
+## Dungleon
+
+![Dungleon screenshot](./screenshots/dungleon.png)
+
+1.  **Input:**
+      * Click the character icons to build your guess.
+      * Click the characters *in the guess list* to cycle their state:
+          * 🟥 **Red:** Not in solution.
+          * 🟨 **Yellow:** In solution, wrong pos (no more instances).
+          * 🟩 **Green:** Correct pos (no more instances).
+          * 🟨➕ **Yellow (+):** In solution, wrong pos (more instances exist).
+          * 🟩➕ **Green (+):** Correct pos (more instances exist).
+2.  **Gauntlet Mode:**
+      * Use **Submit Solution** to add a row as a "Past Solution" (used for Gauntlet constraints).
+      * Use **Submit Guess** for standard feedback rows.
+3.  **Solving:**
+      * Click **Solve** to view the Top Suggestions sorted by Entropy (ENT).
+
+
+-----
+
+# Part 2: Command Line Interface (CLI)
+
+**General Syntax:**
 ```bash
 ./p++ [OPTIONS] [MODE]
-````
+```
 
 ### Global Options
 
   * `-h`, `--help`: Displays the help message.
-  * `-v`, `--verbose`: Enables verbose output for detailed logging (currently for future use).
-  * `-i`: Runs the program in interactive CLI mode.
+  * `-v`, `--verbose`: Enables verbose output for detailed logging (reserved for future use).
+  * `-i`: Enters Interactive CLI mode.
+
+### Boolean Values
+
+For any CLI option that accepts a `<bool>`, the following inputs are valid:
+
+  * **True:** `1`, `y`, `Y`, `yes`, `YES`, `Yes`, `t`, `T`, `true`, `True`, `TRUE`
+  * **False:** `0`, `n`, `N`, `no`, `NO`, `No`, `f`, `F`, `false`, `False`, `FALSE`
 
 -----
 
 ## Game Modes
 
-The solver supports several game modes, each with its own set of specific options:
+### 1\. Wordle
 
-- **Letter Boxed**: Solve Letter Boxed puzzles
-- **Spelling Bee**: Solve Spelling Bee puzzles  
-- **Wordle**: Get entropy-based suggestions for Wordle puzzles
-- **Mastermind**: Get entropy-based suggestions for Mastermind puzzles
-- **Dungleon**: Get entropy-based suggestions for Dungleon puzzles
-- **Read Mode**: Read and display results from files
-
-### Letter Boxed
-
-Solves the Letter Boxed puzzle.
+Generates entropy-based suggestions for Wordle.
 
 **Syntax:**
 
 ```bash
-./p++ letterboxed --letters <12letters> [OPTIONS]
+./p++ wordle [OPTIONS]
 ```
 
 **Options:**
 
-  * `--letters <letters>`: **(Required)** The 12 letters for the puzzle, provided as a single string (e.g., `abcdefghijkl`).
-  * `--preset <1|2|3|0>`: Specifies a preset configuration for the solver. Preset settings are applied first, then any additional arguments override the preset values.
-      * `1`: Default - A balanced approach.
-      * `2`: Fast - Prioritizes speed over finding every possible solution.
-      * `3`: Thorough - A comprehensive search that may take longer.
-      * `0`: Custom - Uses default values that can be overridden with the options below.
-  * `--max-depth <n>`: The maximum number of words allowed in a single solution. Can override preset value.
-  * `--min-word-length <n>`: The minimum length for a valid word. Can override preset value.
-  * `--min-unique-letters <n>`: The minimum number of unique letters a word must contain. Can override preset value.
-  * `--prune-paths <bool>`: **(Recommended)** Stops processing paths if a word is added that doesn't cover any new letters. Can override preset value. This is always done on words that start and end on the same letter but may exclude very specific situations where a short word is needed to switch starting letters.
-  * `--prune-classes <bool>`: **(Recommended)** Eliminates classes of words that have fewer unique letters. Can override preset value. This may exclude solutions that use more common words in favor of using word classes that cover more letters, even if those words are less common.
-  * `-o`, `--output <file>`: Specifies the output file path. (Default: `results/temp.txt`).
+  * `--guesses <string>`: A semicolon-separated string of `WORD FEEDBACK` pairs.
+      * **Feedback Codes:** `0` (Grey), `1` (Yellow), `2` (Green).
+      * **Example:** `"AUDIO 00100;SOARE 10201"`
+  * `--word-length <n>`: Length of the puzzle word. (Default: `5`).
+  * `--max-depth <0-2>`: Search depth for entropy. Higher is more accurate but slower. (Default: `0`).
+  * `--exclude-uncommon-words <bool>`: Limit search to common words. (Default: `false`).
+  * `-o`, `--output <file>`: Output file path. (Default: `results/guesses.txt`).
 
-### Spelling Bee
+### 2\. Spelling Bee
 
 Solves the Spelling Bee puzzle.
 
@@ -72,35 +150,40 @@ Solves the Spelling Bee puzzle.
 
 **Options:**
 
-  * `--letters <letters>`: **(Required)** Letters for the puzzle, minimum 3, duplicates allowed. First letter is special.
-  * `--exclude-uncommon-words <bool>`: Exclude uncommon words from results. (Default: `false`).
-  * `--must-include-first-letter <bool>`: Require words to include the first letter. (Default: `true`).
-  * `--reuse-letters <bool>`: Allow unlimited reuse of letters. (Default: `true`).
-  * `-o`, `--output <file>`: Specifies the output file path. (Default: `results/temp.txt`).
+  * `--letters <string>`: **(Required)** Minimum 3 letters. **The first letter is the "Center" (special) letter.**
+  * `--exclude-uncommon-words <bool>`: Exclude obscure words. (Default: `false`).
+  * `--must-include-first-letter <bool>`: Require words to use the center letter. (Default: `true`).
+  * `--reuse-letters <bool>`: Allow infinite reuse of letters. (Default: `true`).
+  * `-o`, `--output <file>`: Output file path. (Default: `results/temp.txt`).
 
-### Wordle
+### 3\. Letter Boxed
 
-Provides entropy-based suggestions for Wordle puzzles.
+Solves the Letter Boxed puzzle by finding paths connecting letters on a square.
 
 **Syntax:**
 
 ```bash
-./p++ wordle [OPTIONS]
+./p++ letterboxed --letters <12letters> [OPTIONS]
 ```
 
 **Options:**
 
-  * `--guesses <guesses>`: A string of guess/feedback pairs separated by semicolons.
-      * **Format:** `"WORD1 FFFFF;WORD2 FFFFF"` where `F` is the feedback code.
-      * **Feedback Codes:** `0`=grey, `1`=yellow, `2`=green.
-  * `--word-length <n>`: Word length for the puzzle. (Default: `5`, Range: `1-32`).
-  * `--max-depth <0-2>`: The search depth for calculating entropy. Higher values are more accurate but slower. (Default: `0`).
-  * `--exclude-uncommon-words <bool>`: If enabled, excludes less common words from the possible answers list. (Default: `false`).
-  * `-o`, `--output <file>`: Specifies the output file for possible words and all guesses. (Default: `results/guesses.txt`).
+  * `--letters <string>`: **(Required)** The 12 letters of the box provided as a single string (e.g., `abcdefghijkl`).
+  * `--preset <0-3>`: Applies a configuration preset. (Arguments override preset values).
+      * `1`: **Default** (Balanced).
+      * `2`: **Fast** (Speed over completeness).
+      * `3`: **Thorough** (Comprehensive search, slower).
+      * `0`: **Custom** (Uses defaults, fully overridable).
+  * `--max-depth <n>`: Max number of words allowed in a solution.
+  * `--min-word-length <n>`: Minimum length for a valid word.
+  * `--min-unique-letters <n>`: Minimum unique letters a word must contain.
+  * `--prune-paths <bool>`: **(Recommended)** Stop processing if a word adds no new letters.
+  * `--prune-classes <bool>`: **(Recommended)** Eliminate word classes with fewer unique letters.
+  * `-o`, `--output <file>`: Output file path. (Default: `results/temp.txt`).
 
-### Mastermind
+### 4\. Mastermind
 
-Provides entropy-based suggestions for Mastermind puzzles.
+Generates entropy-based suggestions for Mastermind.
 
 **Syntax:**
 
@@ -110,17 +193,17 @@ Provides entropy-based suggestions for Mastermind puzzles.
 
 **Options:**
 
-  * `--guesses <guesses>`: A string of guess/feedback pairs separated by semicolons.
-      * **Format:** `"RGBC 1 2;MYRC 1 2"` where `RGBC` is the pattern, `1` is black pegs (correct color, correct position), and `2` is white pegs (correct color, wrong position).
-  * `--pegs <n>`: The number of pegs in the code. (Default: `4`, Range: `1-20`).
-  * `--colors <chars>`: Available color characters as a string. (Default: `"RGBCMY"`).
-  * `--allow-duplicates <bool>`: Whether to allow duplicate colors in the code. (Default: `true`).
-  * `--max-depth <0-2>`: The search depth for calculating entropy. Higher values are more accurate but slower. (Default: `1`, Range: `0-2`).
-  * `-o`, `--output <file>`: Specifies the output file for possible patterns and all guesses. (Default: `results/guesses.txt`).
+  * `--guesses <string>`: A semicolon-separated string of `CODE BLACK WHITE` pairs.
+      * **Format:** `"RGBC 1 2"` (1 Black peg, 2 White pegs).
+  * `--pegs <n>`: Number of pegs per code. (Default: `4`).
+  * `--colors <string>`: Available color characters. (Default: `"RGBCMY"`).
+  * `--allow-duplicates <bool>`: Allow duplicate colors in code. (Default: `true`).
+  * `--max-depth <0-2>`: Search depth for entropy. (Default: `1`).
+  * `-o`, `--output <file>`: Output file path. (Default: `results/guesses.txt`).
 
-### Dungleon
+### 5\. Dungleon
 
-Provides entropy-based suggestions for Dungleon puzzles.
+Generates entropy-based suggestions for Dungleon.
 
 **Syntax:**
 
@@ -130,18 +213,18 @@ Provides entropy-based suggestions for Dungleon puzzles.
 
 **Options:**
 
-  * `--guesses <guesses>`: A string of guess/feedback pairs separated by semicolons.
-      * **Format:** `"ar kn ma bt dr 01234"` where character pairs are followed by color feedback.
-      * **Color Codes:** `0`=not present, `1`=different position no more, `2`=correct position no more, `3`=different position one more, `4`=correct position one more.
-  * `--solutions <solutions>`: Past solutions for Gauntlet mode, separated by semicolons.
-      * **Format:** `"ar kn ma bt dr;cl wa ro th pr"` - just the character pairs without feedback.
-  * `--max-depth <0-2>`: The search depth for calculating entropy. Higher values are more accurate but slower. (Default: `0`, Range: `0-2`).
-  * `--exclude-impossible <bool>`: Exclude impossible patterns from guesses. (Default: `false`).
-  * `-o`, `--output <file>`: Specifies the output file for possible patterns and all guesses. (Default: `results/dungleon.txt`).
+  * `--guesses <string>`: Semicolon-separated string of character pairs followed by feedback string.
+      * **Format:** `"ar kn ma bt dr 01234"`
+      * **Codes:** `0` (Not present), `1` (Wrong pos, no more), `2` (Correct pos, no more), `3` (Wrong pos, one more), `4` (Correct pos, one more).
+  * `--solutions <string>`: Past solutions (for Gauntlet mode), separated by semicolons.
+      * **Format:** `"ar kn ma bt dr;cl wa ro th pr"`
+  * `--max-depth <0-2>`: Search depth for entropy. (Default: `0`).
+  * `--exclude-impossible <bool>`: Exclude impossible patterns. (Default: `false`).
+  * `-o`, `--output <file>`: Output file path. (Default: `results/dungleon.txt`).
 
-### Read Mode
+### 6\. Read Mode
 
-Reads and displays results from a previously generated file.
+Reads and displays results from a generated file.
 
 **Syntax:**
 
@@ -151,95 +234,55 @@ Reads and displays results from a previously generated file.
 
 **Options:**
 
-  * `FILE`: The input file to read from. (Default: `results/temp.txt`).
-  * `--start <n>`: The starting line index to display. (Default: `0`).
-  * `--end <n>`: The ending line index to display. (Default: `all`).
+  * `--start <n>`: Starting line index. (Default: `0`).
+  * `--end <n>`: Ending line index. (Default: `all`).
 
 -----
 
 ## Benchmarking
 
-The program includes benchmarking tools to measure performance.
-
-### Runtime Benchmark
-
-**Syntax:**
+**Runtime Benchmark:**
 
 ```bash
-./p++ --benchmark runtime <mode> [OPTIONS]
+./p++ --benchmark runtime <mode> [--iterations <n>] [--verbose]
 ```
 
-  * `--iterations <n>`: Number of times to run the test. (Default: `1`).
-  * `--verbose`: Enable verbose output.
-
-### Performance Benchmark
-
-**Syntax:**
+**Performance Benchmark (Wordle only):**
 
 ```bash
-./p++ --benchmark performance <mode> [OPTIONS]
+./p++ --benchmark performance <mode> [--verbose]
 ```
-
-  * **Note:** Currently only implemented for Wordle mode.
-  * `--verbose`: Enable verbose output.
 
 -----
 
-## Boolean Values
+## CLI Examples
 
-For any option that accepts a boolean value (`<bool>`), the following inputs are recognized:
-
-  * **True:** `1`, `y`, `Y`, `yes`, `YES`, `Yes`, `t`, `T`, `true`, `True`, `TRUE`
-  * **False:** `0`, `n`, `N`, `no`, `NO`, `No`, `f`, `F`, `false`, `False`, `FALSE`
-
------
-
-## Examples
-
-**1. Solve a Letter Boxed puzzle with a fast preset and save to a specific file:**
+**Wordle:**
 
 ```bash
-./p++ letterboxed --letters abcdefghijkl --preset 2 -o results/solutions.txt
+wordle --word-length 5 --max-depth 1 --exclude-uncommon-words true --guesses "STEAL 20100;CRANE 01002" -o results/wordle.txt
 ```
 
-**1b. Use a preset but override specific settings:**
+**Spelling Bee:**
 
 ```bash
-./p++ letterboxed --letters abcdefghijkl --preset 2 --max-depth 3 --min-word-length 3
+spellingbee --letters nhmkace --exclude-uncommon-words false --must-include-first-letter true --reuse-letters true -o results/spellingbee.txt
 ```
 
-**2. Solve a Spelling Bee puzzle with all optional parameters:**
+**Letter Boxed:**
 
 ```bash
-./p++ spellingbee --letters abcdefg --exclude-uncommon-words false --must-include-first-letter true --reuse-letters true -o results/spellingbee.txt
+letterboxed --letters uvjswitgebac --preset 0 --max-depth 3 --min-word-length 4 --min-unique-letters 3 --prune-paths true --prune-classes false -o results/letterboxed.txt
 ```
 
-**3. Get Wordle suggestions for 6-letter words with previous guesses:**
+**Mastermind:**
 
 ```bash
-./p++ wordle --word-length 6 --guesses "STRAFE 010200;COINED 102010" --max-depth 1 --exclude-uncommon-words false -o results/wordle.txt
+mastermind --guesses "RGBC 1 2;MYRC 1 2" --pegs 4 --colors "RGBCMY" --allow-duplicates true --max-depth 1 -o results/mastermind.txt
 ```
 
-**4. Solve a Mastermind puzzle with custom configuration:**
+**Dungleon:**
 
 ```bash
-./p++ mastermind --guesses "RGBC 1 2;MYRC 1 2" --pegs 4 --colors "RGBCMY" --allow-duplicates true --max-depth 1 -o results/mastermind.txt
-```
-
-**5. Get Dungleon suggestions with previous guesses and solutions:**
-
-```bash
-./p++ dungleon --guesses "ar kn bo ne fr 00010" --solutions "vi zo ne sk bt" --max-depth 0 --exclude-impossible false -o results/dungleon.txt
-```
-
-**6. Start the interactive CLI mode:**
-
-```bash
-./p++ -i
-```
-
-**7. Read the first 10 results from a saved file:**
-
-```bash
-./p++ read results/wordle.txt --start 0 --end 10
+dungleon --guesses "ar kn bo ne fr 00010" --solutions "vi zo ne sk bt" --max-depth 0 --exclude-impossible false -o results/dungleon.txt
 ```
