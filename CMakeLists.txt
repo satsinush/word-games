@@ -15,6 +15,22 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 if(MSVC AND CMAKE_BUILD_TYPE STREQUAL "Debug")
     message(STATUS "MSVC AddressSanitizer (ASan) enabled.")
     add_compile_options(/fsanitize=address)
+    
+    # Copy ASan runtime DLL to output directory
+    if(MSVC_VERSION GREATER_EQUAL 1920)
+        find_file(ASAN_DLL_PATH
+            NAMES clang_rt.asan_dynamic-x86_64.dll
+            PATHS 
+                "$ENV{VCToolsInstallDir}/bin/Hostx64/x64"
+                "$ENV{VSINSTALLDIR}/VC/Tools/MSVC/*/bin/Hostx64/x64"
+            NO_DEFAULT_PATH
+        )
+        if(ASAN_DLL_PATH)
+            message(STATUS "Found ASan DLL: ${ASAN_DLL_PATH}")
+        else()
+            message(WARNING "ASan DLL not found. You may need to run from VS Developer Command Prompt.")
+        endif()
+    endif()
 endif()
 
 option(BUILD_GUI "Build the application with the Qt GUI" OFF)
@@ -172,6 +188,14 @@ if(BUILD_GUI)
                 COMMENT "Running windeployqt for debug build...")
         endif()
     endif()
+endif()
+
+# Copy ASan DLL to output directory for MSVC Debug builds
+if(MSVC AND CMAKE_BUILD_TYPE STREQUAL "Debug" AND ASAN_DLL_PATH)
+    add_custom_command(TARGET p++ POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different "${ASAN_DLL_PATH}" $<TARGET_FILE_DIR:p++>
+        COMMENT "Copying ASan runtime DLL to output directory..."
+    )
 endif()
 
 add_dependencies(p++ copy_resources)
