@@ -41,11 +41,49 @@ classDiagram
         +getGameName() string
     }
     
+    %% Utility Classes
+    class Utils {
+        <<namespace>>
+        +getExecutableDir() path
+        +getResourcePath() string
+        +getResourceFile(filename) string
+        +loadWords(filename, useCache, minScore) Word[]
+        +trim(str) string
+        +trimToLower(str) string
+    }
+    
+    class Word {
+        +wordString : string
+        +score : double
+        +is_scrabble : bool
+        +uniqueLetters : int
+        +letterCount : array~uint8_t~
+    }
+    
+    class InputUtils {
+        <<namespace>>
+        +promptInt(prompt, default, min, max) int
+        +promptBool(prompt, default) bool
+        +promptString(prompt, default, validator) string
+        +promptLetters(prompt, count, allowDuplicates) string
+        +parseCommandArgs(argc, argv) CommandArgs
+    }
+    
+    class CommandArgs {
+        +flags : map~string,string~
+        +positional : vector~string~
+    }
+    
+    class UserCancelledException {
+        <<exception>>
+    }
+    
     %% Base Entropy Solver
-    class EntSolver {
-        <<abstract>>
-        +calculateEntropy(pattern, possibleWords) double
-        +findBestGuess(possibleWords) Guess
+    class EntSolver~TGuess, TCandidate, TFeedback~ {
+        <<template>>
+        +calculateEntropy(guess, candidates) double
+        +findBestGuess(guessOptions, candidates) GuessScore
+        +filterCandidates(candidates, feedback) vector
     }
     
     %% Concrete Entropy-based Solvers
@@ -80,7 +118,66 @@ classDiagram
         +runSpellingBeeSolver(config) Word[]
     }
     
-    %% Relationships
+    %% GUI Classes
+    class MainWindow {
+        -ui : Ui::MainWindow*
+        -wordleWidget : WordleWidget*
+        -spellingBeeWidget : SpellingBeeWidget*
+        -letterBoxedWidget : LetterBoxedWidget*
+        -mastermindWidget : MastermindWidget*
+        -dungleonWidget : DungleonWidget*
+        +onWordleSelected()
+        +onSpellingBeeSelected()
+        +onLetterBoxedSelected()
+        +onMastermindSelected()
+        +onDungleonSelected()
+        +onMenuNewGame()
+        +onMenuAbout()
+    }
+    
+    class GameWidget {
+        <<abstract>>
+        #workerThread : QThread*
+        #progressDialog : QProgressDialog*
+        #isCancelled : atomic~bool~
+        +solve()
+        +resetInputs()
+        #startWorkerThread()
+        #stopWorkerThread()
+        #showProgressDialog(title, message)
+    }
+    
+    class WordleWidget {
+        +solve()
+        +resetInputs()
+        -displayResults(results)
+    }
+    
+    class SpellingBeeWidget {
+        +solve()
+        +resetInputs()
+        -displayResults(results)
+    }
+    
+    class LetterBoxedWidget {
+        +solve()
+        +resetInputs()
+        -displayResults(results)
+    }
+    
+    class MastermindWidget {
+        +solve()
+        +resetInputs()
+        -displayResults(results)
+    }
+    
+    class DungleonWidget {
+        +solve()
+        +resetInputs()
+        -displayResults(results)
+    }
+    
+    %% Relationships - Core Game Architecture
     IGame <|.. WordleGame : implements
     IGame <|.. MastermindGame : implements
     IGame <|.. DungleonGame : implements
@@ -96,3 +193,37 @@ classDiagram
     DungleonGame ..> DungleonSolver : uses
     LetterBoxedGame ..> LetterBoxedSolver : uses
     SpellingBeeGame ..> SpellingBeeSolver : uses
+    
+    %% Utility Relationships
+    Utils ..> Word : manages
+    InputUtils ..> CommandArgs : creates
+    InputUtils ..> UserCancelledException : throws
+    
+    IGame ..> CommandArgs : uses
+    IGame ..> Utils : uses
+    IGame ..> InputUtils : uses
+    
+    WordleSolver ..> Utils : uses
+    MastermindSolver ..> Utils : uses
+    DungleonSolver ..> Utils : uses
+    LetterBoxedSolver ..> Utils : uses
+    SpellingBeeSolver ..> Utils : uses
+    
+    %% GUI Relationships
+    MainWindow *-- WordleWidget : contains
+    MainWindow *-- SpellingBeeWidget : contains
+    MainWindow *-- LetterBoxedWidget : contains
+    MainWindow *-- MastermindWidget : contains
+    MainWindow *-- DungleonWidget : contains
+    
+    GameWidget <|-- WordleWidget : extends
+    GameWidget <|-- SpellingBeeWidget : extends
+    GameWidget <|-- LetterBoxedWidget : extends
+    GameWidget <|-- MastermindWidget : extends
+    GameWidget <|-- DungleonWidget : extends
+    
+    WordleWidget ..> WordleSolver : uses
+    SpellingBeeWidget ..> SpellingBeeSolver : uses
+    LetterBoxedWidget ..> LetterBoxedSolver : uses
+    MastermindWidget ..> MastermindSolver : uses
+    DungleonWidget ..> DungleonSolver : uses
