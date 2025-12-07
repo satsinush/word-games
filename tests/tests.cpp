@@ -230,7 +230,7 @@ TEST(SpellingBeeTest, SolverWithLetters) {
 
   // Parse letters into config
   for (size_t i = 0; i < lettersStr.length() && i < 7; ++i) {
-    config.allLetters[i] = lettersStr[i];
+    config.allLetters.push_back(lettersStr[i]);
   }
 
   // Set up valid letters map
@@ -263,7 +263,7 @@ TEST(SpellingBeeTest, SolverExcludeUncommon) {
   std::string lettersStr = "esrtano";
 
   for (size_t i = 0; i < lettersStr.length() && i < 7; ++i) {
-    config.allLetters[i] = lettersStr[i];
+    config.allLetters.push_back(lettersStr[i]);
   }
 
   for (char c : config.allLetters) {
@@ -290,7 +290,7 @@ TEST(SpellingBeeTest, CenterLetterRequired) {
   std::string lettersStr = "esrtano";
 
   for (size_t i = 0; i < lettersStr.length() && i < 7; ++i) {
-    config.allLetters[i] = lettersStr[i];
+    config.allLetters.push_back(lettersStr[i]);
   }
 
   for (char c : config.allLetters) {
@@ -324,7 +324,7 @@ TEST(SpellingBeeTest, MinimumWordLength) {
   std::string lettersStr = "esrtano";
 
   for (size_t i = 0; i < lettersStr.length() && i < 7; ++i) {
-    config.allLetters[i] = lettersStr[i];
+    config.allLetters.push_back(lettersStr[i]);
   }
 
   for (char c : config.allLetters) {
