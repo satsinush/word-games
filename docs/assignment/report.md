@@ -4,11 +4,13 @@
 
 **Student Name:** Andrew Needham
 
-**Course:** CSC 2210
+**Course:** Procedural & Object-Oriented C++ (CSC 2210)
+
+**Instructor:** Professor Chibuzo Ukegbu
 
 **Term:** Fall 2025
 
-**Date:** December 7, 2025
+**Date:** December 8, 2025
 
 ---
 
@@ -27,9 +29,16 @@ Puzzle++ is a C++ application solving five popular puzzles (Wordle, Spelling Bee
 - Multiple solver presets, word list filtering, output management
 - CMake build system with optional Qt dependency
 
-**Extra Features:** Windows installer, automatic resource management, batch processing, gauntlet mode, performance benchmarking
+**Added Features:** 
+- Windows installer for easy installation
+- Automatic resource management for memory safety
+- Batch processing to run multiple solvers at once with threads
+- Dungleon gauntlet mode as an additional solver
+- Performance benchmarking to test different configurations
 
 **Limitations:** Deep search (depth ≥2) extremely slow; word list quality affects results; memory-intensive for thorough settings; GUI requires Qt 6.0+
+
+**Challenges Faced:** Balancing performance vs. solution quality; managing dual interfaces; implementing generic entropy solver; ensuring cross-platform compatibility; debugging complex algorithms
 
 ---
 
