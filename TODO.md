@@ -1,12 +1,8 @@
 ## Tasks to do and future improvements
 - Fix debug heap corruption error and segmentation faults when using Tracy
   - Update Tracy to use proper thread handling
-- Update ENT solver to be more generic for use with Hangman, Waffle, and other games
-  - Guess type and candidate type need to be differentiated
-  - The only info needed for ENT solver should be guess options, and number of candidates remaining after each guess
 - Add support for more games
   - Waffle
-  - Hangman
   - Strands
 - Fix Windows installer to actually use icon and create start menu entries
   - Update license info in installer
