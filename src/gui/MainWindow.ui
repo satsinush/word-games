@@ -217,6 +217,22 @@ QLabel {
                  </property>
                 </widget>
              </item>
+             <item>
+                <widget class="QPushButton" name="btnHangman">
+                 <property name="minimumSize">
+                    <size>
+                     <width>0</width>
+                     <height>50</height>
+                    </size>
+                 </property>
+                 <property name="text">
+                    <string>🪢 Hangman</string>
+                 </property>
+                 <property name="checkable">
+                    <bool>true</bool>
+                 </property>
+                </widget>
+             </item>
        <item>
         <spacer name="verticalSpacer_bottom">
          <property name="orientation">

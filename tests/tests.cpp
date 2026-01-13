@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "dungleon/dungleon.hpp"
+#include "hangman/hangman.hpp"
 #include "letterBoxed/letterBoxed.hpp"
 #include "mastermind/mastermind.hpp"
 #include "spellingBee/spellingBee.hpp"
@@ -903,4 +904,252 @@ TEST(DungleonTest, PermutationsGenerateAndMatch) {
       }
     }
   }
+}
+
+// =============================================================================
+// HANGMAN TESTS
+// =============================================================================
+
+TEST(HangmanTest, ParsePatternString) {
+  std::vector<Hangman::WordPattern> patterns =
+      Hangman::parsePatternString("?A?? ??? ?????");
+
+  EXPECT_EQ(patterns.size(), 3);
+  EXPECT_EQ(patterns[0].pattern, "?a??");
+  EXPECT_EQ(patterns[0].length(), 4);
+  EXPECT_EQ(patterns[1].pattern, "???");
+  EXPECT_EQ(patterns[1].length(), 3);
+  EXPECT_EQ(patterns[2].pattern, "?????");
+  EXPECT_EQ(patterns[2].length(), 5);
+}
+
+TEST(HangmanTest, PatternToString) {
+  std::vector<Hangman::WordPattern> patterns =
+      Hangman::parsePatternString("?a?? ??? ?????");
+
+  std::string str = Hangman::patternsToString(patterns);
+  EXPECT_EQ(str, "?A?? ??? ?????");
+}
+
+TEST(HangmanTest, ParseFeedback) {
+  Hangman::Feedback fb1 = Hangman::parseFeedback("a 1");
+  EXPECT_EQ(fb1.letter, 'a');
+  EXPECT_TRUE(fb1.isInWord);
+
+  Hangman::Feedback fb2 = Hangman::parseFeedback("E 0");
+  EXPECT_EQ(fb2.letter, 'e');
+  EXPECT_FALSE(fb2.isInWord);
+}
+
+TEST(HangmanTest, ParseStrikes) {
+  std::vector<Hangman::Feedback> strikes = Hangman::parseStrikes("etxzq");
+  EXPECT_EQ(strikes.size(), 5);
+
+  // All strikes should be marked as NOT in word
+  for (const auto &fb : strikes) {
+    EXPECT_FALSE(fb.isInWord);
+    EXPECT_EQ(fb.occurrences, 0);
+  }
+
+  EXPECT_EQ(strikes[0].letter, 'e');
+  EXPECT_EQ(strikes[1].letter, 't');
+  EXPECT_EQ(strikes[2].letter, 'x');
+  EXPECT_EQ(strikes[3].letter, 'z');
+  EXPECT_EQ(strikes[4].letter, 'q');
+
+  // Test with uppercase
+  std::vector<Hangman::Feedback> strikes2 = Hangman::parseStrikes("ABC");
+  EXPECT_EQ(strikes2.size(), 3);
+  EXPECT_EQ(strikes2[0].letter, 'a');
+  EXPECT_EQ(strikes2[1].letter, 'b');
+  EXPECT_EQ(strikes2[2].letter, 'c');
+
+  // Test empty string
+  std::vector<Hangman::Feedback> strikes3 = Hangman::parseStrikes("");
+  EXPECT_EQ(strikes3.size(), 0);
+}
+
+TEST(HangmanTest, MatchesPattern) {
+  Utils::Word word = makeWord("tares");
+
+  Hangman::WordPattern pattern1;
+  pattern1.pattern = "?a???";
+  EXPECT_TRUE(Hangman::matchesPattern(word, pattern1));
+
+  Hangman::WordPattern pattern2;
+  pattern2.pattern = "?????";
+  EXPECT_TRUE(Hangman::matchesPattern(word, pattern2));
+
+  Hangman::WordPattern pattern3;
+  pattern3.pattern = "?b???";
+  EXPECT_FALSE(Hangman::matchesPattern(word, pattern3));
+
+  Hangman::WordPattern pattern4;
+  pattern4.pattern = "????";
+  EXPECT_FALSE(Hangman::matchesPattern(word, pattern4));
+}
+
+TEST(HangmanTest, MatchesFeedback) {
+  Hangman::PhraseSolution phrase;
+  phrase.words.push_back(makeWord("tares"));
+
+  Hangman::Feedback fb1;
+  fb1.letter = 't';
+  fb1.isInWord = true;
+  EXPECT_TRUE(Hangman::matchesFeedback(phrase, fb1));
+
+  Hangman::Feedback fb2;
+  fb2.letter = 'z';
+  fb2.isInWord = false;
+  EXPECT_TRUE(Hangman::matchesFeedback(phrase, fb2));
+
+  Hangman::Feedback fb3;
+  fb3.letter = 't';
+  fb3.isInWord = false;
+  EXPECT_FALSE(Hangman::matchesFeedback(phrase, fb3));
+}
+
+TEST(HangmanTest, GenerateFeedback) {
+  Hangman::PhraseSolution phrase;
+  phrase.words.push_back(makeWord("tares"));
+
+  Hangman::Feedback fb1 = Hangman::generateFeedback(phrase, 't');
+  EXPECT_EQ(fb1.letter, 't');
+  EXPECT_TRUE(fb1.isInWord);
+  EXPECT_EQ(fb1.occurrences, 1);
+
+  Hangman::Feedback fb2 = Hangman::generateFeedback(phrase, 'z');
+  EXPECT_EQ(fb2.letter, 'z');
+  EXPECT_FALSE(fb2.isInWord);
+  EXPECT_EQ(fb2.occurrences, 0);
+}
+
+TEST(HangmanTest, GetAllLetters) {
+  std::vector<char> letters = Hangman::getAllLetters();
+  EXPECT_EQ(letters.size(), 26);
+  EXPECT_EQ(letters[0], 'a');
+  EXPECT_EQ(letters[25], 'z');
+}
+
+TEST(HangmanTest, GetAvailableLetters) {
+  std::vector<Hangman::Feedback> history = Hangman::parseStrikes("ae");
+
+  std::vector<char> available = Hangman::getAvailableLetters(history);
+  EXPECT_EQ(available.size(), 24);
+
+  // 'a' and 'e' should not be in available
+  EXPECT_EQ(std::find(available.begin(), available.end(), 'a'),
+            available.end());
+  EXPECT_EQ(std::find(available.begin(), available.end(), 'e'),
+            available.end());
+  // 'b' should still be available
+  EXPECT_NE(std::find(available.begin(), available.end(), 'b'),
+            available.end());
+}
+
+TEST(HangmanTest, SolverWithPattern) {
+  // Load word list
+  std::vector<Utils::Word> words = loadTestWords();
+  ASSERT_FALSE(words.empty()) << "Failed to load word list";
+
+  Hangman::Config config;
+  config.maxDepth = 0;
+  config.wordPatterns = Hangman::parsePatternString("?????");
+
+  Hangman::Result result = Hangman::runHangmanSolver(config);
+
+  EXPECT_GT(result.sortedGuesses.size(), 0) << "Should have letter suggestions";
+  EXPECT_GT(result.totalPossibleWords, 0) << "Should have possible words";
+}
+
+TEST(HangmanTest, SolverWithRevealedLetters) {
+  std::vector<Utils::Word> words = loadTestWords();
+  ASSERT_FALSE(words.empty()) << "Failed to load word list";
+
+  Hangman::Config config;
+  config.maxDepth = 0;
+  config.wordPatterns = Hangman::parsePatternString("?a???");
+
+  Hangman::Result result = Hangman::runHangmanSolver(config);
+
+  // All possible words should have 'a' in position 2
+  for (const auto &word : result.possibleWords) {
+    EXPECT_EQ(word.wordString[1], 'a')
+        << "Word " << word.wordString << " should have 'a' at position 2";
+  }
+}
+
+TEST(HangmanTest, SolverWithFeedbackHistory) {
+  std::vector<Utils::Word> words = loadTestWords();
+  ASSERT_FALSE(words.empty()) << "Failed to load word list";
+
+  Hangman::Config config;
+  config.maxDepth = 0;
+  config.wordPatterns = Hangman::parsePatternString("?????");
+  // Add strikes - letters NOT in the word
+  config.feedbackHistory = Hangman::parseStrikes("zxq");
+
+  Hangman::Result result = Hangman::runHangmanSolver(config);
+
+  // All possible words should not contain 'z', 'x', or 'q'
+  for (const auto &word : result.possibleWords) {
+    EXPECT_EQ(word.letterCount['z' - 'a'], 0)
+        << "Word " << word.wordString << " should not contain 'z'";
+    EXPECT_EQ(word.letterCount['x' - 'a'], 0)
+        << "Word " << word.wordString << " should not contain 'x'";
+    EXPECT_EQ(word.letterCount['q' - 'a'], 0)
+        << "Word " << word.wordString << " should not contain 'q'";
+  }
+}
+
+TEST(HangmanTest, SolverNoPatterns) {
+  Hangman::Config config;
+  config.maxDepth = 0;
+  // No patterns - should return empty result
+
+  Hangman::Result result = Hangman::runHangmanSolver(config);
+
+  EXPECT_EQ(result.totalPossibleWords, 0);
+}
+
+TEST(HangmanTest, WordPatternRevealedLetters) {
+  Hangman::WordPattern pattern;
+  pattern.pattern = "?a?e?";
+
+  auto revealed = pattern.getRevealedLetters();
+  EXPECT_EQ(revealed.size(), 2);
+  EXPECT_EQ(revealed[0].first, 1);    // position
+  EXPECT_EQ(revealed[0].second, 'a'); // letter
+  EXPECT_EQ(revealed[1].first, 3);    // position
+  EXPECT_EQ(revealed[1].second, 'e'); // letter
+}
+
+TEST(HangmanTest, PhraseSolutionToString) {
+  Hangman::PhraseSolution phrase;
+  phrase.words.push_back(makeWord("hello"));
+  phrase.words.push_back(makeWord("world"));
+
+  EXPECT_EQ(phrase.toString(), "hello world");
+}
+
+TEST(HangmanTest, FeedbackEquality) {
+  // Test using parseStrikes (all letters NOT in word)
+  std::vector<Hangman::Feedback> strikes = Hangman::parseStrikes("ab");
+  EXPECT_EQ(strikes[0].letter, 'a');
+  EXPECT_EQ(strikes[1].letter, 'b');
+  EXPECT_FALSE(strikes[0].isInWord);
+  EXPECT_FALSE(strikes[1].isInWord);
+
+  // Test equality
+  Hangman::Feedback fb1 = Hangman::parseFeedback("a 0");
+  Hangman::Feedback fb2 = Hangman::parseFeedback("a 0");
+  Hangman::Feedback fb3 = Hangman::parseFeedback("a 1");
+  Hangman::Feedback fb4 = Hangman::parseFeedback("b 0");
+
+  EXPECT_EQ(fb1, fb2);
+  EXPECT_FALSE(fb1 == fb3);
+  EXPECT_FALSE(fb1 == fb4);
+
+  // Strike should equal parseFeedback with 0
+  EXPECT_EQ(strikes[0], fb1);
 }

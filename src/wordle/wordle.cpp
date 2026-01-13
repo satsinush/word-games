@@ -168,14 +168,16 @@ runWordleSolver(const std::vector<Utils::Word> &words,
 }
 
 // Wordle-specific ENT solver implementation
+// Uses AbstractEntSolverSameType since guess and solution types are both
+// Utils::Word
 class WordleEntSolver
-    : public Utils::AbstractEntSolver<Utils::Word, Feedback, Config, WordGuess,
-                                      Result> {
+    : public Utils::AbstractEntSolverSameType<Utils::Word, Feedback, Config,
+                                              WordGuess, Result> {
 public:
   // Forwarding constructor: initialize base class with given config
   WordleEntSolver(const Config &cfg)
-      : Utils::AbstractEntSolver<Utils::Word, Feedback, Config, WordGuess,
-                                 Result>(cfg) {}
+      : Utils::AbstractEntSolverSameType<Utils::Word, Feedback, Config,
+                                         WordGuess, Result>(cfg) {}
 
 protected:
   bool matchesFeedback(const Utils::Word &candidate,

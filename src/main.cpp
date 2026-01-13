@@ -1,8 +1,10 @@
 #define NOMINMAX
 
 #include <algorithm>
+#include <cstring>
 #include <fstream>
 #include <iostream>
+#include <limits>
 #include <map>
 #include <memory>
 #include <string>
@@ -17,6 +19,7 @@
 #include "utils/utils.hpp"
 
 #include "dungleon/DungleonGame.hpp"
+#include "hangman/HangmanGame.hpp"
 #include "wordle/WordleGame.hpp"
 
 #ifdef WITH_GUI
@@ -54,6 +57,7 @@ Modes:
   wordle                 Solve Wordle puzzles with entropy-based suggestions
   mastermind             Solve Mastermind puzzles with entropy-based suggestions
   dungleon               Solve Dungleon puzzles with entropy-based suggestions
+  hangman                Solve Hangman puzzles with entropy-based letter suggestions
   read                   Read and display results from a file
 
 Letter Boxed:
@@ -108,6 +112,18 @@ Dungleon:
     -o, --output <file>        Output file with possible patterns and all guesses
                                  (default: results/dungleon.txt)
 
+Hangman:
+  %s hangman [OPTIONS]
+    --input <pattern;strikes>  Combined input. Format: "?A?? ???;xyz"
+                                 Pattern uses '?' for unknown, letters for revealed
+                                 Strikes are letters NOT in the phrase
+    --pattern <pattern>        Word pattern(s). Format: "?A?? ???" (alternative to --input)
+    --strikes <letters>        Letters NOT in phrase. Format: "xyz" (alternative to --input)
+    --max-depth <0-2>          Search depth for entropy (default: 0, range: 0-2)
+    --exclude-uncommon-words   Exclude uncommon words (1/true/yes or 0/false/no, default: 0)
+    -o, --output <file>        Output file with letter rankings and possible words
+                                 (default: results/hangman.txt)
+
 Read Mode:
   %s read [FILE] [OPTIONS]
     FILE                       Input file to read (default: results/temp.txt)
@@ -124,13 +140,15 @@ Examples:
   %s wordle --guesses "STEAL 01201;CRANE 00120" --word-length 5 --max-depth 1
   %s mastermind --guesses "RGBC 1 2" --pegs 4 --colors "RGBCMY" --max-depth 1
   %s dungleon --guesses "ar kn bo ne fr 00010" --max-depth 1
+  %s hangman --input "?A?? ???;xyz"
   %s -i
   %s read results/wordle.txt --start 0 --end 10
 )";
 
   printf(usage_message, programName, programName, programName, programName,
          programName, programName, programName, programName, programName,
-         programName, programName, programName, programName, programName);
+         programName, programName, programName, programName, programName,
+         programName, programName);
 }
 
 void runReadMode(const std::map<std::string, std::string> &args,
@@ -189,6 +207,8 @@ std::unique_ptr<Game::IGame> createGame(const std::string &mode) {
     return std::make_unique<Game::MastermindGame>();
   else if (mode == "dungleon")
     return std::make_unique<Game::DungleonGame>();
+  else if (mode == "hangman")
+    return std::make_unique<Game::HangmanGame>();
   else
     return nullptr;
 }
@@ -201,7 +221,8 @@ void runInteractiveMode() {
     std::cout << "  3: Wordle\n";
     std::cout << "  4: Mastermind\n";
     std::cout << "  5: Dungleon\n";
-    std::cout << "  6: Read Results File\n";
+    std::cout << "  6: Hangman\n";
+    std::cout << "  7: Read Results File\n";
     std::cout << "  q: Quit\n";
     std::cout << "Enter choice: ";
 
@@ -220,7 +241,7 @@ void runInteractiveMode() {
     if (input == "q")
       return;
 
-    if (input == "6") {
+    if (input == "7") {
       // Interactive read mode
       std::string filename = Utils::Input::promptString(
           "Enter filename to read", "results/temp.txt");
@@ -253,6 +274,8 @@ void runInteractiveMode() {
       game = createGame("mastermind");
     else if (input == "5")
       game = createGame("dungleon");
+    else if (input == "6")
+      game = createGame("hangman");
     else {
       std::cout << "Invalid choice. Please try again.\n";
       continue;
@@ -349,32 +372,55 @@ int run(int argc, char *argv[]) {
 
 int main(int argc, char *argv[]) {
 #if defined(WITH_GUI) && defined(_WIN32)
-  // For Windows GUI applications, attach to parent console if available
+  // For Windows GUI applications, handle console attachment
   bool needsConsole = (argc > 1); // Has command line arguments
   bool attachedToConsole = false;
+  bool allocatedConsole = false;
+
+  // Check if interactive mode is requested - needs its own console window
+  bool isInteractiveMode = false;
+  for (int i = 1; i < argc; ++i) {
+    if (strcmp(argv[i], "-i") == 0) {
+      isInteractiveMode = true;
+      break;
+    }
+  }
 
   if (needsConsole) {
-    // Try to attach to parent console (if launched from cmd/powershell)
-    if (AttachConsole(ATTACH_PARENT_PROCESS)) {
-      // Successfully attached to parent console
-      freopen_s((FILE **)stdout, "CONOUT$", "w", stdout);
-      freopen_s((FILE **)stderr, "CONOUT$", "w", stderr);
-      freopen_s((FILE **)stdin, "CONIN$", "r", stdin);
-      attachedToConsole = true;
+    if (isInteractiveMode) {
+      // Interactive mode needs its own console window because the parent shell
+      // won't wait for a GUI application to finish
+      if (AllocConsole()) {
+        freopen_s((FILE **)stdout, "CONOUT$", "w", stdout);
+        freopen_s((FILE **)stderr, "CONOUT$", "w", stderr);
+        freopen_s((FILE **)stdin, "CONIN$", "r", stdin);
+        allocatedConsole = true;
 
-      // Print a newline to separate from the command that launched us
-      std::cout << std::endl;
+        // Set console title
+        SetConsoleTitleA("Puzzle++ Interactive Mode");
+      }
+    } else {
+      // Non-interactive commands: attach to parent console for output
+      if (AttachConsole(ATTACH_PARENT_PROCESS)) {
+        freopen_s((FILE **)stdout, "CONOUT$", "w", stdout);
+        freopen_s((FILE **)stderr, "CONOUT$", "w", stderr);
+        freopen_s((FILE **)stdin, "CONIN$", "r", stdin);
+        attachedToConsole = true;
+
+        // Print a newline to separate from the command that launched us
+        std::cout << std::endl;
+      }
     }
-    // If AttachConsole fails, we're likely launched from GUI (file explorer,
-    // etc.) In that case, we just won't have console output, which is fine for
-    // GUI apps
+    // If both fail, we're likely launched from GUI (file explorer, etc.)
+    // In that case, we just won't have console output, which is fine for GUI
+    // apps
   }
 #endif
 
 #ifdef TRACY_ENABLE
   ZoneScoped;
 #if defined(WITH_GUI) && defined(_WIN32)
-  if (attachedToConsole)
+  if (attachedToConsole || allocatedConsole)
 #endif
     std::cout << "Tracy Profiler enabled." << std::endl;
 #endif
@@ -386,10 +432,15 @@ int main(int argc, char *argv[]) {
 #endif
 
 #if defined(WITH_GUI) && defined(_WIN32)
-  // Clean up console if we attached to it
+  // Clean up console
   if (attachedToConsole) {
     // Print a newline before returning control to parent console
     std::cout << std::endl;
+    FreeConsole();
+  } else if (allocatedConsole) {
+    // For allocated console, wait for user before closing
+    std::cout << "\nPress Enter to close..." << std::endl;
+    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
     FreeConsole();
   }
 #endif

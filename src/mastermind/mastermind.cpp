@@ -232,14 +232,16 @@ std::vector<Pattern> generateAllPatterns(const Config &config) {
 }
 
 // Mastermind-specific ENT solver implementation
+// Uses AbstractEntSolverSameType since guess and solution types are both
+// Pattern
 class MastermindEntSolver
-    : public Utils::AbstractEntSolver<Pattern, Feedback, Config, PatternGuess,
-                                      Result> {
+    : public Utils::AbstractEntSolverSameType<Pattern, Feedback, Config,
+                                              PatternGuess, Result> {
 public:
   // Forwarding constructor: initialize base class with given config
   MastermindEntSolver(const Config &cfg)
-      : Utils::AbstractEntSolver<Pattern, Feedback, Config, PatternGuess,
-                                 Result>(cfg) {}
+      : Utils::AbstractEntSolverSameType<Pattern, Feedback, Config,
+                                         PatternGuess, Result>(cfg) {}
 
 protected:
   bool matchesFeedback(const Pattern &candidate,

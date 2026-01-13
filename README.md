@@ -8,7 +8,7 @@ A comprehensive C++ application that solves multiple popular word puzzles and ga
 
 ## Features
 
-* **Multiple Game Solvers**: Letter Boxed, Spelling Bee, Wordle, Mastermind, and Dungleon
+* **Multiple Game Solvers**: Letter Boxed, Spelling Bee, Wordle, Mastermind, Hangman, and Dungleon
 * **Dual Interface**: Qt-based GUI and full-featured command-line interface
 * **Interactive & Automated Modes**: User-guided solving or scriptable batch processing
 * **Entropy-Based Suggestions**: Advanced algorithms for optimal move recommendations
@@ -107,6 +107,9 @@ If using the CLI, run the executable directly:
 
 # Mastermind solver assistance
 ./p++ mastermind --guesses "RGBC 1 2" --pegs 4 --colors "RGBCMY"
+
+# Hangman letter suggestions
+./p++ hangman --input "?A??? ???;etz"
 ```
 
 ## Complete Documentation

@@ -73,6 +73,23 @@ The program can be launched in three ways:
           * **Colors (White Pegs):** Correct color, wrong place.
       * Click **Solve** to calculate the best next move based on entropy.
 
+## Hangman
+
+1.  **Configuration (⚙️):**
+      * **Search Depth:** `0` (Fast), `1` (Balanced), `2+` (High Accuracy).
+      * **Exclude Uncommon:** Filter non-Scrabble words from suggestions.
+2.  **Playing:**
+      * Enter the word pattern using `?` for unknown letters and actual letters for revealed positions.
+      * For multi-word phrases, separate patterns with spaces (e.g., `?A?? ??? ?????`).
+      * Add guessed letters and mark whether they appear in the word (✓) or not (✗).
+      * Click **Solve** to get the best letter suggestions.
+3.  **Results Table:**
+      * **Letter:** The suggested letter to guess next.
+      * **ENT (Entropy):** Expected turns remaining. Lower is better.
+      * **In Word %:** Probability that the letter appears in the word.
+4.  **Possible Words:**
+      * Shows sample words that match the current pattern and feedback constraints.
+
 ## Dungleon
 
 ![Dungleon screenshot](./screenshots/dungleon.png)
@@ -201,7 +218,31 @@ Generates entropy-based suggestions for Mastermind.
   * `--max-depth <0-2>`: Search depth for entropy. (Default: `1`).
   * `-o`, `--output <file>`: Output file path. (Default: `results/guesses.txt`).
 
-### 5\. Dungleon
+### 5\. Hangman
+
+Generates entropy-based letter suggestions for Hangman puzzles.
+
+**Syntax:**
+
+```bash
+./p++ hangman [OPTIONS]
+```
+
+**Options:**
+
+  * `--input <string>`: Combined pattern and strikes in format `"PATTERN;STRIKES"`.
+      * **Format:** `"?A?? ???;xyz"` where pattern is before `;` and strikes (letters NOT in phrase) are after.
+      * **Example:** `"?A?? ???;etxzq"` (two words with 'A' revealed, and letters e, t, x, z, q are not in the phrase).
+  * `--pattern <string>`: Word pattern(s) using `?` for unknown letters and actual letters for revealed positions (alternative to `--input`).
+      * **Single word:** `"?A???"` (5-letter word with 'A' in position 2).
+      * **Multi-word phrase:** `"???? ??? ?????"` (three words of lengths 4, 3, and 5).
+  * `--strikes <string>`: Letters that are NOT in the word/phrase (alternative to `--input`).
+      * **Example:** `"etxzq"` (letters e, t, x, z, q have been guessed and are not in the word).
+  * `--max-depth <0-2>`: Search depth for entropy calculation. (Default: `0`).
+  * `--exclude-uncommon-words <bool>`: Limit search to common words. (Default: `false`).
+  * `-o`, `--output <file>`: Output file path. (Default: `results/hangman.txt`).
+
+### 6\. Dungleon
 
 Generates entropy-based suggestions for Dungleon.
 
@@ -222,7 +263,7 @@ Generates entropy-based suggestions for Dungleon.
   * `--exclude-impossible <bool>`: Exclude impossible patterns. (Default: `false`).
   * `-o`, `--output <file>`: Output file path. (Default: `results/dungleon.txt`).
 
-### 6\. Read Mode
+### 7\. Read Mode
 
 Reads and displays results from a generated file.
 
@@ -279,6 +320,12 @@ letterboxed --letters uvjswitgebac --preset 0 --max-depth 3 --min-word-length 4 
 
 ```bash
 mastermind --guesses "RGBC 1 2;MYRC 1 2" --pegs 4 --colors "RGBCMY" --allow-duplicates true --max-depth 1 -o results/mastermind.txt
+```
+
+**Hangman:**
+
+```bash
+hangman --input "?A??? ???;etz" --max-depth 1 --exclude-uncommon-words true -o results/hangman.txt
 ```
 
 **Dungleon:**

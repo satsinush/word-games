@@ -2,6 +2,8 @@
 
 #include "dungleon/DungleonGame.hpp"
 #include "dungleon/dungleon.hpp"
+#include "hangman/HangmanGame.hpp"
+#include "hangman/hangman.hpp"
 #include "letterBoxed/LetterBoxedGame.hpp"
 #include "letterBoxed/letterBoxed.hpp"
 #include "mastermind/MastermindGame.hpp"
@@ -47,6 +49,7 @@ static void BM_SpellingBee_Runtime(benchmark::State &state) {
   SpellingBee::Config config;
   // Use test letters: N H M K A C E
   std::string testLetters = "nhmkace";
+  config.allLetters.resize(7);
   for (int i = 0; i < 7; ++i) {
     config.allLetters[i] = testLetters[i];
     config.validLettersMap[static_cast<unsigned char>(testLetters[i])] = true;
@@ -150,6 +153,47 @@ static void BM_Dungleon_Runtime(benchmark::State &state) {
   }
 }
 BENCHMARK(BM_Dungleon_Runtime);
+
+// ============================================================================
+// Hangman Benchmarks
+// ============================================================================
+
+static void BM_Hangman_Runtime(benchmark::State &state) {
+  Hangman::Config config;
+  config.maxDepth = 1;
+  config.excludeUncommonWords = true;
+
+  // Set up a 5-letter word pattern with one revealed letter
+  config.wordPatterns = Hangman::parsePatternString("?a???");
+
+  // Add strikes (letters NOT in the word)
+  config.feedbackHistory = Hangman::parseStrikes("xyz");
+
+  Utils::loadWords(); // Preload words
+
+  for (auto _ : state) {
+    Hangman::Result result = Hangman::runHangmanSolver(config);
+    benchmark::DoNotOptimize(result);
+  }
+}
+BENCHMARK(BM_Hangman_Runtime);
+
+static void BM_Hangman_MultiWord_Runtime(benchmark::State &state) {
+  Hangman::Config config;
+  config.maxDepth = 0;
+  config.excludeUncommonWords = true;
+
+  // Set up a multi-word phrase pattern
+  config.wordPatterns = Hangman::parsePatternString("???? ??? ?????");
+
+  Utils::loadWords(); // Preload words
+
+  for (auto _ : state) {
+    Hangman::Result result = Hangman::runHangmanSolver(config);
+    benchmark::DoNotOptimize(result);
+  }
+}
+BENCHMARK(BM_Hangman_MultiWord_Runtime);
 
 // Run the benchmarks
 BENCHMARK_MAIN();

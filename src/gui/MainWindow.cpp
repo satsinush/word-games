@@ -2,6 +2,7 @@
 
 #include "gui/MainWindow.hpp"
 #include "gui/DungleonWidget.hpp"
+#include "gui/HangmanWidget.hpp"
 #include "gui/LetterBoxedWidget.hpp"
 #include "gui/MastermindWidget.hpp"
 #include "gui/SpellingBeeWidget.hpp"
@@ -24,6 +25,7 @@ MainWindow::MainWindow(QWidget *parent)
   sidebarButtonGroup->addButton(ui->btnLetterBoxed, 2);
   sidebarButtonGroup->addButton(ui->btnMastermind, 3);
   sidebarButtonGroup->addButton(ui->btnDungleon, 4);
+  sidebarButtonGroup->addButton(ui->btnHangman, 5);
   sidebarButtonGroup->setExclusive(true);
 
   // Create and add game widgets to the stacked widget
@@ -32,12 +34,14 @@ MainWindow::MainWindow(QWidget *parent)
   letterBoxedWidget = new LetterBoxedWidget(this);
   mastermindWidget = new MastermindWidget(this);
   dungleonWidget = new DungleonWidget(this);
+  hangmanWidget = new HangmanWidget(this);
 
   ui->stackedWidget->addWidget(wordleWidget);      // index 0
   ui->stackedWidget->addWidget(spellingBeeWidget); // index 1
   ui->stackedWidget->addWidget(letterBoxedWidget); // index 2
   ui->stackedWidget->addWidget(mastermindWidget);  // index 3
   ui->stackedWidget->addWidget(dungleonWidget);    // index 4
+  ui->stackedWidget->addWidget(hangmanWidget);     // index 5
 
   // Set initial page to Wordle
   ui->stackedWidget->setCurrentIndex(0);
@@ -61,6 +65,8 @@ void MainWindow::setupConnections() {
           &MainWindow::onMastermindSelected);
   connect(ui->btnDungleon, &QPushButton::clicked, this,
           &MainWindow::onDungleonSelected);
+  connect(ui->btnHangman, &QPushButton::clicked, this,
+          &MainWindow::onHangmanSelected);
 
   // Menu action connections
   connect(ui->actionNew_Game, &QAction::triggered, this,
@@ -89,6 +95,8 @@ void MainWindow::onMastermindSelected() { switchToPage(3); }
 
 void MainWindow::onDungleonSelected() { switchToPage(4); }
 
+void MainWindow::onHangmanSelected() { switchToPage(5); }
+
 // Menu action slot implementations
 void MainWindow::onMenuNewGame() {
   // Get the current widget and call its newGame() slot
@@ -110,6 +118,9 @@ void MainWindow::onMenuNewGame() {
   case 4:
     dungleonWidget->newGame();
     break;
+  case 5:
+    hangmanWidget->newGame();
+    break;
   }
 }
 
@@ -125,6 +136,7 @@ void MainWindow::onMenuAbout() {
       "<li><b>Spelling Bee:</b> Find words using given letters</li>"
       "<li><b>Letter Boxed:</b> Create word chains to use all letters</li>"
       "<li><b>Mastermind:</b> Code-breaking pattern solver</li>"
+      "<li><b>Hangman:</b> Optimal letter guessing strategy</li>"
       "</ul>"
       "<p>Built with Qt 6 and C++17</p>");
 }
