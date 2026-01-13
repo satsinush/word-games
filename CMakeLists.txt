@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.16)
 project(p++ LANGUAGES CXX)
 
 # Define project version
-set(p++_VERSION "1.0.0")
+set(p++_VERSION "1.1.0")
 
 # ===================================================================
 # 1. PROJECT-WIDE SETTINGS
@@ -261,7 +261,7 @@ endmacro()
 set(CPACK_GENERATOR "NSIS")
 set(CPACK_PACKAGE_NAME "Puzzle++")
 set(CPACK_PACKAGE_VENDOR "Puzzle++ Team")
-set(CPACK_PACKAGE_CONTACT "Puzzle++ Support")
+set(CPACK_PACKAGE_CONTACT "Puzzle++ Team")
 set(CPACK_PACKAGE_VERSION "${p++_VERSION}")
 set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Advanced word game and puzzle solver")
 set(CPACK_PACKAGE_INSTALL_DIRECTORY "Puzzle++")
