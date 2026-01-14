@@ -1,4 +1,5 @@
 #pragma once
+#include <climits>
 #include <functional>
 #include <map>
 #include <stdexcept>
