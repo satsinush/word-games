@@ -208,8 +208,8 @@ protected:
   }
 
   double worstCaseExpectedTurns(size_t numCandidates) const override {
-    return std::log(static_cast<double>(numCandidates)) /
-           std::log(config.wordLength);
+    double base = std::max(2.0, static_cast<double>(config.wordLength));
+    return std::log(static_cast<double>(numCandidates)) / std::log(base);
   }
 };
 
