@@ -285,6 +285,19 @@ protected:
     return false; // Individual letters don't solve hangman
   }
 
+  // Check if a letter appears in ANY of the slot solutions
+  // Used to determine if guessing this letter reveals information
+  bool isGuessInAnySolution(
+      const char &letter,
+      const std::vector<WordSlotSolution> &solutions) const override {
+    for (const auto &slot : solutions) {
+      if (slot.word.letterCount[letter - 'a'] > 0) {
+        return true; // Letter appears in at least one word
+      }
+    }
+    return false;
+  }
+
   double getSolutionScore(const WordSlotSolution &solution) const override {
     return solution.word.score;
   }

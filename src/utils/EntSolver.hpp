@@ -267,13 +267,16 @@ private:
       // No solutions left (should not happen in normal play)
       return 0.0;
     } else if (isSolvedState(currentSolutions)) {
-      // Already in solved state - check if guess directly solves
+      // Already in solved state - check if guess directly solves/reveals
       // For single-solution games, this checks if guess matches the solution
       if (currentSolutions.size() == 1) {
         return isGuessSolution(guessInput, currentSolutions[0]) ? 0.0 : 1.0;
       }
-      // For multi-slot games (e.g., hangman), already solved
-      return 0.0;
+      // Multi-slot solved state (e.g., hangman with multiple words):
+      // Check if this guess reveals any letters (is in any remaining word)
+      // If yes: 0 turns (reveals info, already solved)
+      // If no: 1 turn (a wasted strike)
+      return isGuessInAnySolution(guessInput, currentSolutions) ? 0.0 : 1.0;
     }
 
     // Calculate total score for normalization
@@ -317,6 +320,21 @@ private:
     (void)guess;
     (void)solution;
     return false; // Override in derived classes
+  }
+
+  // Check if a guess appears in ANY of the given solutions.
+  // Used for multi-slot games (e.g., hangman) to determine if a letter
+  // reveals information. Default: returns false, override in derived classes.
+  virtual bool
+  isGuessInAnySolution(const TGuessInputType &guess,
+                       const std::vector<TSolutionType> &solutions) const {
+    // Default: check each solution using isGuessSolution
+    for (const auto &sol : solutions) {
+      if (isGuessSolution(guess, sol)) {
+        return true;
+      }
+    }
+    return false;
   }
 
   // Get the score for a solution (used for probability weighting)
