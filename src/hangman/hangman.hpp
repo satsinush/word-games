@@ -63,6 +63,24 @@ struct PhraseSolution {
   }
 };
 
+// Represents a word in a specific slot/position for the solver
+// This allows us to track possibilities per word position without combinatorial
+// explosion
+struct WordSlotSolution {
+  size_t slotIndex;   // Which word position (0, 1, 2, ...)
+  Utils::Word word;   // The word candidate
+  double score = 1.0; // Word score for probability weighting
+
+  bool operator==(const WordSlotSolution &other) const {
+    return slotIndex == other.slotIndex &&
+           word.wordString == other.word.wordString;
+  }
+
+  std::string toString() const {
+    return "[" + std::to_string(slotIndex) + "]:" + word.wordString;
+  }
+};
+
 struct Config {
   uint8_t maxDepth = 1; // How many moves ahead to calculate ENT
   bool excludeUncommonWords = false;
@@ -173,6 +191,14 @@ template <> struct hash<Hangman::PhraseSolution> {
               (hash << 6) + (hash >> 2);
     }
     return hash;
+  }
+};
+
+template <> struct hash<Hangman::WordSlotSolution> {
+  size_t operator()(const Hangman::WordSlotSolution &slot) const noexcept {
+    size_t h1 = std::hash<size_t>{}(slot.slotIndex);
+    size_t h2 = std::hash<std::string>{}(slot.word.wordString);
+    return h1 ^ (h2 << 1);
   }
 };
 } // namespace std

@@ -66,6 +66,15 @@ protected:
     return std::log2(static_cast<double>(numCandidates));
   }
 
+  // Check if the current set of solutions represents a "solved" state.
+  // Default: solved when 1 or fewer solutions remain.
+  // Override for games like multi-word Hangman where "solved" means
+  // one solution per word slot (e.g., 5 solutions for 5 words).
+  virtual bool
+  isSolvedState(const std::vector<TSolutionType> &currentSolutions) const {
+    return currentSolutions.size() <= 1;
+  }
+
 public:
   /**
    * Main solver function that returns the final result type directly
@@ -213,8 +222,8 @@ private:
 #ifdef TRACY_ENABLE
     ZoneScoped;
 #endif
-    // Base Case: If only one solution left, it has already been found
-    if (currentSolutions.size() <= 1)
+    // Base Case: Check if we've reached a solved state
+    if (isSolvedState(currentSolutions))
       return 0.0;
 
     // Depth limit reached - return pessimistic estimate
@@ -254,12 +263,17 @@ private:
 #endif
 
     // Base Cases
-    if (currentSolutions.size() <= 0) {
+    if (currentSolutions.empty()) {
       // No solutions left (should not happen in normal play)
       return 0.0;
-    } else if (currentSolutions.size() == 1) {
-      // Only one solution left - check if guess solves it
-      return isGuessSolution(guessInput, currentSolutions[0]) ? 0.0 : 1.0;
+    } else if (isSolvedState(currentSolutions)) {
+      // Already in solved state - check if guess directly solves
+      // For single-solution games, this checks if guess matches the solution
+      if (currentSolutions.size() == 1) {
+        return isGuessSolution(guessInput, currentSolutions[0]) ? 0.0 : 1.0;
+      }
+      // For multi-slot games (e.g., hangman), already solved
+      return 0.0;
     }
 
     // Calculate total score for normalization
