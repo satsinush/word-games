@@ -113,21 +113,17 @@ void HangmanWidget::setupInputs() {
 void HangmanWidget::rebuildFeedbackFromInputs() {
   config.feedbackHistory.clear();
 
-  // Collect all revealed letters from patterns (these are IN the word)
+  // Collect all revealed letters from patterns for display purposes only
+  // NOTE: We do NOT add revealed letters to feedbackHistory because:
+  // 1. Pattern matching already handles revealed letters via matchesPattern()
+  // 2. Adding them as "isInWord=true" feedback would incorrectly require
+  //    EVERY word to contain ALL revealed letters (e.g., "AIR FLYIN?" would
+  //    fail because "AIR" doesn't contain F, L, Y, N from the second word)
   std::unordered_set<char> revealedLetters;
   for (const auto &pattern : config.wordPatterns) {
     for (const auto &[pos, letter] : pattern.getRevealedLetters()) {
       revealedLetters.insert(letter);
     }
-  }
-
-  // Add feedback for revealed letters (they are in the word)
-  for (char letter : revealedLetters) {
-    Hangman::Feedback fb;
-    fb.letter = letter;
-    fb.isInWord = true;
-    fb.occurrences = 1;
-    config.feedbackHistory.push_back(fb);
   }
 
   // Add feedback for excluded letters (they are NOT in the word)
@@ -468,14 +464,6 @@ void HangmanWidget::onSolverFinished() {
     QMessageBox::information(this, "No Matches",
                              "No words match the given constraints.");
     return;
-  }
-
-  if (lastResult.totalPossibleWords == 1) {
-    QString word =
-        QString::fromStdString(lastResult.possibleWords[0].wordString)
-            .toUpper();
-    QMessageBox::information(this, "Solved!",
-                             QString("The answer is: %1").arg(word));
   }
 
   populateResults();
