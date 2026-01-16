@@ -234,6 +234,9 @@ std::vector<Pattern> generateAllPatterns(const Config &config) {
 // Mastermind-specific ENT solver implementation
 // Uses AbstractEntSolverSameType since guess and solution types are both
 // Pattern
+// Mastermind-specific ENT solver implementation
+// Uses AbstractEntSolverSameType since guess and solution types are both
+// Pattern
 class MastermindEntSolver
     : public Utils::AbstractEntSolverSameType<Pattern, Feedback, Config,
                                               PatternGuess, Result> {
@@ -254,12 +257,11 @@ protected:
     return Mastermind::generateFeedback(target, guess);
   }
 
-  PatternGuess createGuess(const Pattern &candidate, double ent,
-                           double probability) const override {
+  PatternGuess createGuess(const Pattern &candidate, double ent) const override {
     PatternGuess guess;
     guess.pattern = candidate;
     guess.ent = ent;
-    guess.probability = probability;
+    // guess.probability = probability; // Removed
     return guess;
   }
 
@@ -287,8 +289,11 @@ Result runMastermindSolver(const Config &config, std::atomic<bool> *cancel) {
   // Generate all possible patterns for the given configuration
   std::vector<Pattern> allPatterns = Mastermind::generateAllPatterns(config);
 
+  // Create CandidateSet from the patterns
+  Utils::ConcreteCandidateSet<Pattern> initialCandidates(allPatterns);
+
   // Use the specialized Mastermind ENT solver - returns Result directly!
   MastermindEntSolver solver(config);
-  return solver.solve(allPatterns, allPatterns, cancel);
+  return solver.solve(allPatterns, initialCandidates, cancel);
 }
 } // namespace Mastermind

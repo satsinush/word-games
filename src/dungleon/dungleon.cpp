@@ -457,8 +457,7 @@ std::vector<Pattern> generateAllPossiblePatterns(const Config &config) {
 }
 
 // Dungleon-specific ENT solver implementation
-// Uses AbstractEntSolverSameType since guess and solution types are both
-// Pattern
+// Uses AbstractEntSolverSameType since guess and solution types are both Pattern
 class DungleonEntSolver
     : public Utils::AbstractEntSolverSameType<Pattern, Feedback, Config,
                                               PatternGuess, Result> {
@@ -479,12 +478,11 @@ protected:
     return Dungleon::generateFeedback(target, guess);
   }
 
-  PatternGuess createGuess(const Pattern &candidate, double ent,
-                           double probability) const override {
+  PatternGuess createGuess(const Pattern &candidate, double ent) const override {
     PatternGuess guess;
     guess.pattern = candidate;
     guess.ent = ent;
-    guess.probability = probability;
+    // guess.probability = probability; // Removed
     return guess;
   }
 
@@ -524,8 +522,11 @@ Result runDungleonSolver(const Config &_config, std::atomic<bool> *cancel) {
                                          : generateAllPatterns();
   std::vector<Pattern> possiblePatterns = generateAllPossiblePatterns(config);
 
+  // Create CandidateSet from the possible patterns
+  Utils::ConcreteCandidateSet<Pattern> initialCandidates(possiblePatterns);
+
   // Use the specialized Dungleon ENT solver - returns Result directly!
   DungleonEntSolver solver(config);
-  return solver.solve(allPatterns, possiblePatterns, cancel);
+  return solver.solve(allPatterns, initialCandidates, cancel);
 }
 } // namespace Dungleon

@@ -19,22 +19,10 @@ namespace Utils {
 /**
  * Abstract base class for ENT-based puzzle solvers.
  * Implements the generic Expected Number of Turns calculation algorithm.
- * Template parameters:
- * - TSolutionType: The type representing a candidate solution (e.g., Word,
- * Pattern)
- * - TGuessInputType: The type representing a guess input (e.g., char for
- * Hangman, Word for Wordle). Defaults to TSolutionType for games where guesses
- * and solutions are the same type.
- * - TFeedbackType: The type representing feedback from a guess
- * - TConfigType: Configuration type for the solver
- * - TGuessType: The specific guess type to return (e.g., WordGuess,
- * PatternGuess, LetterGuess)
- * - TResultType: The specific result type to return (e.g., Wordle::Result,
- * Mastermind::Result)
  */
-template <typename TSolutionType, typename TGuessInputType,
-          typename TFeedbackType, typename TConfigType, typename TGuessType,
-          typename TResultType>
+template <typename TCandidateType, typename TGuessType, typename TFeedbackType,
+          typename TConfigType, typename TCalculatedGuess, typename TResultType,
+          typename TCandidateSet>
 class AbstractEntSolver {
 public:
   virtual ~AbstractEntSolver() = default;
@@ -43,105 +31,79 @@ public:
 
 protected:
   // Pure virtual methods to be implemented by derived classes
-  virtual bool matchesFeedback(const TSolutionType &candidate,
+  virtual bool matchesFeedback(const TCandidateType &candidate,
                                const TFeedbackType &feedback) const = 0;
-  virtual TFeedbackType
-  generateFeedback(const TSolutionType &target,
-                   const TGuessInputType &guess) const = 0;
+  virtual TFeedbackType generateFeedback(const TCandidateType &target,
+                                         const TGuessType &guess) const = 0;
 
   // Pure virtual methods for creating result objects directly
-  virtual TGuessType createGuess(const TGuessInputType &guess, double ent,
-                                 double probability) const = 0;
-  virtual TResultType createResult(const std::vector<TGuessType> &guesses,
+  virtual TCalculatedGuess createGuess(const TGuessType &guess, double ent) const = 0;
+  virtual TResultType createResult(const std::vector<TCalculatedGuess> &guesses,
                                    int totalPossible) const = 0;
 
   // Get the score for a guess input (used for probability calculations)
   // Default implementation returns 1.0 for uniform weighting
-  virtual double getGuessScore(const TGuessInputType &guess) const {
-    (void)guess; // Suppress unused parameter warning
+  virtual double getGuessScore(const TGuessType &guess) const {
+    (void)guess; 
     return 1.0;
+  }
+
+  // Create next candidate set from current set based on feedback
+  virtual TCandidateSet filterCandidates(const TCandidateSet &candidates,
+                                         const TGuessType &guess,
+                                         const TFeedbackType &feedback) const {
+    return candidates.filter(guess, feedback,
+                                    [this](const TCandidateType &c,
+                                           const TFeedbackType &f) {
+                                      return this->matchesFeedback(c, f);
+                                    });
   }
 
   virtual double worstCaseExpectedTurns(size_t numCandidates) const {
     return std::log2(static_cast<double>(numCandidates));
   }
 
-  // Check if the current set of solutions represents a "solved" state.
-  // Default: solved when 1 or fewer solutions remain.
-  // Override for games like multi-word Hangman where "solved" means
-  // one solution per word slot (e.g., 5 solutions for 5 words).
-  virtual bool
-  isSolvedState(const std::vector<TSolutionType> &currentSolutions) const {
-    return currentSolutions.size() <= 1;
-  }
-
 public:
   /**
    * Main solver function that returns the final result type directly
    * @param allGuesses All possible guess inputs to evaluate
-   * @param possibleSolutions All possible solutions that could be the answer
+   * @param initialCandidates The starting set of candidates
    * @param cancel Optional atomic flag to cancel the operation
    */
-  TResultType solve(const std::vector<TGuessInputType> &allGuesses,
-                    const std::vector<TSolutionType> &possibleSolutions,
+  TResultType solve(const std::vector<TGuessType> &allGuesses,
+                    const TCandidateSet &initialCandidates,
                     std::atomic<bool> *cancel = nullptr) {
-    // Store cancellation pointer so internal helpers can check it
     cancellationFlag = cancel;
 
-    // Filter solutions based on feedback history using pointers for
-    // performance
-    std::vector<const TSolutionType *> filteredPossibleSolutionPtrs;
-    filteredPossibleSolutionPtrs.reserve(possibleSolutions.size());
-
-    // Create unordered_set using std::hash and std::equal_to (default template
-    // specializations) - still need objects for hash/equality
-    std::unordered_set<TSolutionType> filteredPossibleSolutionSet;
-
-    for (const auto &solution : possibleSolutions) {
-      bool matches = true;
-      for (const auto &feedback : config.feedbackHistory) {
-        if (!matchesFeedback(solution, feedback)) {
-          matches = false;
-          break;
+    TCandidateSet filteredCandidates = initialCandidates;
+    
+    // Apply existing feedback history
+    for (const auto &feedback : config.feedbackHistory) {
+         filteredCandidates = filteredCandidates.filter([this, &feedback](const TCandidateType& c) {
+             return this->matchesFeedback(c, feedback);
+         });
+         
+        if (cancellationFlag && cancellationFlag->load()) {
+            cancellationFlag = nullptr;
+            return createResult(std::vector<TCalculatedGuess>{}, 0);
         }
-      }
-      if (matches) {
-        filteredPossibleSolutionPtrs.push_back(&solution);
-        filteredPossibleSolutionSet.insert(solution);
-      }
-      if (cancellationFlag && cancellationFlag->load()) {
-        // Clean up and return an empty result early on cancellation
-        cancellationFlag = nullptr;
-        return createResult(std::vector<TGuessType>{}, 0);
-      }
     }
 
-    // Convert pointers back to objects only when needed for calculations
-    std::vector<TSolutionType> filteredPossibleSolutions;
-    filteredPossibleSolutions.reserve(filteredPossibleSolutionPtrs.size());
-    for (const auto *solutionPtr : filteredPossibleSolutionPtrs) {
-      filteredPossibleSolutions.push_back(*solutionPtr);
-    }
+    std::vector<TCalculatedGuess> guesses;
+    int totalPossible = static_cast<int>(filteredCandidates.size());
 
-    std::vector<TGuessType> guesses;
-    int totalPossible = static_cast<int>(filteredPossibleSolutions.size());
-
-    // If maxDepth is 0, skip ENT calculation and just return filtered
-    // solutions
+    // If maxDepth is 0, skip ENT calculation and just return filtered solutions
     if (config.maxDepth == 0) {
-      double possibleProb = filteredPossibleSolutions.empty()
-                                ? 0.0
-                                : 1.0 / filteredPossibleSolutions.size();
       for (const auto &guess : allGuesses) {
-        // For games where guess type differs from solution type,
-        // probability is calculated differently
-        double probability = calculateGuessProbability(
-            guess, filteredPossibleSolutionSet, possibleProb);
-        TGuessType guessResult = createGuess(
-            guess, worstCaseExpectedTurns(filteredPossibleSolutions.size()),
-            probability);
+        // Just return worst case (or 0?) since we aren't calculating
+        TCalculatedGuess guessResult = createGuess(
+            guess, worstCaseExpectedTurns(filteredCandidates.size()));
         guesses.push_back(guessResult);
       }
+      // Sort logic might depend on ENT, but here it's uniform.
+      // Derived classes usually sort by probability too? 
+      // User said "remove calculate guess probability since it doesn't matter".
+      // So sorting is likely just by ENT (which is equal) or stable sort.
 
       std::sort(guesses.begin(), guesses.end());
 
@@ -149,31 +111,19 @@ public:
     }
 
     // Calculate Expected Number of Turns (ENT) for all guesses
-    const double possibleProb = filteredPossibleSolutions.empty()
-                                    ? 0.0
-                                    : 1.0 / filteredPossibleSolutions.size();
     for (const auto &guessInput : allGuesses) {
       if (cancellationFlag && cancellationFlag->load()) {
         cancellationFlag = nullptr;
-        return createResult(std::vector<TGuessType>{}, 0);
+        return createResult(std::vector<TCalculatedGuess>{}, 0);
       }
-      // Calculate probability for this guess
-      double probability = calculateGuessProbability(
-          guessInput, filteredPossibleSolutionSet, possibleProb);
+      
+      double expectedTurns = calculateExpectedTurns(guessInput, filteredCandidates,
+                                                    allGuesses, config.maxDepth);
 
-      double expectedTurns =
-          (1 - probability) *
-          calculateExpectedTurns(guessInput, filteredPossibleSolutions,
-                                 allGuesses, config.maxDepth);
-
-      TGuessType guess = createGuess(guessInput, expectedTurns, probability);
+      TCalculatedGuess guess = createGuess(guessInput, expectedTurns);
       guesses.push_back(guess);
     }
 
-    // Sort by Expected Number of Turns (lowest first - best guesses minimize
-    // turns) Secondary sort by probability (highest first - prefer possible
-    // answers as tiebreaker) Assumes TGuessType has operator< that sorts by ENT
-    // ascending, then probability descending
     std::sort(guesses.begin(), guesses.end());
 
     cancellationFlag = nullptr;
@@ -183,63 +133,34 @@ public:
 protected:
   TConfigType config;
 
-  // Virtual method to calculate probability for a guess
-  // Default implementation: if guess type equals solution type, check if guess
-  // is in possible solutions For games where guess type differs from solution
-  // type, override this method
-  virtual double calculateGuessProbability(
-      const TGuessInputType &guess,
-      const std::unordered_set<TSolutionType> &possibleSolutions,
-      double possibleProb) const {
-    // Default implementation for when TGuessInputType == TSolutionType
-    // This uses SFINAE-like behavior through virtual dispatch
-    (void)guess;
-    (void)possibleSolutions;
-    (void)possibleProb;
-    return 0.0; // Override in derived classes
-  }
-
 private:
-  // Cancellation pointer set during solve(); helpers check this and return
-  // early when set.
+  // Cancellation pointer set during solve(); helpers check this and return early
   std::atomic<bool> *cancellationFlag = nullptr;
-
-  // Helper struct for grouping solutions with total score
-  struct FeedbackGroup {
-    std::vector<TSolutionType> solutions;
-    double totalScore = 0.0;
-  };
 
   /**
    * Single-value minimax helper that finds the minimum expected uncertainty
-   * after 'depth' more moves using optimal strategy.
-   * This returns ONLY the final minimum value, not the full path.
    */
   double findMinExpectedTurns(
-      const std::vector<TSolutionType> &currentSolutions,
-      const std::vector<TGuessInputType> &allGuesses,
-      const int maxDepth) { // Depth limit to prevent infinite recursion
+      const TCandidateSet &candidates,
+      const std::vector<TGuessType> &allGuesses,
+      const int maxDepth) {
 #ifdef TRACY_ENABLE
     ZoneScoped;
 #endif
-    // Base Case: Check if we've reached a solved state
-    if (isSolvedState(currentSolutions))
+    if (candidates.size() <= 1)
       return 0.0;
 
-    // Depth limit reached - return pessimistic estimate
     if (maxDepth <= 0)
-      return worstCaseExpectedTurns(currentSolutions.size());
+      return worstCaseExpectedTurns(candidates.size());
 
     double minExpectedTurns = std::numeric_limits<double>::max();
 
-    // ITERATE OVER ALL POSSIBLE NEXT GUESSES to find the optimal one
     for (const auto &nextGuess : allGuesses) {
       if (cancellationFlag && cancellationFlag->load())
         return std::numeric_limits<double>::infinity();
-      double expectedTurns = calculateExpectedTurns(nextGuess, currentSolutions,
+      double expectedTurns = calculateExpectedTurns(nextGuess, candidates,
                                                     allGuesses, maxDepth);
 
-      // Minimax: Find the best next guess (minimize expected turns)
       minExpectedTurns = std::min(minExpectedTurns, expectedTurns);
     }
 
@@ -249,99 +170,133 @@ private:
   /**
    * Calculates the Expected Number of Turns (ENT) that will need to be taken
    * after making a specific guess.
-   * If the guess correctly identifies the solution, ENT is 0 (solved).
-   * If the guess will leave only one solution left, ENT is 1 (next turn
-   * solves).
    */
   double
-  calculateExpectedTurns(const TGuessInputType &guessInput,
-                         const std::vector<TSolutionType> &currentSolutions,
-                         const std::vector<TGuessInputType> &allGuesses,
+  calculateExpectedTurns(const TGuessType &guessInput,
+                         const TCandidateSet &candidates,
+                         const std::vector<TGuessType> &allGuesses,
                          const int maxDepth) {
 #ifdef TRACY_ENABLE
     ZoneScoped;
 #endif
 
-    // Base Cases
-    if (currentSolutions.empty()) {
-      // No solutions left (should not happen in normal play)
-      return 0.0;
-    } else if (isSolvedState(currentSolutions)) {
-      // Already in solved state - check if guess directly solves/reveals
-      // For single-solution games, this checks if guess matches the solution
-      if (currentSolutions.size() == 1) {
-        return isGuessSolution(guessInput, currentSolutions[0]) ? 0.0 : 1.0;
-      }
-      // Multi-slot solved state (e.g., hangman with multiple words):
-      // Check if this guess reveals any letters (is in any remaining word)
-      // If yes: 0 turns (reveals info, already solved)
-      // If no: 1 turn (a wasted strike)
-      return isGuessInAnySolution(guessInput, currentSolutions) ? 0.0 : 1.0;
+    if (candidates.size() <= 1) {
+        // If solved (0 or 1 candidate), 0 more turns needed.
+        return 0.0; 
     }
 
-    // Calculate total score for normalization
-    double totalScore = 0.0;
-    for (const auto &target : currentSolutions) {
-      totalScore += getSolutionScore(target);
-    }
+    double totalScore = candidates.totalScore();
+    double expectedRemainingTurns = 0.0;
+    
+    // ENT = 1 (this guess) + Expected Turns for Subproblems
+    // Sum( P(outcome) * MinTurns(outcome) )
+    
+    candidates.visitFeedbackGroups(
+        guessInput,
+        [this, &expectedRemainingTurns, totalScore, &allGuesses, maxDepth](const TFeedbackType&, const TCandidateSet& subset, double subsetScore) {
+             
+             double prob = subsetScore / totalScore;
+             if (prob > 0) {
+                 double optimalSubTurns = findMinExpectedTurns(subset, allGuesses, maxDepth - 1);
+                 expectedRemainingTurns += prob * optimalSubTurns;
+             }
+        },
+        [this](const TCandidateType& c, const TGuessType& g) {
+            return this->generateFeedback(c, g);
+        }
+    );
 
-    // Group solutions by feedback pattern for this guess, with weighted scores
-    std::unordered_map<TFeedbackType, FeedbackGroup> feedbackGroups;
-    feedbackGroups.reserve(currentSolutions.size());
+    return 1.0 + expectedRemainingTurns;
+  }
+};
 
-    for (const auto &target : currentSolutions) {
-      if (cancellationFlag && cancellationFlag->load())
-        return std::numeric_limits<double>::infinity();
-      TFeedbackType feedback = generateFeedback(target, guessInput);
-      feedbackGroups[feedback].solutions.push_back(target);
-      feedbackGroups[feedback].totalScore += getSolutionScore(target);
-    }
 
-    // Calculate Expected Number of Turns for this guess using weighted
-    // probabilities
-    double expectedTurns = 0.0;
+/**
+ * A standard implementation of TCandidateSet that wraps a std::vector.
+ * Used for games where the solution space is small enough to enumerate fully
+ * (e.g., Wordle, Mastermind).
+ */
+template <typename TCandidateType> class ConcreteCandidateSet {
+public:
+  using Container = std::vector<TCandidateType>;
 
-    for (const auto &group : feedbackGroups) {
-      double prob = group.second.totalScore / totalScore;
-
-      double optimalSubTurns = findMinExpectedTurns(group.second.solutions,
-                                                    allGuesses, maxDepth - 1);
-      expectedTurns += prob * (1.0 + optimalSubTurns);
-    }
-
-    return expectedTurns;
+  ConcreteCandidateSet() = default;
+  explicit ConcreteCandidateSet(const Container &candidates)
+      : candidates(candidates) {
+    recalculateTotalScore();
+  }
+  explicit ConcreteCandidateSet(Container &&candidates)
+      : candidates(std::move(candidates)) {
+    recalculateTotalScore();
   }
 
-  // Check if a guess is the solution (for games where guess type differs from
-  // solution type) Default: returns false, override for specific comparison
-  // logic
-  virtual bool isGuessSolution(const TGuessInputType &guess,
-                               const TSolutionType &solution) const {
-    (void)guess;
-    (void)solution;
-    return false; // Override in derived classes
-  }
+  size_t size() const { return candidates.size(); }
+  bool empty() const { return candidates.empty(); }
+  double totalScore() const { return cachedTotalScore; }
 
-  // Check if a guess appears in ANY of the given solutions.
-  // Used for multi-slot games (e.g., hangman) to determine if a letter
-  // reveals information. Default: returns false, override in derived classes.
-  virtual bool
-  isGuessInAnySolution(const TGuessInputType &guess,
-                       const std::vector<TSolutionType> &solutions) const {
-    // Default: check each solution using isGuessSolution
-    for (const auto &sol : solutions) {
-      if (isGuessSolution(guess, sol)) {
+  auto begin() const { return candidates.begin(); }
+  auto end() const { return candidates.end(); }
+
+  bool contains(const TCandidateType &candidate) const {
+    for (const auto &c : candidates) {
+      if (c == candidate)
         return true;
-      }
     }
     return false;
   }
 
-  // Get the score for a solution (used for probability weighting)
-  // Default implementation returns 1.0 for uniform weighting
-  virtual double getSolutionScore(const TSolutionType &solution) const {
-    (void)solution;
-    return 1.0;
+  template <typename TGuessType, typename TFeedbackType, typename Predicate>
+  ConcreteCandidateSet filter(const TGuessType &guess,
+                              const TFeedbackType &feedback,
+                              Predicate predicate) const {
+     (void)guess; 
+     Container filtered;
+     filtered.reserve(candidates.size());
+     for (const auto &c : candidates) {
+       if (predicate(c, feedback)) {
+         filtered.push_back(c);
+       }
+     }
+     return ConcreteCandidateSet(std::move(filtered));
+  }
+
+  template <typename TGuessType, typename Visitor, typename FeedbackGenerator>
+  void visitFeedbackGroups(const TGuessType &guess, Visitor visitor,
+                           FeedbackGenerator generator) const {
+    using TFeedbackType =
+        decltype(generator(std::declval<TCandidateType>(), guess));
+
+    struct Group {
+        Container members;
+        double score = 0.0;
+    };
+    std::unordered_map<TFeedbackType, Group> groups;
+    
+    for (const auto& candidate : candidates) {
+        TFeedbackType fb = generator(candidate, guess);
+        auto& group = groups[fb];
+        group.members.push_back(candidate);
+        group.score += getScore(candidate);
+    }
+    
+    for (auto& [fb, group] : groups) {
+        visitor(fb, ConcreteCandidateSet(std::move(group.members)), group.score);
+    }
+  }
+
+private:
+  Container candidates;
+  double cachedTotalScore = 0.0;
+
+  void recalculateTotalScore() {
+    cachedTotalScore = 0.0;
+    for (const auto &c : candidates) {
+      cachedTotalScore += getScore(c);
+    }
+  }
+
+  static double getScore(const TCandidateType& c) {
+      return c.score; 
   }
 };
 
@@ -350,31 +305,18 @@ private:
  * Wordle, Mastermind)
  */
 template <typename TCandidateType, typename TFeedbackType, typename TConfigType,
-          typename TGuessType, typename TResultType>
+          typename TCalculatedGuess, typename TResultType,
+          typename TCandidateSet = ConcreteCandidateSet<TCandidateType>>
 class AbstractEntSolverSameType
     : public AbstractEntSolver<TCandidateType, TCandidateType, TFeedbackType,
-                               TConfigType, TGuessType, TResultType> {
+                               TConfigType, TCalculatedGuess, TResultType,
+                               TCandidateSet> {
 public:
   using Base = AbstractEntSolver<TCandidateType, TCandidateType, TFeedbackType,
-                                 TConfigType, TGuessType, TResultType>;
+                                 TConfigType, TCalculatedGuess, TResultType,
+                                 TCandidateSet>;
   using Base::Base;
 
-protected:
-  double calculateGuessProbability(
-      const TCandidateType &guess,
-      const std::unordered_set<TCandidateType> &possibleSolutions,
-      double possibleProb) const override {
-    bool isPossible = possibleSolutions.find(guess) != possibleSolutions.end();
-    return isPossible ? possibleProb : 0.0;
-  }
-
-  bool isGuessSolution(const TCandidateType &guess,
-                       const TCandidateType &solution) const override {
-    return guess == solution;
-  }
-
-  double getSolutionScore(const TCandidateType &solution) const override {
-    return solution.score;
-  }
+  // No override needed for calculateGuessProbability as it was removed from base
 };
 } // namespace Utils

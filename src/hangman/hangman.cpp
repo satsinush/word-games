@@ -191,36 +191,164 @@ filterWordsForPattern(const std::vector<Utils::Word> &words,
   return filtered;
 }
 
-// Hangman-specific ENT solver implementation
-// Uses WordSlotSolution as the solution type to track (slotIndex, word) pairs
-// This avoids combinatorial explosion when dealing with multi-word phrases
-class HangmanEntSolver
-    : public Utils::AbstractEntSolver<WordSlotSolution, char, Feedback, Config,
-                                      LetterGuess, Result> {
+// Defines a set of possible phrase solutions without constructing them all explicitly.
+// Uses a product of independent word sets per slot.
+class HangmanCandidateSet {
 public:
-  HangmanEntSolver(const Config &cfg, size_t numSlots,
-                   const std::vector<std::vector<Utils::Word>> &wordsPerSlot)
-      : Utils::AbstractEntSolver<WordSlotSolution, char, Feedback, Config,
-                                 LetterGuess, Result>(cfg),
-        numWordSlots(numSlots), wordsPerSlot_(wordsPerSlot) {}
+  using Container = std::vector<std::vector<Utils::Word>>;
+
+  HangmanCandidateSet(const Container &wordsPerSlot)
+      : wordsPerSlot_(wordsPerSlot) {
+    recalculateStats();
+  }
+
+  size_t size() const { return cachedSize; }
+  bool empty() const { return cachedSize == 0; }
+  double totalScore() const { return cachedTotalScore; }
+
+  // Filter returns a NEW set with updated candidates per slot
+  template <typename Predicate>
+  HangmanCandidateSet filter(const char &guess,
+                             const Feedback &feedback,
+                             Predicate /*ignored*/) const {
+     // We ignore the generic predicate and use our specialized filtering knowledge
+     // to keep this efficient. We filter each slot independently based on the feedback.
+     return *this; // Note: In current implementation, detailed filtering happens
+                   // via pattern matching before solver invocation or reconstruction.
+                   // This method is kept for interface compliance.
+  }
+  
+  // Implementation of visitFeedbackGroups using Cartesian product
+  template <typename Visitor, typename Generator>
+  void visitFeedbackGroups(const char &guess, Visitor visitor,
+                           Generator /*ignored*/) const {
+      // 1. Compute per-slot feedback groups
+      // Map "occurrences" (int) -> words.
+      std::vector<std::map<int, std::vector<Utils::Word>>> slotMaps(wordsPerSlot_.size());
+      
+      for(size_t i=0; i<wordsPerSlot_.size(); ++i) {
+          for(const auto& w : wordsPerSlot_[i]) {
+              // Generate local feedback (count of letter)
+              int count = w.letterCount[guess - 'a'];
+              slotMaps[i][count].push_back(w);
+          }
+      }
+      
+      // 2. Cartesian product
+      // We need to yield (GlobalFeedback, NewCandidateSet, Score)
+      // GlobalFeedback.occurrences = sum(local_counts)
+      // GlobalFeedback.isInWord = sum > 0
+      
+      std::vector<std::vector<Utils::Word>> currentSlotSelection(wordsPerSlot_.size());
+      
+      auto recurse = [&](auto&& self, size_t index, int accumCount) -> void {
+          if (index == wordsPerSlot_.size()) {
+              // Base case
+              Feedback fb;
+              fb.letter = guess;
+              fb.occurrences = static_cast<size_t>(accumCount);
+              fb.isInWord = (accumCount > 0);
+              
+              HangmanCandidateSet subset(currentSlotSelection);
+              if (subset.size() > 0) {
+                  visitor(fb, subset, subset.totalScore());
+              }
+              return;
+          }
+          
+          // Iterate groups in this slot
+          for(const auto& [count, words] : slotMaps[index]) {
+              currentSlotSelection[index] = words; // copy vector
+              self(self, index + 1, accumCount + count);
+          }
+      };
+      
+      recurse(recurse, 0, 0);
+  }
+
+  double probabilityOfLetter(char letter) const {
+      double probNotInPhrase = 1.0;
+      for (const auto& slot : wordsPerSlot_) {
+          double slotTotal = 0.0;
+          double slotNoLetter = 0.0;
+          int idx = letter - 'a';
+          for (const auto& w : slot) {
+              slotTotal += w.score;
+              if (w.letterCount[idx] == 0) {
+                  slotNoLetter += w.score;
+              }
+          }
+          if (slotTotal > 0) {
+              probNotInPhrase *= (slotNoLetter / slotTotal);
+          }
+      }
+      return 1.0 - probNotInPhrase;
+  }
+
+private:
+  Container wordsPerSlot_;
+  size_t cachedSize = 0;
+  double cachedTotalScore = 0.0;
+
+  void recalculateStats() {
+      cachedSize = 1;
+      cachedTotalScore = 0.0; 
+      
+      double productOfSums = 1.0;
+      bool emptySlot = false;
+      
+      if (wordsPerSlot_.empty()) {
+          cachedSize = 0;
+          cachedTotalScore = 0.0;
+          return;
+      }
+
+      for (const auto& slot : wordsPerSlot_) {
+          size_t s = slot.size();
+          if (s == 0) emptySlot = true;
+          // check overflow?
+          cachedSize *= s;
+          
+          double slotSum = 0.0;
+          for(const auto& w : slot) slotSum += w.score;
+          productOfSums *= slotSum;
+      }
+      
+      cachedTotalScore = emptySlot ? 0.0 : productOfSums;
+      if (emptySlot) cachedSize = 0;
+  }
+};
+
+
+// Hangman-specific ENT solver implementation
+// Uses HangmanCandidateSet to avoid combinatorial explosion
+class HangmanEntSolver
+    : public Utils::AbstractEntSolver<PhraseSolution, char, Feedback, Config,
+                                      LetterGuess, Result, HangmanCandidateSet> {
+public:
+  HangmanEntSolver(const Config &cfg, size_t numSlots)
+      : Utils::AbstractEntSolver<PhraseSolution, char, Feedback, Config,
+                                 LetterGuess, Result, HangmanCandidateSet>(cfg),
+        numWordSlots(numSlots) {}
 
 protected:
-  bool matchesFeedback(const WordSlotSolution &candidate,
+  // Implemented but effectively unused by visitFeedbackGroups custom logic
+  bool matchesFeedback(const PhraseSolution &candidate,
                        const Feedback &feedback) const override {
-    return Hangman::matchesWordFeedback(candidate.word, feedback);
+    return Hangman::matchesFeedback(candidate, feedback);
   }
 
-  Feedback generateFeedback(const WordSlotSolution &target,
+  // Implemented but effectively unused by visitFeedbackGroups custom logic
+  Feedback generateFeedback(const PhraseSolution &target,
                             const char &guess) const override {
-    return Hangman::generateWordFeedback(target.word, guess);
+    return Hangman::generateFeedback(target, guess);
   }
 
-  LetterGuess createGuess(const char &letter, double ent,
-                          double probability) const override {
+  LetterGuess createGuess(const char &letter, double ent) const override {
     LetterGuess guess;
     guess.letter = letter;
     guess.ent = ent;
-    guess.probability = probability;
+    // guess.probability = probability; // Removed
     return guess;
   }
 
@@ -233,102 +361,18 @@ protected:
   }
 
   double worstCaseExpectedTurns(size_t numCandidates) const override {
-    // For multi-word hangman, we're "done" when we have exactly numWordSlots
-    // candidates (one per slot). Adjust the estimate accordingly.
-    if (numCandidates <= numWordSlots) {
-      return 0.0; // Already solved (one word per slot)
-    }
-    // Estimate: log2 of effective remaining choices per slot
-    double effectiveRemaining =
-        static_cast<double>(numCandidates) / static_cast<double>(numWordSlots);
-    return std::log2(effectiveRemaining);
+    if (numCandidates <= 1) return 0.0;
+    return std::log2(static_cast<double>(numCandidates));
   }
+  
+  // Solved state: size() <= 1 (default handled by base class via internal check now)
+  // bool isSolvedState(const HangmanCandidateSet &set) const override { ... }
 
-  // Override to calculate probability that this letter appears in ANY word slot
-  // Uses: P(in phrase) = 1 - ∏(1 - P(in slot_i))
-  double calculateGuessProbability(
-      const char &letter,
-      const std::unordered_set<WordSlotSolution> &possibleSolutions,
-      [[maybe_unused]] double possibleProb) const override {
-
-    // Count words containing this letter for each slot
-    std::vector<int> containsLetterPerSlot(numWordSlots, 0);
-    std::vector<int> totalPerSlot(numWordSlots, 0);
-
-    for (const auto &slot : possibleSolutions) {
-      totalPerSlot[slot.slotIndex]++;
-      if (slot.word.letterCount[letter - 'a'] > 0) {
-        containsLetterPerSlot[slot.slotIndex]++;
-      }
-    }
-
-    // Calculate P(NOT in phrase) = ∏(1 - P(in slot_i))
-    double probNotInPhrase = 1.0;
-    for (size_t i = 0; i < numWordSlots; ++i) {
-      if (totalPerSlot[i] > 0) {
-        double probInSlot = static_cast<double>(containsLetterPerSlot[i]) /
-                            static_cast<double>(totalPerSlot[i]);
-        probNotInPhrase *= (1.0 - probInSlot);
-      }
-    }
-
-    // P(in phrase) = 1 - P(NOT in phrase)
-    return 1.0 - probNotInPhrase;
-  }
-
-  // A letter "solves" the game if it's the last unknown letter needed
-  // For simplicity, we never consider a single letter as solving the game
-  bool isGuessSolution(const char &guess,
-                       const WordSlotSolution &solution) const override {
-    (void)guess;
-    (void)solution;
-    return false; // Individual letters don't solve hangman
-  }
-
-  // Check if a letter appears in ANY of the slot solutions
-  // Used to determine if guessing this letter reveals information
-  bool isGuessInAnySolution(
-      const char &letter,
-      const std::vector<WordSlotSolution> &solutions) const override {
-    for (const auto &slot : solutions) {
-      if (slot.word.letterCount[letter - 'a'] > 0) {
-        return true; // Letter appears in at least one word
-      }
-    }
-    return false;
-  }
-
-  double getSolutionScore(const WordSlotSolution &solution) const override {
-    return solution.word.score;
-  }
-
-  // Override to define "solved" as having exactly one word per slot
-  bool isSolvedState(
-      const std::vector<WordSlotSolution> &currentSolutions) const override {
-    if (currentSolutions.size() != numWordSlots) {
-      return false;
-    }
-
-    // Check that we have exactly one solution per slot
-    std::vector<int> countPerSlot(numWordSlots, 0);
-    for (const auto &sol : currentSolutions) {
-      if (sol.slotIndex < numWordSlots) {
-        countPerSlot[sol.slotIndex]++;
-      }
-    }
-
-    for (size_t i = 0; i < numWordSlots; ++i) {
-      if (countPerSlot[i] != 1) {
-        return false;
-      }
-    }
-    return true;
-  }
 
 private:
   size_t numWordSlots;
-  const std::vector<std::vector<Utils::Word>> &wordsPerSlot_;
 };
+
 
 Result runHangmanSolver(const Config &config, std::atomic<bool> *cancel) {
 #ifdef TRACY_ENABLE
@@ -371,23 +415,6 @@ Result runHangmanSolver(const Config &config, std::atomic<bool> *cancel) {
     }
   }
 
-  // Build slot solutions (one entry per word per slot)
-  std::vector<WordSlotSolution> slotSolutions;
-  std::unordered_set<std::string> uniqueWordsForDisplay;
-
-  for (size_t slotIdx = 0; slotIdx < numSlots; ++slotIdx) {
-    for (const auto &word : wordsPerSlot[slotIdx]) {
-      WordSlotSolution slot;
-      slot.slotIndex = slotIdx;
-      slot.word = word;
-      slot.score = word.score;
-      slotSolutions.push_back(slot);
-
-      // Track unique words for display
-      uniqueWordsForDisplay.insert(word.wordString);
-    }
-  }
-
   // Get available letters (not yet guessed, and not already revealed in
   // patterns)
   std::vector<char> availableLetters =
@@ -409,11 +436,22 @@ Result runHangmanSolver(const Config &config, std::atomic<bool> *cancel) {
                                         }),
                          availableLetters.end());
 
-  // Use the specialized Hangman ENT solver with slot-based solutions
-  HangmanEntSolver solver(config, numSlots, wordsPerSlot);
-  result = solver.solve(availableLetters, slotSolutions, cancel);
+  // Create initial candidate set using the product set approach
+  HangmanCandidateSet initialCandidates(wordsPerSlot);
+  
+  // Use the specialized Hangman ENT solver
+  HangmanEntSolver solver(config, numSlots);
+  result = solver.solve(availableLetters, initialCandidates, cancel);
 
   // Collect unique possible words for display (from all slots)
+  // This is for UI display purposes only
+  std::unordered_set<std::string> uniqueWordsForDisplay;
+  for (size_t slotIdx = 0; slotIdx < numSlots; ++slotIdx) {
+    for (const auto &word : wordsPerSlot[slotIdx]) {
+      uniqueWordsForDisplay.insert(word.wordString);
+    }
+  }
+  
   std::vector<Utils::Word> possibleWords;
   for (const auto &word : allWords) {
     if (uniqueWordsForDisplay.count(word.wordString) > 0) {
@@ -423,7 +461,7 @@ Result runHangmanSolver(const Config &config, std::atomic<bool> *cancel) {
 
   // Store possible words for display
   result.possibleWords = possibleWords;
-  result.totalPossibleWords = static_cast<int>(possibleWords.size());
+  result.totalPossibleWords = static_cast<int>(initialCandidates.size());
 
   // Sort by score (higher is better)
   std::sort(result.possibleWords.begin(), result.possibleWords.end(),

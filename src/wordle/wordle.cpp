@@ -190,12 +190,12 @@ protected:
     return Wordle::generateFeedback(target, guess.wordString);
   }
 
-  WordGuess createGuess(const Utils::Word &candidate, double ent,
-                        double probability) const override {
+  WordGuess createGuess(const Utils::Word &word, double ent) const override {
     WordGuess guess;
-    guess.word = candidate;
+    guess.word = word.wordString;
+    guess.score = word.score;
     guess.ent = ent;
-    guess.probability = probability;
+    // guess.probability = probability; // Removed
     return guess;
   }
 
@@ -228,8 +228,11 @@ Result runWordleSolver(const Config &config, std::atomic<bool> *cancel) {
     }
   }
 
+  // Create CandidateSet from the filtered words
+  Utils::ConcreteCandidateSet<Utils::Word> initialCandidates(possibleWords);
+
   // Use the specialized Wordle ENT solver - returns Result directly!
   WordleEntSolver solver(config);
-  return solver.solve(possibleWords, possibleWords, cancel);
+  return solver.solve(possibleWords, initialCandidates, cancel);
 }
 } // namespace Wordle
