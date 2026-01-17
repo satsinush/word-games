@@ -115,13 +115,13 @@ struct LetterGuess {
   bool operator<(const LetterGuess &other) const {
     const double tolerance = 1e-9;
 
-    // Primary sort: Expected Number of Turns (lower is better)
-    if (std::abs(ent - other.ent) > tolerance)
-      return ent < other.ent;
-
-    // Secondary tiebreaker: probability (higher is better)
+    // Primary sort: Probability (higher is better)
     if (std::abs(probability - other.probability) > tolerance)
       return probability > other.probability;
+
+    // Secondary sort: Expected Number of Turns (lower is better)
+    if (std::abs(ent - other.ent) > tolerance)
+      return ent < other.ent;
 
     // Final tiebreaker: sort by letter for consistency
     return letter < other.letter;

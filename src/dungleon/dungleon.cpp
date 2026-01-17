@@ -456,16 +456,22 @@ std::vector<Pattern> generateAllPossiblePatterns(const Config &config) {
   return patterns;
 }
 
+// Dungleon solver traits
+struct DungleonSolverTraits {
+  using CandidateType = Pattern;
+  using GuessType = Pattern;
+  using FeedbackType = Feedback;
+  using ConfigType = Config;
+  using CalculatedGuessType = PatternGuess;
+  using ResultType = Result;
+  using CandidateSetType = Utils::SetCandidateSet<Pattern>;
+};
+
 // Dungleon-specific ENT solver implementation
-// Uses AbstractEntSolverSameType since guess and solution types are both Pattern
-class DungleonEntSolver
-    : public Utils::AbstractEntSolverSameType<Pattern, Feedback, Config,
-                                              PatternGuess, Result> {
+class DungleonEntSolver : public Utils::AbstractEntSolverSameType<DungleonSolverTraits> {
 public:
-  // Forwarding constructor: initialize base class with given config
   DungleonEntSolver(const Config &cfg)
-      : Utils::AbstractEntSolverSameType<Pattern, Feedback, Config,
-                                         PatternGuess, Result>(cfg) {}
+      : Utils::AbstractEntSolverSameType<DungleonSolverTraits>(cfg) {}
 
 protected:
   bool matchesFeedback(const Pattern &candidate,
@@ -478,11 +484,11 @@ protected:
     return Dungleon::generateFeedback(target, guess);
   }
 
-  PatternGuess createGuess(const Pattern &candidate, double ent) const override {
+  PatternGuess createGuess(const Pattern &pattern, double ent, double probability) const override {
     PatternGuess guess;
-    guess.pattern = candidate;
+    guess.pattern = pattern;
     guess.ent = ent;
-    // guess.probability = probability; // Removed
+    guess.probability = probability;
     return guess;
   }
 
@@ -522,8 +528,8 @@ Result runDungleonSolver(const Config &_config, std::atomic<bool> *cancel) {
                                          : generateAllPatterns();
   std::vector<Pattern> possiblePatterns = generateAllPossiblePatterns(config);
 
-  // Create CandidateSet from the possible patterns
-  Utils::ConcreteCandidateSet<Pattern> initialCandidates(possiblePatterns);
+  // Create CandidateSet from the filtered patterns
+  Utils::VectorCandidateSet<Dungleon::Pattern> initialCandidates(allPatterns);
 
   // Use the specialized Dungleon ENT solver - returns Result directly!
   DungleonEntSolver solver(config);

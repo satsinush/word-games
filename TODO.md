@@ -4,9 +4,3 @@
 - Add support for more games
   - Waffle
   - Strands
-- Fix Windows installer to actually use icon and create start menu entries
-  - Update license info in installer
-  - Update publisher name maybe, currently see "Humanity" in windows app list
-  - Ensure icon works properly
-- Fix Letter Boxed bug where you have to use Enter button first before solving
-- Add length column to spelling bee results

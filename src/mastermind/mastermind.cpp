@@ -231,20 +231,22 @@ std::vector<Pattern> generateAllPatterns(const Config &config) {
   return patterns;
 }
 
+// Mastermind solver traits
+struct MastermindSolverTraits {
+  using CandidateType = Pattern;
+  using GuessType = Pattern;
+  using FeedbackType = Feedback;
+  using ConfigType = Config;
+  using CalculatedGuessType = PatternGuess;
+  using ResultType = Result;
+  using CandidateSetType = Utils::SetCandidateSet<Pattern>;
+};
+
 // Mastermind-specific ENT solver implementation
-// Uses AbstractEntSolverSameType since guess and solution types are both
-// Pattern
-// Mastermind-specific ENT solver implementation
-// Uses AbstractEntSolverSameType since guess and solution types are both
-// Pattern
-class MastermindEntSolver
-    : public Utils::AbstractEntSolverSameType<Pattern, Feedback, Config,
-                                              PatternGuess, Result> {
+class MastermindEntSolver : public Utils::AbstractEntSolverSameType<MastermindSolverTraits> {
 public:
-  // Forwarding constructor: initialize base class with given config
   MastermindEntSolver(const Config &cfg)
-      : Utils::AbstractEntSolverSameType<Pattern, Feedback, Config,
-                                         PatternGuess, Result>(cfg) {}
+      : Utils::AbstractEntSolverSameType<MastermindSolverTraits>(cfg) {}
 
 protected:
   bool matchesFeedback(const Pattern &candidate,
@@ -257,11 +259,11 @@ protected:
     return Mastermind::generateFeedback(target, guess);
   }
 
-  PatternGuess createGuess(const Pattern &candidate, double ent) const override {
+  PatternGuess createGuess(const Pattern &pattern, double ent, double probability) const override {
     PatternGuess guess;
-    guess.pattern = candidate;
+    guess.pattern = pattern;
     guess.ent = ent;
-    // guess.probability = probability; // Removed
+    guess.probability = probability;
     return guess;
   }
 
@@ -289,8 +291,9 @@ Result runMastermindSolver(const Config &config, std::atomic<bool> *cancel) {
   // Generate all possible patterns for the given configuration
   std::vector<Pattern> allPatterns = Mastermind::generateAllPatterns(config);
 
-  // Create CandidateSet from the patterns
-  Utils::ConcreteCandidateSet<Pattern> initialCandidates(allPatterns);
+  // Create CandidateSet from the filtered patterns
+  Utils::VectorCandidateSet<Mastermind::Pattern> initialCandidates(
+      allPatterns);
 
   // Use the specialized Mastermind ENT solver - returns Result directly!
   MastermindEntSolver solver(config);

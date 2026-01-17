@@ -206,16 +206,20 @@ public:
   bool empty() const { return cachedSize == 0; }
   double totalScore() const { return cachedTotalScore; }
 
-  // Filter returns a NEW set with updated candidates per slot
+  template <typename Predicate>
+  HangmanCandidateSet filter(Predicate) const {
+     return *this;
+  }
+
   template <typename Predicate>
   HangmanCandidateSet filter(const char &guess,
                              const Feedback &feedback,
-                             Predicate /*ignored*/) const {
-     // We ignore the generic predicate and use our specialized filtering knowledge
-     // to keep this efficient. We filter each slot independently based on the feedback.
-     return *this; // Note: In current implementation, detailed filtering happens
-                   // via pattern matching before solver invocation or reconstruction.
-                   // This method is kept for interface compliance.
+                             Predicate) const {
+    (void)guess;
+    (void)feedback;
+     // Specialized filtering happens via pattern matching before solver invocation.
+     // This method exists for interface compliance.
+     return *this;
   }
   
   // Implementation of visitFeedbackGroups using Cartesian product
@@ -320,35 +324,45 @@ private:
 };
 
 
+// Hangman solver traits - note GuessType (char) differs from CandidateType (PhraseSolution)
+struct HangmanSolverTraits {
+  using CandidateType = PhraseSolution;
+  using GuessType = char;
+  using FeedbackType = Feedback;
+  using ConfigType = Config;
+  using CalculatedGuessType = LetterGuess;
+  using ResultType = Result;
+  using CandidateSetType = HangmanCandidateSet;
+};
+
 // Hangman-specific ENT solver implementation
-// Uses HangmanCandidateSet to avoid combinatorial explosion
-class HangmanEntSolver
-    : public Utils::AbstractEntSolver<PhraseSolution, char, Feedback, Config,
-                                      LetterGuess, Result, HangmanCandidateSet> {
+// Uses base AbstractEntSolver since guess type (char) differs from candidate type
+class HangmanEntSolver : public Utils::AbstractEntSolver<HangmanSolverTraits> {
 public:
   HangmanEntSolver(const Config &cfg, size_t numSlots)
-      : Utils::AbstractEntSolver<PhraseSolution, char, Feedback, Config,
-                                 LetterGuess, Result, HangmanCandidateSet>(cfg),
+      : Utils::AbstractEntSolver<HangmanSolverTraits>(cfg),
         numWordSlots(numSlots) {}
 
 protected:
-  // Implemented but effectively unused by visitFeedbackGroups custom logic
   bool matchesFeedback(const PhraseSolution &candidate,
                        const Feedback &feedback) const override {
     return Hangman::matchesFeedback(candidate, feedback);
   }
 
-  // Implemented but effectively unused by visitFeedbackGroups custom logic
   Feedback generateFeedback(const PhraseSolution &target,
                             const char &guess) const override {
     return Hangman::generateFeedback(target, guess);
   }
 
-  LetterGuess createGuess(const char &letter, double ent) const override {
+  double calculateGuessProbability(const char &guess, const HangmanCandidateSet &candidates) const override {
+      return candidates.probabilityOfLetter(guess);
+  }
+
+  LetterGuess createGuess(const char &letter, double ent, double probability) const override {
     LetterGuess guess;
     guess.letter = letter;
     guess.ent = ent;
-    // guess.probability = probability; // Removed
+    guess.probability = probability; 
     return guess;
   }
 
@@ -364,10 +378,6 @@ protected:
     if (numCandidates <= 1) return 0.0;
     return std::log2(static_cast<double>(numCandidates));
   }
-  
-  // Solved state: size() <= 1 (default handled by base class via internal check now)
-  // bool isSolvedState(const HangmanCandidateSet &set) const override { ... }
-
 
 private:
   size_t numWordSlots;
