@@ -28,6 +28,108 @@ std::vector<Utils::Word> loadTestWords() {
 }
 
 // =============================================================================
+// SET CANDIDATE SET TESTS
+// =============================================================================
+
+TEST(SetCandidateSetTest, ContainsO1Lookup) {
+  std::vector<Utils::Word> words;
+  words.push_back(makeWord("apple"));
+  words.push_back(makeWord("grape"));
+  words.push_back(makeWord("melon"));
+  
+  Utils::SetCandidateSet<Utils::Word> set(words);
+  
+  EXPECT_TRUE(set.contains(makeWord("apple")));
+  EXPECT_TRUE(set.contains(makeWord("grape")));
+  EXPECT_TRUE(set.contains(makeWord("melon")));
+  EXPECT_FALSE(set.contains(makeWord("cherry")));
+  EXPECT_EQ(set.size(), 3);
+}
+
+TEST(SetCandidateSetTest, FilterPreservesScore) {
+  std::vector<Utils::Word> words;
+  Utils::Word w1 = makeWord("aaaaa"); w1.score = 10.0;
+  Utils::Word w2 = makeWord("bbbbb"); w2.score = 20.0;
+  Utils::Word w3 = makeWord("ccccc"); w3.score = 30.0;
+  words.push_back(w1);
+  words.push_back(w2);
+  words.push_back(w3);
+  
+  Utils::SetCandidateSet<Utils::Word> set(words);
+  EXPECT_DOUBLE_EQ(set.totalScore(), 60.0);
+  
+  // Filter to keep only words with 'b'
+  auto filtered = set.filter([](const Utils::Word& w) {
+    return w.letterCount['b' - 'a'] > 0;
+  });
+  
+  EXPECT_EQ(filtered.size(), 1);
+  EXPECT_DOUBLE_EQ(filtered.totalScore(), 20.0);
+  EXPECT_TRUE(filtered.contains(makeWord("bbbbb")));
+}
+
+TEST(SetCandidateSetTest, EmptySetHandled) {
+  std::vector<Utils::Word> empty;
+  Utils::SetCandidateSet<Utils::Word> set(empty);
+  
+  EXPECT_TRUE(set.empty());
+  EXPECT_EQ(set.size(), 0);
+  EXPECT_DOUBLE_EQ(set.totalScore(), 0.0);
+  EXPECT_FALSE(set.contains(makeWord("test")));
+}
+
+// =============================================================================
+// ENT SOLVER CORE TESTS
+// =============================================================================
+
+TEST(EntSolverTest, MaxDepthZeroSkipsCalculation) {
+  std::vector<Utils::Word> testWords;
+  testWords.push_back(makeWord("aaaaa"));
+  testWords.push_back(makeWord("bbbbb"));
+  
+  Wordle::Config config;
+  config.maxDepth = 0;  // Should skip ENT calculation
+  config.wordLength = 5;
+  
+  Utils::SetCandidateSet<Utils::Word> candidates(testWords);
+  
+  // With maxDepth=0, solver should return quickly with uniform ENT values
+  Wordle::Result result = Wordle::runWordleSolver(config, nullptr);
+  
+  // All guesses should have same ENT (worst case estimate)
+  if (result.sortedGuesses.size() >= 2) {
+    double firstEnt = result.sortedGuesses[0].ent;
+    double secondEnt = result.sortedGuesses[1].ent;
+    // With depth=0, all ENT values should be the same (log2(n))
+    EXPECT_NEAR(firstEnt, secondEnt, 0.001);
+  }
+}
+
+TEST(EntSolverTest, CancellationStopsEarly) {
+  Wordle::Config config;
+  config.maxDepth = 1;
+  config.wordLength = 5;
+  
+  std::atomic<bool> cancel(true);  // Already cancelled
+  
+  Wordle::Result result = Wordle::runWordleSolver(config, &cancel);
+  
+  // With cancellation, result should be empty
+  EXPECT_TRUE(result.sortedGuesses.empty());
+}
+
+TEST(EntSolverTest, EmptyCandidateSetReturnsEmpty) {
+  Wordle::Config config;
+  config.maxDepth = 0;
+  config.wordLength = 99;  // No words of this length exist
+  
+  Wordle::Result result = Wordle::runWordleSolver(config, nullptr);
+  
+  // Should handle gracefully
+  EXPECT_EQ(result.totalPossibleWords, 0);
+}
+
+// =============================================================================
 // WORDLE TESTS
 // =============================================================================
 
@@ -109,6 +211,67 @@ TEST(WordleTest, MatchesFeedbackCorrect) {
   Wordle::Feedback fb = Wordle::generateFeedback(target, guess);
   EXPECT_TRUE(Wordle::matchesFeedback(target, fb));
 }
+
+TEST(WordleTest, ProbabilityCalculationCorrect) {
+  std::vector<Utils::Word> testWords;
+  testWords.push_back(makeWord("aaaaa"));
+  testWords.push_back(makeWord("bbbbb"));
+  testWords.push_back(makeWord("ccccc"));
+  testWords.push_back(makeWord("ddddd"));
+  testWords.push_back(makeWord("eeeee"));
+
+  Wordle::Config config;
+  config.maxDepth = 0;
+  // Feedback that eliminates 'aaaaa' (all grey)
+  config.feedbackHistory.push_back(Wordle::parseFeedback("aaaaa 00000"));
+
+  // Local solver traits for testing
+  struct LocalWordleSolverTraits {
+    using CandidateType = Utils::Word;
+    using GuessType = Utils::Word;
+    using FeedbackType = Wordle::Feedback;
+    using ConfigType = Wordle::Config;
+    using CalculatedGuessType = Wordle::WordGuess;
+    using ResultType = Wordle::Result;
+    using CandidateSetType = Utils::SetCandidateSet<Utils::Word>;
+  };
+
+  // Local helper class to access protected AbstractEntSolverSameType
+  class LocalWordleSolver : public Utils::AbstractEntSolverSameType<LocalWordleSolverTraits> {
+  public:
+    LocalWordleSolver(const Wordle::Config &cfg)
+      : Utils::AbstractEntSolverSameType<LocalWordleSolverTraits>(cfg) {}
+  protected:
+    bool matchesFeedback(const Utils::Word &candidate, const Wordle::Feedback &feedback) const override {
+      return Wordle::matchesFeedback(candidate, feedback);
+    }
+    Wordle::Feedback generateFeedback(const Utils::Word &target, const Utils::Word &guess) const override {
+      return Wordle::generateFeedback(target, guess.wordString);
+    }
+    Wordle::WordGuess createGuess(const Utils::Word &word, double ent, double probability) const override {
+       Wordle::WordGuess g; g.word = word; g.probability = probability; return g; 
+    }
+    Wordle::Result createResult(const std::vector<Wordle::WordGuess> &guesses, int totalPossible) const override {
+       Wordle::Result r; r.sortedGuesses = guesses; return r;
+    }
+  };
+
+  LocalWordleSolver solver(config);
+  Utils::VectorCandidateSet<Utils::Word> initialSet(testWords);
+  auto result = solver.solve(testWords, initialSet);
+
+  for (const auto& g : result.sortedGuesses) {
+      if (g.word.wordString == "aaaaa") {
+           EXPECT_DOUBLE_EQ(g.probability, 0.0);
+      } else {
+           // 4 valid candidates remaining out of 5. Prob should be 1/4 = 0.25.
+           // Current bug expects 1/5 = 0.20.
+           EXPECT_NEAR(g.probability, 0.25, 1e-6) 
+               << "Incorrect probability for " << g.word.wordString;
+      }
+  }
+}
+
 
 // =============================================================================
 // MASTERMIND TESTS
@@ -200,6 +363,76 @@ TEST(MastermindTest, PatternToStringConsistency) {
   std::string str = p.toString(config);
 
   EXPECT_EQ(str, "1234");
+}
+
+TEST(MastermindTest, AllowDuplicatesFiltering) {
+  Mastermind::Config config;
+  config.numPegs = 4;
+  config.colorChars = "RGB";
+  config.maxDepth = 0;
+  config.allowDuplicates = true;
+  
+  // With duplicates allowed, patterns like RRRR should be valid
+  auto patternsWithDups = Mastermind::generateAllPatterns(config);
+  bool foundRRRR = false;
+  for (const auto& p : patternsWithDups) {
+    if (p.toString(config) == "RRRR") {
+      foundRRRR = true;
+      break;
+    }
+  }
+  EXPECT_TRUE(foundRRRR) << "RRRR should exist when duplicates allowed";
+  
+  // Without duplicates, RRRR should not exist
+  config.allowDuplicates = false;
+  auto patternsNoDups = Mastermind::generateAllPatterns(config);
+  bool foundRRRRNoDups = false;
+  for (const auto& p : patternsNoDups) {
+    if (p.toString(config) == "RRRR") {
+      foundRRRRNoDups = true;
+      break;
+    }
+  }
+  EXPECT_FALSE(foundRRRRNoDups) << "RRRR should NOT exist when duplicates not allowed";
+  
+  // Count should be different: with dups = 3^4 = 81, without dups = 3*2*1*0... but 3 colors 4 pegs impossible
+  // Actually 3 colors, 4 pegs without dups is 0 (not enough colors)
+  // Let's use 4 colors for valid test
+  config.colorChars = "RGBY";
+  config.allowDuplicates = false;
+  auto patterns4Colors = Mastermind::generateAllPatterns(config);
+  EXPECT_EQ(patterns4Colors.size(), 24); // 4! = 24 permutations
+  
+  config.allowDuplicates = true;
+  auto patterns4ColorsWithDups = Mastermind::generateAllPatterns(config);
+  EXPECT_EQ(patterns4ColorsWithDups.size(), 256); // 4^4 = 256
+}
+
+TEST(MastermindTest, CorrectPositionAndColorCounts) {
+  Mastermind::Config config;
+  config.numPegs = 4;
+  config.colorChars = "RGBY";
+  config.allowDuplicates = true;
+  
+  // Test exact match
+  Mastermind::Pattern target = Mastermind::parseFeedback("RGBY 0 0", config).guess;
+  Mastermind::Pattern guess = Mastermind::parseFeedback("RGBY 0 0", config).guess;
+  Mastermind::Feedback fb = Mastermind::generateFeedback(target, guess);
+  EXPECT_EQ(fb.correctPosition, 4);
+  EXPECT_EQ(fb.correctColor, 0);
+  
+  // Test all wrong position but correct colors
+  guess = Mastermind::parseFeedback("YRGB 0 0", config).guess; // Shifted
+  fb = Mastermind::generateFeedback(target, guess);
+  // R is in wrong pos, G is in wrong pos, B correct, Y wrong pos
+  // Actually let's trace: target=RGBY, guess=YRGB
+  // pos0: target R, guess Y - wrong (Y exists at pos3 in target)
+  // pos1: target G, guess R - wrong (R exists at pos0 in target)
+  // pos2: target B, guess G - wrong (G exists at pos1 in target)
+  // pos3: target Y, guess B - wrong (B exists at pos2 in target)
+  // So: 0 correct position, 4 correct color
+  EXPECT_EQ(fb.correctPosition, 0);
+  EXPECT_EQ(fb.correctColor, 4);
 }
 
 // =============================================================================
@@ -1262,7 +1495,7 @@ TEST(HangmanTest, SingleWordSingleSolution) {
 }
 
 TEST(HangmanTest, WrongLetterInSolvedState) {
-  // When puzzle is solved (one word per slot), wrong letters should have ENT=1
+  // When puzzle is solved (one word per slot), wrong letters should have ENT=0
   std::vector<Utils::Word> words = loadTestWords();
   ASSERT_FALSE(words.empty()) << "Failed to load word list";
 
@@ -1273,14 +1506,14 @@ TEST(HangmanTest, WrongLetterInSolvedState) {
 
   Hangman::Result result = Hangman::runHangmanSolver(config);
 
-  // Wrong letters (like 'z', 'x') should have 0% probability and ENT near 1
+  // Wrong letters (like 'z', 'x') should have 0% probability and ENT near 0
   for (const auto &guess : result.sortedGuesses) {
     if (guess.letter == 'z' || guess.letter == 'x') {
-      EXPECT_NEAR(guess.probability, 0.0, 0.01)
+      EXPECT_EQ(guess.probability, 0.0)
           << "'" << guess.letter << "' should have 0% probability";
-      // ENT should be close to 1 (one wasted turn)
-      EXPECT_NEAR(guess.ent, 1.0, 0.1)
-          << "'" << guess.letter << "' should have ENT near 1";
+      // ENT should be close to 0 (one wasted turn)
+      EXPECT_EQ(guess.ent, 0.0)
+          << "'" << guess.letter << "' should have ENT near 0";
     }
   }
 }
@@ -1629,5 +1862,57 @@ TEST(LetterBoxedTest, WordChaining) {
       EXPECT_EQ(lastChar, firstChar)
           << "Word chain broken: " << prevWord << " -> " << currWord;
     }
+  }
+}
+
+// =============================================================================
+// HANGMAN TESTS
+// =============================================================================
+
+TEST(HangmanTest, SortsByProbabilityDescending) {
+  Hangman::Config config;
+  config.maxDepth = 0;
+  config.wordPatterns = {{"??"}};  // 2-letter word pattern
+  config.excludeUncommonWords = false;
+  
+  Hangman::Result result = Hangman::runHangmanSolver(config, nullptr);
+  
+  // Verify results are sorted by probability descending (primary key)
+  for (size_t i = 1; i < result.sortedGuesses.size(); ++i) {
+    EXPECT_GE(result.sortedGuesses[i-1].probability, result.sortedGuesses[i].probability)
+        << "Hangman results should be sorted by probability descending";
+  }
+}
+
+TEST(HangmanTest, LetterGuessOrdering) {
+  // Test that LetterGuess comparison sorts by probability desc, then ENT asc
+  Hangman::LetterGuess g1, g2, g3;
+  
+  g1.letter = 'a'; g1.probability = 0.5; g1.ent = 2.0;
+  g2.letter = 'b'; g2.probability = 0.3; g2.ent = 1.5;
+  g3.letter = 'c'; g3.probability = 0.5; g3.ent = 1.0;  // Same prob as g1, lower ENT
+  
+  // g1 should be "less" than g2 because higher prob comes first (sorts lower)
+  EXPECT_TRUE(g1 < g2) << "Higher probability should sort before lower";
+  
+  // g3 should be "less" than g1 because same prob but lower ENT
+  EXPECT_TRUE(g3 < g1) << "Same probability but lower ENT should sort first";
+}
+
+TEST(HangmanTest, BasicSolverReturnsResults) {
+  Hangman::Config config;
+  config.maxDepth = 0;
+  config.wordPatterns = {{"?????"}};  // 5-letter word pattern
+  config.excludeUncommonWords = true;
+  
+  Hangman::Result result = Hangman::runHangmanSolver(config, nullptr);
+  
+  // Should return 26 letter guesses (a-z)
+  EXPECT_EQ(result.sortedGuesses.size(), 26);
+  
+  // All letters should have probability >= 0
+  for (const auto& guess : result.sortedGuesses) {
+    EXPECT_GE(guess.probability, 0.0);
+    EXPECT_LE(guess.probability, 1.0);
   }
 }

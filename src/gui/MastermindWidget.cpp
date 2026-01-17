@@ -10,6 +10,7 @@
 #include <QHeaderView>
 #include <QLineEdit>
 #include <QMessageBox>
+#include <QCheckBox>
 #include <QSpinBox>
 #include <QVBoxLayout>
 #include <sstream>
@@ -175,6 +176,10 @@ bool MastermindWidget::showConfigDialog() {
   colorCharsLineEdit->setPlaceholderText("e.g., rgbcmyk or 012345");
   formLayout->addRow("Color Characters:", colorCharsLineEdit);
 
+  QCheckBox *allowDuplicatesCheckBox = new QCheckBox(&dialog);
+  allowDuplicatesCheckBox->setChecked(config.allowDuplicates);
+  formLayout->addRow("Allow Duplicates:", allowDuplicatesCheckBox);
+
   QSpinBox *maxDepthSpinBox = new QSpinBox(&dialog);
   maxDepthSpinBox->setMinimum(0);
   maxDepthSpinBox->setMaximum(2);
@@ -198,6 +203,7 @@ bool MastermindWidget::showConfigDialog() {
     if (config.colorChars.empty()) {
       config.colorChars = "RGBCMY"; // Default if empty
     }
+    config.allowDuplicates = allowDuplicatesCheckBox->isChecked();
     config.maxDepth = maxDepthSpinBox->value();
 
     // Clear feedback history if pegs or colors changed
@@ -548,10 +554,12 @@ void MastermindWidget::setUIEnabled(bool enabled) {
 }
 
 void MastermindWidget::updateConfigInfo() {
+  QString duplicatesStr = config.allowDuplicates ? "Yes" : "No";
   QString info = QString("<span style='color:#666; font-size:11pt;'>%1 pegs | "
-                         "Colors: %2 | Search Depth: %3</span>")
+                         "Colors: %2 | Duplicates: %3 | Search Depth: %4</span>")
                      .arg(config.numPegs)
                      .arg(QString::fromStdString(config.colorChars))
+                     .arg(duplicatesStr)
                      .arg(config.maxDepth);
   configInfoLabel->setText(info);
 }

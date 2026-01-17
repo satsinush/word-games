@@ -4,9 +4,5 @@
 - Add support for more games
   - Waffle
   - Strands
-- Fix Windows installer to actually use icon and create start menu entries
-  - Update license info in installer
-  - Update publisher name maybe, currently see "Humanity" in windows app list
-  - Ensure icon works properly
-- Fix Letter Boxed bug where you have to use Enter button first before solving
-- Add length column to spelling bee results
+- Hangman number of words output doesn't match actual number of words
+- If a letter was already guessed and isn't in a word, it should be used to filter out words that contain that letter (if I was guessed and is in another word or not in any and the pattern is T?E ???? TIE should not be in the list of possible words)

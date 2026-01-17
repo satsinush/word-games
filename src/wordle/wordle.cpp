@@ -167,17 +167,22 @@ runWordleSolver(const std::vector<Utils::Word> &words,
   return filterWords(words, feedbacks);
 }
 
+// Wordle solver traits - bundles all types for the ENT solver
+struct WordleSolverTraits {
+  using CandidateType = Utils::Word;
+  using GuessType = Utils::Word;
+  using FeedbackType = Feedback;
+  using ConfigType = Config;
+  using CalculatedGuessType = WordGuess;
+  using ResultType = Result;
+  using CandidateSetType = Utils::SetCandidateSet<Utils::Word>;
+};
+
 // Wordle-specific ENT solver implementation
-// Uses AbstractEntSolverSameType since guess and solution types are both
-// Utils::Word
-class WordleEntSolver
-    : public Utils::AbstractEntSolverSameType<Utils::Word, Feedback, Config,
-                                              WordGuess, Result> {
+class WordleEntSolver : public Utils::AbstractEntSolverSameType<WordleSolverTraits> {
 public:
-  // Forwarding constructor: initialize base class with given config
   WordleEntSolver(const Config &cfg)
-      : Utils::AbstractEntSolverSameType<Utils::Word, Feedback, Config,
-                                         WordGuess, Result>(cfg) {}
+      : Utils::AbstractEntSolverSameType<WordleSolverTraits>(cfg) {}
 
 protected:
   bool matchesFeedback(const Utils::Word &candidate,
@@ -190,10 +195,9 @@ protected:
     return Wordle::generateFeedback(target, guess.wordString);
   }
 
-  WordGuess createGuess(const Utils::Word &candidate, double ent,
-                        double probability) const override {
+  WordGuess createGuess(const Utils::Word &word, double ent, double probability) const override {
     WordGuess guess;
-    guess.word = candidate;
+    guess.word = word;
     guess.ent = ent;
     guess.probability = probability;
     return guess;
@@ -228,8 +232,11 @@ Result runWordleSolver(const Config &config, std::atomic<bool> *cancel) {
     }
   }
 
+  // Create CandidateSet from the filtered words
+  Utils::VectorCandidateSet<Utils::Word> initialCandidates(possibleWords);
+
   // Use the specialized Wordle ENT solver - returns Result directly!
   WordleEntSolver solver(config);
-  return solver.solve(possibleWords, possibleWords, cancel);
+  return solver.solve(possibleWords, initialCandidates, cancel);
 }
 } // namespace Wordle
