@@ -267,10 +267,14 @@ set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Advanced word game and puzzle solver")
 set(CPACK_PACKAGE_INSTALL_DIRECTORY "Puzzle++")
 
 # --- 1. LICENSE FILE ---
-# Sanitize the path to handle spaces in "Local Documents"
+# Sanitize the path to handle spaces in "Local Documents" (Windows only)
 if(EXISTS "${CMAKE_SOURCE_DIR}/LICENSE")
-    sanitize_path_for_nsis("${CMAKE_SOURCE_DIR}/LICENSE" LICENSE_PATH)
-    set(CPACK_RESOURCE_FILE_LICENSE "${LICENSE_PATH}")
+    if(WIN32)
+        sanitize_path_for_nsis("${CMAKE_SOURCE_DIR}/LICENSE" LICENSE_PATH)
+        set(CPACK_RESOURCE_FILE_LICENSE "${LICENSE_PATH}")
+    else()
+        set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_SOURCE_DIR}/LICENSE")
+    endif()
 endif()
 
 # --- NSIS Specific Settings ---
