@@ -40,15 +40,24 @@
 #endif
 
 void printUsage(const char *programName) {
+#ifdef PPLUSPLUS_VERSION
+  const char *version_str = PPLUSPLUS_VERSION;
+#else
+  const char *version_str = "Unknown";
+#endif
+
   const char *usage_message = R"(Usage:
   %s [OPTIONS] [MODE]
   
   If no arguments provided: Launch GUI mode (if compiled with GUI support)
   If MODE is provided: Run the specified game mode
   
+  Version:
+  p++ Version %s
+
 Options:
   -h, --help              Display this help message
-  -v, --verbose           Enable verbose output (for future use)
+  -v, --version           Display version information
   -i                      Run in interactive CLI mode
 
 Modes:
@@ -145,7 +154,7 @@ Examples:
   %s read results/wordle.txt --start 0 --end 10
 )";
 
-  printf(usage_message, programName, programName, programName, programName,
+  printf(usage_message, programName, version_str, programName, programName, programName,
          programName, programName, programName, programName, programName,
          programName, programName, programName, programName, programName,
          programName, programName);
@@ -300,6 +309,16 @@ int run(int argc, char *argv[]) {
   // Check for help
   if (args.find("h") != args.end() || args.find("help") != args.end()) {
     printUsage(argv[0]);
+    return 0;
+  }
+
+  // Check for version
+  if (args.find("v") != args.end() || args.find("version") != args.end()) {
+#ifdef PPLUSPLUS_VERSION
+    std::cout << PPLUSPLUS_VERSION << "\n";
+#else
+    std::cout << "unknown\n";
+#endif
     return 0;
   }
 

@@ -176,6 +176,10 @@ target_link_libraries(p++ PRIVATE
     $<IF:$<BOOL:${BUILD_TRACY}>,p++-profiled,p++-base>
 )
 
+target_compile_definitions(p++ PRIVATE
+    PPLUSPLUS_VERSION="${p++_VERSION}"
+)
+
 if(BUILD_GUI)
     target_link_libraries(p++ PRIVATE p++-gui)
     set_target_properties(p++ PROPERTIES AUTOMOC ON)
