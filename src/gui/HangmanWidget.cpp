@@ -29,7 +29,7 @@ HangmanWidget::HangmanWidget(QWidget *parent)
   // Initialize config
   config.maxDepth = 1;
   config.excludeUncommonWords = true;
-  config.wordPatterns = {{"????"}}; // Default: single 4-letter word
+  config.wordPatterns = {{"____"}}; // Default: single 4-letter word
 
   // Setup the input widgets
   setupInputs();
@@ -61,14 +61,14 @@ void HangmanWidget::setupInputs() {
   // Pattern input
   QLabel *patternLabel = new QLabel("Pattern:", inputWidget);
   patternLabel->setToolTip(
-      "Enter word patterns separated by spaces.\nUse ? for unknown "
-      "letters.\nExample: ?A?? ?A? ????? (4-letter word with A, 3-letter word "
+      "Enter word patterns separated by spaces.\nUse _ for unknown "
+      "letters.\nExample: _A__ _A_ _____ (4-letter word with A, 3-letter word "
       "with A, 5-letter word)");
   inputLayout->addWidget(patternLabel);
 
   patternInput = new QLineEdit(inputWidget);
-  patternInput->setPlaceholderText("e.g., ?A?? ?A? ?????");
-  patternInput->setText("????"); // Default pattern
+  patternInput->setPlaceholderText("e.g., _A__ _A_ _____");
+  patternInput->setText("____"); // Default pattern
   patternInput->setFont(QFont("Courier", 12));
   patternInput->setMinimumWidth(200);
   inputLayout->addWidget(patternInput);
@@ -275,10 +275,10 @@ void HangmanWidget::onPatternChanged() {
     return; // Silently ignore invalid patterns
   }
 
-  // Validate patterns (only ? and letters allowed)
+  // Validate patterns (only _ and letters allowed)
   for (const auto &pattern : newPatterns) {
     for (char c : pattern.pattern) {
-      if (c != '?' && !std::isalpha(static_cast<unsigned char>(c))) {
+      if (c != '_' && !std::isalpha(static_cast<unsigned char>(c))) {
         return; // Silently ignore invalid characters
       }
     }

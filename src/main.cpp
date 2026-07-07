@@ -123,10 +123,10 @@ Dungleon:
 
 Hangman:
   %s hangman [OPTIONS]
-    --input <pattern;strikes>  Combined input. Format: "?A?? ???;xyz"
-                                 Pattern uses '?' for unknown, letters for revealed
+    --input <pattern;strikes>  Combined input. Format: "_A__ ___;xyz"
+                                 Pattern uses '_' for unknown, letters for revealed
                                  Strikes are letters NOT in the phrase
-    --pattern <pattern>        Word pattern(s). Format: "?A?? ???" (alternative to --input)
+    --pattern <pattern>        Word pattern(s). Format: "_A__ ___" (alternative to --input)
     --strikes <letters>        Letters NOT in phrase. Format: "xyz" (alternative to --input)
     --max-depth <0-2>          Search depth for entropy (default: 0, range: 0-2)
     --exclude-uncommon-words   Exclude uncommon words (1/true/yes or 0/false/no, default: 0)
@@ -149,7 +149,7 @@ Examples:
   %s wordle --guesses "STEAL 01201;CRANE 00120" --word-length 5 --max-depth 1
   %s mastermind --guesses "RGBC 1 2" --pegs 4 --colors "RGBCMY" --max-depth 1
   %s dungleon --guesses "ar kn bo ne fr 00010" --max-depth 1
-  %s hangman --input "?A?? ???;xyz"
+  %s hangman --input "_A__ ___;xyz"
   %s -i
   %s read results/wordle.txt --start 0 --end 10
 )";

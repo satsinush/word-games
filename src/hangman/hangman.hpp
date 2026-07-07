@@ -13,10 +13,10 @@ namespace Hangman {
 
 struct Feedback; // forward declaration so Config can reference Feedback
 
-// Represents a word pattern like "?A??" where ? is unknown, letters are
+// Represents a word pattern like "_A__" where _ is unknown, letters are
 // revealed
 struct WordPattern {
-  std::string pattern; // The pattern string (e.g., "?A??")
+  std::string pattern; // The pattern string (e.g., "_A__")
   size_t length() const { return pattern.length(); }
 
   // Get revealed letters as a map of position -> letter
@@ -24,7 +24,7 @@ struct WordPattern {
     std::vector<std::pair<size_t, char>> revealed;
     for (size_t i = 0; i < pattern.length(); ++i) {
       char c = pattern[i];
-      if (c != '?' && std::isalpha(static_cast<unsigned char>(c))) {
+      if (c != '_' && std::isalpha(static_cast<unsigned char>(c))) {
         revealed.emplace_back(i, static_cast<char>(std::tolower(c)));
       }
     }
@@ -85,7 +85,7 @@ struct Config {
   uint8_t maxDepth = 1; // How many moves ahead to calculate ENT
   bool excludeUncommonWords = false;
   std::vector<WordPattern> wordPatterns =
-      {}; // Patterns for each word (e.g., {"?A??", "?A?", "?????"})
+      {}; // Patterns for each word (e.g., {"_A__", "_A_", "_____"})
   std::vector<Feedback> feedbackHistory = {};
 };
 
@@ -135,7 +135,7 @@ struct Result {
       possibleWords; // Unique words matching any pattern position
 };
 
-// Parse a pattern string like "?A?? ?A? ?????" into WordPatterns
+// Parse a pattern string like "_A__ _A_ _____" into WordPatterns
 std::vector<WordPattern> parsePatternString(const std::string &patternStr);
 
 // Convert patterns to a display string

@@ -16,12 +16,12 @@ Hangman::Config HangmanGame::getConfigFromUser() {
 
   std::cout << "Configure Hangman solver:\n";
   std::string patternStr = Utils::Input::promptString(
-      "Enter word patterns (e.g., \"???? ?A? ?????\")", "????");
+      "Enter word patterns (e.g., \"____ _A_ _____\")", "____");
   config.wordPatterns = Hangman::parsePatternString(patternStr);
 
   if (config.wordPatterns.empty()) {
-    std::cout << "Using default pattern: ????\n";
-    config.wordPatterns = {{"????"}};
+    std::cout << "Using default pattern: ____\n";
+    config.wordPatterns = {{"____"}};
   }
 
   config.maxDepth = static_cast<uint8_t>(Utils::Input::promptInt(
@@ -62,7 +62,7 @@ HangmanGame::getConfigFromArgs(const std::map<std::string, std::string> &args) {
   if (config.wordPatterns.empty()) {
     // Fallback to old min/max word length for backwards compatibility
     int minLen = Utils::Input::getArgValue(args, "min-word-length", 4);
-    std::string defaultPattern(static_cast<size_t>(minLen), '?');
+    std::string defaultPattern(static_cast<size_t>(minLen), '_');
     config.wordPatterns = {{defaultPattern}};
   }
 
@@ -177,8 +177,8 @@ void HangmanGame::runCLI() {
   Hangman::Config config;
 
   std::cout << "\n=== HANGMAN SOLVER ===\n";
-  std::cout << "Format: PATTERN;STRIKES (e.g., '?A?? ???;xyz')\n";
-  std::cout << "  - PATTERN: Use '?' for unknown letters, actual letters for "
+  std::cout << "Format: PATTERN;STRIKES (e.g., '_A__ ___; xyz')\n";
+  std::cout << "  - PATTERN: Use '_' for unknown letters, actual letters for "
                "revealed positions\n";
   std::cout << "  - STRIKES: Letters guessed that are NOT in the phrase\n";
   std::cout << "  - Separate multiple words with spaces\n";
@@ -187,7 +187,7 @@ void HangmanGame::runCLI() {
   while (true) {
     try {
       std::string input = Utils::Input::promptString(
-          "Enter pattern;strikes (e.g., '?A?? ???;xyz')");
+          "Enter pattern;strikes (e.g., '_A__ ___;xyz')");
       std::string trimmed = Utils::trimToLower(input);
 
       if (trimmed == "quit" || trimmed == "q" || trimmed == "exit") {
@@ -215,7 +215,7 @@ void HangmanGame::runCLI() {
       // Parse pattern
       config.wordPatterns = Hangman::parsePatternString(patternStr);
       if (config.wordPatterns.empty()) {
-        std::cout << "Invalid pattern. Use '?' for unknown letters.\n";
+        std::cout << "Invalid pattern. Use '_' for unknown letters.\n";
         continue;
       }
 
