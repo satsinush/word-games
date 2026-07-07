@@ -529,7 +529,7 @@ Result runDungleonSolver(const Config &_config, std::atomic<bool> *cancel) {
   std::vector<Pattern> possiblePatterns = generateAllPossiblePatterns(config);
 
   // Create CandidateSet from the filtered patterns
-  Utils::VectorCandidateSet<Dungleon::Pattern> initialCandidates(allPatterns);
+  Utils::VectorCandidateSet<Dungleon::Pattern> initialCandidates(possiblePatterns);
 
   // Use the specialized Dungleon ENT solver - returns Result directly!
   DungleonEntSolver solver(config);
