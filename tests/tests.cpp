@@ -1220,6 +1220,20 @@ TEST(HangmanTest, MatchesPattern) {
   Hangman::WordPattern pattern4;
   pattern4.pattern = "????";
   EXPECT_FALSE(Hangman::matchesPattern(word, pattern4));
+
+  // Test case where a revealed letter appears in an unrevealed position
+  Utils::Word word2 = makeWord("fascinated");
+  Hangman::WordPattern pattern5;
+  pattern5.pattern = "_as_i__t__";
+  EXPECT_FALSE(Hangman::matchesPattern(word2, pattern5));
+
+  // Test case where another letter is duplicated and hits an unrevealed position
+  Utils::Word word3 = makeWord("fascinates");
+  EXPECT_FALSE(Hangman::matchesPattern(word3, pattern5));
+
+  // Valid matching word (no duplicate of revealed letters at unrevealed positions)
+  Utils::Word word4 = makeWord("xasyizztww");
+  EXPECT_TRUE(Hangman::matchesPattern(word4, pattern5));
 }
 
 TEST(HangmanTest, MatchesFeedback) {

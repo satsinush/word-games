@@ -98,6 +98,48 @@
                 "BUILD_BENCHMARKS": "OFF",
                 "BUILD_TRACY": "OFF"
             }
+        },
+        {
+            "name": "linux-debug",
+            "displayName": "linux-debug",
+            "description": "Builds for Debug on Linux.",
+            "generator": "Unix Makefiles",
+            "binaryDir": "${sourceDir}/build/linux-debug",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug",
+                "BUILD_GUI": "OFF",
+                "BUILD_TESTING": "ON",
+                "BUILD_BENCHMARKS": "ON",
+                "BUILD_TRACY": "OFF"
+            }
+        },
+        {
+            "name": "linux-release",
+            "displayName": "linux-release",
+            "description": "Builds for Release on Linux.",
+            "generator": "Unix Makefiles",
+            "binaryDir": "${sourceDir}/build/linux-release",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release",
+                "BUILD_GUI": "OFF",
+                "BUILD_TESTING": "OFF",
+                "BUILD_BENCHMARKS": "OFF",
+                "BUILD_TRACY": "OFF"
+            }
+        },
+        {
+            "name": "linux-core",
+            "displayName": "linux-core",
+            "description": "Builds a minimal Release executable on Linux.",
+            "generator": "Unix Makefiles",
+            "binaryDir": "${sourceDir}/build/linux-core",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release",
+                "BUILD_GUI": "OFF",
+                "BUILD_TESTING": "OFF",
+                "BUILD_BENCHMARKS": "OFF",
+                "BUILD_TRACY": "OFF"
+            }
         }
     ],
     "buildPresets": [
@@ -158,6 +200,27 @@
             "configurePreset": "msvc-release",
             "targets": [
                 "package_release_installer"
+            ]
+        },
+        {
+            "name": "linux-debug",
+            "configurePreset": "linux-debug",
+            "targets": [
+                "all"
+            ]
+        },
+        {
+            "name": "linux-release",
+            "configurePreset": "linux-release",
+            "targets": [
+                "all"
+            ]
+        },
+        {
+            "name": "linux-core",
+            "configurePreset": "linux-core",
+            "targets": [
+                "all"
             ]
         }
     ]

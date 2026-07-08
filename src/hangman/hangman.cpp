@@ -92,12 +92,24 @@ bool matchesPattern(const Utils::Word &word, const WordPattern &pattern) {
     return false;
   }
 
-  // Check that revealed letters match
+  // Check that revealed letters match and collect them
+  std::unordered_set<char> revealedLetters;
   for (const auto &[pos, letter] : pattern.getRevealedLetters()) {
     if (pos >= word.wordString.length())
       return false;
     if (std::tolower(word.wordString[pos]) != letter)
       return false;
+    revealedLetters.insert(letter);
+  }
+
+  // A letter that has been revealed in the pattern cannot appear in an unrevealed position
+  for (size_t i = 0; i < word.wordString.length(); ++i) {
+    char c = static_cast<char>(std::tolower(word.wordString[i]));
+    if (revealedLetters.count(c) > 0) {
+      if (std::tolower(pattern.pattern[i]) != c) {
+        return false;
+      }
+    }
   }
 
   return true;
