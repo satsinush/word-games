@@ -197,7 +197,8 @@ void DungleonGame::saveResults(const Dungleon::Result &result,
     // Write possible patterns first (those with probability > 0)
     for (const auto &guess : result.sortedGuesses) {
       if (guess.probability > 0.0) {
-        out << guess.pattern.toString() << "\n";
+        out << guess.pattern.toString() << "," << guess.ent << ","
+            << guess.probability << "\n";
       }
     }
     for (const auto &guess : result.sortedGuesses) {

@@ -63,6 +63,7 @@ protected:
   }
 
   virtual double worstCaseExpectedTurns(size_t numCandidates) const {
+    if (numCandidates <= 1) return 0.0;
     return std::log2(static_cast<double>(numCandidates));
   }
 

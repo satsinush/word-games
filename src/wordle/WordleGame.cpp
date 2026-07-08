@@ -152,7 +152,8 @@ void WordleGame::saveResults(const Wordle::Result &result,
     // Write possible words first (those with probability > 0)
     for (const auto &guess : result.sortedGuesses) {
       if (guess.probability > 0.0) {
-        out << guess.word.wordString << "\n";
+        out << guess.word.wordString << "," << guess.ent << ","
+            << guess.probability << "\n";
       }
     }
     for (const auto &guess : result.sortedGuesses) {

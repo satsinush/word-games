@@ -501,6 +501,7 @@ protected:
   }
 
   double worstCaseExpectedTurns(size_t numCandidates) const override {
+    if (numCandidates <= 1) return 0.0;
     return std::log(static_cast<double>(numCandidates)) /
            std::log(static_cast<double>(NUM_CHARACTERS));
   }
