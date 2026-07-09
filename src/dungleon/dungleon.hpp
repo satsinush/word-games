@@ -60,6 +60,7 @@ struct Pattern; // forward declaration so Config can reference Pattern
 
 struct Config {
   uint8_t maxDepth = 1; // How many moves ahead to calculate ENT
+  bool autoDepth = false; // Dynamically choose optimal depth
   bool excludeImpossiblePatterns =
       false; // Whether to exclude impossible patterns from guesses
   std::vector<Feedback> feedbackHistory = {}; // History of previous feedbacks

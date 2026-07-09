@@ -83,6 +83,7 @@ struct WordSlotSolution {
 
 struct Config {
   uint8_t maxDepth = 1; // How many moves ahead to calculate ENT
+  bool autoDepth = false; // Dynamically choose optimal depth
   bool excludeUncommonWords = false;
   std::vector<WordPattern> wordPatterns =
       {}; // Patterns for each word (e.g., {"_A__", "_A_", "_____"})

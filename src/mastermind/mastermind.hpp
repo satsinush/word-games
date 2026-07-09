@@ -20,6 +20,7 @@ struct Config {
   std::string colorChars = "RGBCMY"; // Available color characters (max 256)
   bool allowDuplicates = true;       // Whether duplicate colors are allowed
   uint8_t maxDepth = 1;              // How many moves ahead to calculate ENT
+  bool autoDepth = false;            // Dynamically choose optimal depth
   std::vector<Feedback> feedbackHistory = {}; // History of previous feedbacks
 
   // Helper to get number of colors

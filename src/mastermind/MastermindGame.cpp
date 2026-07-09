@@ -23,6 +23,13 @@ Mastermind::Config MastermindGame::getConfigFromUser() {
   config.allowDuplicates =
       Utils::Input::promptBool("Allow duplicate colors?", true);
 
+  config.autoDepth = Utils::Input::promptBool(
+      "Use auto-depth calculation (Recommended)?", true);
+  if (!config.autoDepth) {
+    config.maxDepth = static_cast<uint8_t>(
+        Utils::Input::promptInt("Enter search depth (0-2)", 1, 0, 2));
+  }
+
   return config;
 }
 
@@ -37,6 +44,7 @@ Mastermind::Config MastermindGame::getConfigFromArgs(
       Utils::Input::getArgValue(args, "allow-duplicates", true);
   config.maxDepth =
       static_cast<uint8_t>(Utils::Input::getArgValue(args, "max-depth", 1u));
+  config.autoDepth = Utils::Input::getArgValue(args, "auto-depth", false);
   config.feedbackHistory = getFeedbackFromArgs(args, config);
   return config;
 }
@@ -225,8 +233,12 @@ void MastermindGame::runCLI() {
 
       if (inputLower == "s" || inputLower == "solve") {
         try {
-          config.maxDepth = static_cast<uint8_t>(
-              Utils::Input::promptInt("Enter search depth (0-2)", 1, 0, 2));
+          config.autoDepth = Utils::Input::promptBool(
+              "Use auto-depth calculation (Recommended)?", true);
+          if (!config.autoDepth) {
+            config.maxDepth = static_cast<uint8_t>(
+                Utils::Input::promptInt("Enter search depth (0-2)", 1, 0, 2));
+          }
 
           std::cout << "Calculating best guesses...\n";
           Mastermind::Result result = Mastermind::runMastermindSolver(config);

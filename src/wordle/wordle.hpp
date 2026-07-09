@@ -16,6 +16,7 @@ struct Feedback; // forward declaration so Config can reference Feedback
 
 struct Config {
   uint8_t maxDepth = 1; // How many moves ahead to calculate ENT
+  bool autoDepth = false; // Dynamically choose optimal depth
   bool excludeUncommonWords = false;
   uint8_t wordLength = 5; // Length of words to use (default 5)
   std::vector<Feedback> feedbackHistory = {};

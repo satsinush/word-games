@@ -96,6 +96,7 @@ Wordle:
                                  0=grey, 1=yellow, 2=green
     --word-length <n>          Word length (default: 5, range: 1-32)
     --max-depth <0-2>          Search depth for entropy (default: 0)
+    --auto-depth               Dynamically calculate optimal depth (ignores max-depth)
     --exclude-uncommon-words   Exclude uncommon words (1/true/yes or 0/false/no, default: 0)
     -o, --output <file>        Output file with possible words and all guesses
                                  (default: results/guesses.txt)
@@ -108,6 +109,7 @@ Mastermind:
     --colors <chars>           Available color characters (default: "RGBCMY")
     --allow-duplicates         Allow duplicate colors (1/true/yes or 0/false/no, default: 1)
     --max-depth <0-2>          Search depth for entropy (default: 1, range: 0-2)
+    --auto-depth               Dynamically calculate optimal depth (ignores max-depth)
     -o, --output <file>        Output file with possible patterns and all guesses
                                  (default: results/guesses.txt)
 
@@ -117,6 +119,7 @@ Dungleon:
                                  Character pairs with colors (0-4)
     --solutions <solutions>    Past solutions for Gauntlet mode. Format: "ar kn ma bt dr"
     --max-depth <0-2>          Search depth for entropy (default: 0, range: 0-2)
+    --auto-depth               Dynamically calculate optimal depth (ignores max-depth)
     --exclude-impossible       Exclude impossible patterns from guesses (1/true/yes or 0/false/no, default: 0)
     -o, --output <file>        Output file with possible patterns and all guesses
                                  (default: results/dungleon.txt)

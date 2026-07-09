@@ -152,6 +152,7 @@ Generates entropy-based suggestions for Wordle.
       * **Example:** `"AUDIO 00100;SOARE 10201"`
   * `--word-length <n>`: Length of the puzzle word. (Default: `5`).
   * `--max-depth <0-2>`: Search depth for entropy. Higher is more accurate but slower. (Default: `0`).
+  * `--auto-depth`: Dynamically calculate optimal depth based on candidate complexity. (Overrides `--max-depth`).
   * `--exclude-uncommon-words <bool>`: Limit search to common words. (Default: `false`).
   * `-o`, `--output <file>`: Output file path. (Default: `results/guesses.txt`).
 
@@ -216,6 +217,7 @@ Generates entropy-based suggestions for Mastermind.
   * `--colors <string>`: Available color characters. (Default: `"RGBCMY"`).
   * `--allow-duplicates <bool>`: Allow duplicate colors in code. (Default: `true`).
   * `--max-depth <0-2>`: Search depth for entropy. (Default: `1`).
+  * `--auto-depth`: Dynamically calculate optimal depth based on candidate complexity. (Overrides `--max-depth`).
   * `-o`, `--output <file>`: Output file path. (Default: `results/guesses.txt`).
 
 ### 5\. Hangman
@@ -239,6 +241,7 @@ Generates entropy-based letter suggestions for Hangman puzzles.
   * `--strikes <string>`: Letters that are NOT in the word/phrase (alternative to `--input`).
       * **Example:** `"etxzq"` (letters e, t, x, z, q have been guessed and are not in the word).
   * `--max-depth <0-2>`: Search depth for entropy calculation. (Default: `0`).
+  * `--auto-depth`: Dynamically calculate optimal depth based on candidate complexity. (Overrides `--max-depth`).
   * `--exclude-uncommon-words <bool>`: Limit search to common words. (Default: `false`).
   * `-o`, `--output <file>`: Output file path. (Default: `results/hangman.txt`).
 
@@ -260,6 +263,7 @@ Generates entropy-based suggestions for Dungleon.
   * `--solutions <string>`: Past solutions (for Gauntlet mode), separated by semicolons.
       * **Format:** `"ar kn ma bt dr;cl wa ro th pr"`
   * `--max-depth <0-2>`: Search depth for entropy. (Default: `0`).
+  * `--auto-depth`: Dynamically calculate optimal depth based on candidate complexity. (Overrides `--max-depth`).
   * `--exclude-impossible <bool>`: Exclude impossible patterns. (Default: `false`).
   * `-o`, `--output <file>`: Output file path. (Default: `results/dungleon.txt`).
 

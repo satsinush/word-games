@@ -75,8 +75,7 @@ cmake --preset mingw-release
 cmake --build --preset mingw-release
 
 # Run the application
-cd build/mingw-release
-./p++
+./build/mingw-release/p++
 ```
 
 -----
@@ -102,14 +101,26 @@ If using the CLI, run the executable directly:
 # Solve Spelling Bee with custom letters
 ./p++ spellingbee --letters nyhacked --reuse-letters true
 
-# Get Wordle suggestions
-./p++ wordle --guesses "CRANE 01120" --max-depth 1
+# Get Wordle suggestions using auto-depth
+./p++ wordle --guesses "CRANE 01120" --auto-depth
 
 # Mastermind solver assistance
 ./p++ mastermind --guesses "RGBC 1 2" --pegs 4 --colors "RGBCMY"
 
 # Hangman letter suggestions
 ./p++ hangman --input "?A??? ???;etz"
+```
+
+## Running Tests
+
+To run the unit tests, make sure you configure the build using a preset that has testing enabled (e.g. `linux-debug` or `mingw-debug`), build the project, and execute the test suite:
+
+```bash
+# Run the tests binary directly
+./build/linux-debug/p++-tests
+
+# Or run using CTest
+ctest --test-dir build/linux-debug
 ```
 
 ## Complete Documentation

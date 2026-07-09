@@ -8,6 +8,7 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
+#include <iostream>
 
 #ifdef TRACY_ENABLE
 #include <tracy/Tracy.hpp>
@@ -96,8 +97,13 @@ public:
     std::vector<CalculatedGuessType> guesses;
     int totalPossible = static_cast<int>(filteredCandidates.size());
 
-    // If maxDepth is 0, skip ENT calculation and just return filtered solutions
-    if (config.maxDepth == 0) {
+    int activeDepth = config.maxDepth;
+    if (config.autoDepth) {
+      activeDepth = calculateOptimalDepth(allGuesses.size(), filteredCandidates.size());
+    }
+
+    // If activeDepth is 0, skip ENT calculation and just return filtered solutions
+    if (activeDepth == 0) {
       for (const auto &guess : allGuesses) {
         double prob = calculateGuessProbability(guess, filteredCandidates);
         CalculatedGuessType guessResult = createGuess(
@@ -118,8 +124,7 @@ public:
       }
       
       double expectedTurns = calculateExpectedTurns(guessInput, filteredCandidates,
-                                                    allGuesses, config.maxDepth);
-
+                                                    allGuesses, activeDepth);
       double prob = calculateGuessProbability(guessInput, filteredCandidates);
       CalculatedGuessType guess = createGuess(guessInput, expectedTurns, prob);
       guesses.push_back(guess);
@@ -208,6 +213,77 @@ private:
     );
 
     return 1.0 + expectedRemainingTurns;
+  }
+
+  /**
+   * Dynamically extracts the game's intrinsic branching factor (B) by reversing the
+   * logarithmic formula implemented in the subclass's worstCaseExpectedTurns.
+   *
+   * Derivation:
+   *   T = worstCaseExpectedTurns(C) = ln(C) / ln(B)
+   *   ln(B) = ln(C) / T
+   *   B = exp(ln(C) / T)
+   * We use C = 128 (a power of 2) as a dummy candidate size to solve for B.
+   */
+  double getBranchingFactor() const {
+      double turns = worstCaseExpectedTurns(128);
+      if (turns <= 0.0) return 2.0; // Fallback safe base
+      return std::exp(std::log(128.0) / turns);
+  }
+
+  int calculateOptimalDepth(size_t numGuesses, size_t numCandidates) const {
+      if (numCandidates <= 1) {
+          std::cout << "[AutoDepth Debug] Candidates: " << numCandidates
+                    << ", Guesses: " << numGuesses << " -> Selected Depth: 0\n";
+          return 0;
+      }
+      
+      const double threshold = 3e7; // 30 million operations
+      const int maxDepth = 3;
+      
+      // Get the branching factor B from worstCaseExpectedTurns
+      double base = getBranchingFactor();
+      if (base < 1.5) base = 1.5; // Ensure B has a sensible minimum
+      
+      double activeCandidates = static_cast<double>(numCandidates);
+      double totalOps = 0.0;
+      double lastSafeOps = 0.0;
+      int resultDepth = maxDepth;
+      
+      // Operations at level d grow by the number of guesses G tested at each node,
+      // and shrink by the branching factor B (base) of candidate subsets.
+      // Net scale factor per level = G / B
+      double levelOps = static_cast<double>(numGuesses) * activeCandidates;
+      double scaleFactor = static_cast<double>(numGuesses) / base;
+      
+      for (int d = 1; d <= maxDepth; ++d) {
+          totalOps += levelOps;
+          
+          if (totalOps > threshold) {
+              resultDepth = d - 1;
+              break;
+          }
+          
+          lastSafeOps = totalOps;
+          levelOps *= scaleFactor;
+          
+          // Shrink average candidate subset size for the next level
+          activeCandidates /= base;
+          
+          // If average candidates per subproblem falls below 1, further depth is wasted
+          if (activeCandidates <= 1.0) {
+              resultDepth = d;
+              lastSafeOps = totalOps;
+              break;
+          }
+      }
+      
+      std::cout << "[AutoDepth Debug] Candidates: " << numCandidates
+                << ", Guesses: " << numGuesses
+                << ", branchingFactor: " << base
+                << ", estimatedOps: " << lastSafeOps
+                << " -> Selected Depth: " << resultDepth << "\n";
+      return resultDepth;
   }
 };
 

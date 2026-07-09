@@ -16,8 +16,12 @@ Wordle::Config WordleGame::getConfigFromUser() {
 
   std::cout << "Configure Wordle solver:\n";
   config.wordLength = Utils::Input::promptInt("Word length (1-32)", 5, 1, 32);
-  config.maxDepth = Utils::Input::promptInt(
-      "Search depth for ENT calculation (0-2)", 1, 0, 2);
+  config.autoDepth = Utils::Input::promptBool(
+      "Use auto-depth calculation (Recommended)?", true);
+  if (!config.autoDepth) {
+    config.maxDepth = Utils::Input::promptInt(
+        "Search depth for ENT calculation (0-2)", 1, 0, 2);
+  }
   config.excludeUncommonWords = Utils::Input::promptBool(
       "Exclude uncommon words from suggestions?", true);
 
@@ -29,6 +33,7 @@ WordleGame::getConfigFromArgs(const std::map<std::string, std::string> &args) {
   Wordle::Config config;
   config.wordLength = Utils::Input::getArgValue(args, "word-length", 5);
   config.maxDepth = Utils::Input::getArgValue(args, "max-depth", 0);
+  config.autoDepth = Utils::Input::getArgValue(args, "auto-depth", false);
   config.excludeUncommonWords =
       Utils::Input::getArgValue(args, "exclude-uncommon-words", false);
   config.feedbackHistory =
@@ -243,8 +248,12 @@ void WordleGame::runCLI() {
       if (input == "s" || input == "solve") {
         try {
           // Ask for solver options each time
-          config.maxDepth = Utils::Input::promptInt(
-              "Search depth for ENT calculation (0-2)", 1, 0, 2);
+          config.autoDepth = Utils::Input::promptBool(
+              "Use auto-depth calculation (Recommended)?", true);
+          if (!config.autoDepth) {
+            config.maxDepth = Utils::Input::promptInt(
+                "Search depth for ENT calculation (0-2)", 1, 0, 2);
+          }
           config.excludeUncommonWords = Utils::Input::promptBool(
               "Exclude uncommon words from suggestions?", true);
 

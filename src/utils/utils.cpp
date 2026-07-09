@@ -28,7 +28,12 @@ std::filesystem::path getExecutableDir() {
 #ifdef _WIN32
   GetModuleFileNameA(NULL, buffer, sizeof(buffer));
 #else
-  readlink("/proc/self/exe", buffer, sizeof(buffer));
+  ssize_t len = readlink("/proc/self/exe", buffer, sizeof(buffer) - 1);
+  if (len != -1) {
+    buffer[len] = '\0';
+  } else {
+    buffer[0] = '\0';
+  }
 #endif
   return std::filesystem::path(buffer).parent_path();
 }
