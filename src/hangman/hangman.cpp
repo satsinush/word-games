@@ -304,15 +304,15 @@ protected:
                        uint32_t R) const override {
     const double tolerance = 1e-9;
 
+    if (std::abs(a.probability - b.probability) > tolerance) {
+      return a.probability > b.probability;
+    }
+
     bool aGuarantees = (a.wnt > 0.0 && a.wnt <= static_cast<double>(R));
     bool bGuarantees = (b.wnt > 0.0 && b.wnt <= static_cast<double>(R));
 
     if (aGuarantees != bGuarantees) {
       return aGuarantees;
-    }
-
-    if (std::abs(a.probability - b.probability) > tolerance) {
-      return a.probability > b.probability;
     }
 
     if (std::abs(a.ent - b.ent) > tolerance) {
