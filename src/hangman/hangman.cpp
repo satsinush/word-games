@@ -370,10 +370,11 @@ protected:
       return candidates.probabilityOfLetter(guess);
   }
 
-  LetterGuess createGuess(const char &letter, double ent, double probability) const override {
+  LetterGuess createGuess(const char &letter, double ent, double wnt, double probability) const override {
     LetterGuess guess;
     guess.letter = letter;
     guess.ent = ent;
+    guess.wnt = wnt;
     guess.probability = probability; 
     return guess;
   }

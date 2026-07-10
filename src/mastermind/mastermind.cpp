@@ -259,10 +259,11 @@ protected:
     return Mastermind::generateFeedback(target, guess);
   }
 
-  PatternGuess createGuess(const Pattern &pattern, double ent, double probability) const override {
+  PatternGuess createGuess(const Pattern &pattern, double ent, double wnt, double probability) const override {
     PatternGuess guess;
     guess.pattern = pattern;
     guess.ent = ent;
+    guess.wnt = wnt;
     guess.probability = probability;
     return guess;
   }

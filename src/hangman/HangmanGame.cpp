@@ -28,6 +28,8 @@ Hangman::Config HangmanGame::getConfigFromUser() {
       "Search depth for ENT calculation (0-2)", 1, 0, 2));
   config.excludeUncommonWords = Utils::Input::promptBool(
       "Exclude uncommon words from suggestions?", true);
+  config.maxGuesses = Utils::Input::promptInt(
+      "Maximum number of strikes allowed", 6, 1, 100);
 
   return config;
 }
@@ -70,6 +72,7 @@ HangmanGame::getConfigFromArgs(const std::map<std::string, std::string> &args) {
       static_cast<uint8_t>(Utils::Input::getArgValue(args, "max-depth", 0));
   config.excludeUncommonWords =
       Utils::Input::getArgValue(args, "exclude-uncommon-words", false);
+  config.maxGuesses = Utils::Input::getArgValue(args, "max-guesses", 6);
   return config;
 }
 
@@ -105,9 +108,10 @@ void HangmanGame::printResults(const Hangman::Result &result) {
     std::cout << std::setw(10) << "Rank";
     std::cout << std::setw(10) << "Letter";
     std::cout << std::setw(12) << "ENT Score";
+    std::cout << std::setw(12) << "WNT Score";
     std::cout << std::setw(15) << "In Word %" << "\n";
 
-    int totalWidth = 10 + 10 + 12 + 15;
+    int totalWidth = 10 + 10 + 12 + 12 + 15;
     std::cout << std::string(static_cast<size_t>(std::max(0, totalWidth)), '-')
               << "\n";
 
@@ -120,6 +124,8 @@ void HangmanGame::printResults(const Hangman::Result &result) {
                 << static_cast<char>(std::toupper(guess.letter));
       std::cout << std::setw(12) << std::fixed << std::setprecision(3)
                 << guess.ent;
+      std::cout << std::setw(12) << std::fixed << std::setprecision(3)
+                << guess.wnt;
       std::cout << std::setw(15) << std::fixed << std::setprecision(1)
                 << (guess.probability * 100.0) << "%\n";
     }
@@ -156,7 +162,7 @@ void HangmanGame::saveResults(const Hangman::Result &result,
   if (out.is_open()) {
     // Write letter guesses (no header, just data)
     for (const auto &guess : result.sortedGuesses) {
-      out << guess.letter << " " << guess.ent << " " << guess.probability
+      out << guess.letter << " " << guess.ent << " " << guess.wnt << " " << guess.probability
           << "\n";
     }
     // Write possible words (no gap, no header)

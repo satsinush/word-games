@@ -195,10 +195,11 @@ protected:
     return Wordle::generateFeedback(target, guess.wordString);
   }
 
-  WordGuess createGuess(const Utils::Word &word, double ent, double probability) const override {
+  WordGuess createGuess(const Utils::Word &word, double ent, double wnt, double probability) const override {
     WordGuess guess;
     guess.word = word;
     guess.ent = ent;
+    guess.wnt = wnt;
     guess.probability = probability;
     return guess;
   }

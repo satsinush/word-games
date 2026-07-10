@@ -19,6 +19,7 @@ struct Config {
   bool autoDepth = false; // Dynamically choose optimal depth
   bool excludeUncommonWords = false;
   uint8_t wordLength = 5; // Length of words to use (default 5)
+  uint32_t maxGuesses = 6; // Maximum allowed guesses
   std::vector<Feedback> feedbackHistory = {};
 };
 
@@ -66,6 +67,7 @@ struct Feedback {
 struct WordGuess {
   Utils::Word word;
   double ent = 0.0; // Expected Number of Turns
+  double wnt = 0.0; // Worst Number of Turns
   double probability = 0.0;
 
   bool operator<(const WordGuess &other) const {
@@ -79,6 +81,10 @@ struct WordGuess {
     // answers)
     if (std::abs(probability - other.probability) > tolerance)
       return probability > other.probability; // Sort higher probability first
+
+    // Third tiebreaker: WNT (lower is better)
+    if (std::abs(wnt - other.wnt) > tolerance)
+      return wnt < other.wnt;
 
     // Final tiebreaker: sort by word for consistency
     return word < other.word;

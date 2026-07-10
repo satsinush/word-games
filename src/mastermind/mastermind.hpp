@@ -21,6 +21,7 @@ struct Config {
   bool allowDuplicates = true;       // Whether duplicate colors are allowed
   uint8_t maxDepth = 1;              // How many moves ahead to calculate ENT
   bool autoDepth = false;            // Dynamically choose optimal depth
+  uint32_t maxGuesses = 10;          // Maximum allowed guesses
   std::vector<Feedback> feedbackHistory = {}; // History of previous feedbacks
 
   // Helper to get number of colors
@@ -118,6 +119,7 @@ struct Feedback {
 struct PatternGuess {
   Pattern pattern;
   double ent = 0.0; // Expected Number of Turns
+  double wnt = 0.0; // Worst Number of Turns
   double probability = 0.0;
 
   bool operator<(const PatternGuess &other) const {
@@ -131,6 +133,10 @@ struct PatternGuess {
     // answers)
     if (std::abs(probability - other.probability) > tolerance)
       return probability > other.probability; // Sort higher probability first
+    
+    // Third tiebreaker: WNT (lower is better)
+    if (std::abs(wnt - other.wnt) > tolerance)
+      return wnt < other.wnt;
 
     // Final tiebreaker: sort by pattern for consistency
     return pattern < other.pattern;

@@ -29,6 +29,8 @@ Mastermind::Config MastermindGame::getConfigFromUser() {
     config.maxDepth = static_cast<uint8_t>(
         Utils::Input::promptInt("Enter search depth (0-2)", 1, 0, 2));
   }
+  config.maxGuesses = Utils::Input::promptInt(
+      "Maximum number of guesses allowed", 10, 1, 100);
 
   return config;
 }
@@ -45,6 +47,7 @@ Mastermind::Config MastermindGame::getConfigFromArgs(
   config.maxDepth =
       static_cast<uint8_t>(Utils::Input::getArgValue(args, "max-depth", 1u));
   config.autoDepth = Utils::Input::getArgValue(args, "auto-depth", false);
+  config.maxGuesses = Utils::Input::getArgValue(args, "max-guesses", 10);
   config.feedbackHistory = getFeedbackFromArgs(args, config);
   return config;
 }
@@ -104,9 +107,10 @@ void MastermindGame::printResults(const Mastermind::Result &result,
     std::cout << std::setw(10) << "Rank";
     std::cout << std::setw(25) << "Pattern";
     std::cout << std::setw(12) << "ENT Score";
+    std::cout << std::setw(12) << "WNT Score";
     std::cout << std::setw(15) << "Probability" << "\n";
 
-    int totalWidth = 10 + 25 + 12 + 15;
+    int totalWidth = 10 + 25 + 12 + 12 + 15;
     std::cout << std::string(std::max(0, totalWidth), '-') << "\n";
 
     int possibleCount = 0;
@@ -123,6 +127,8 @@ void MastermindGame::printResults(const Mastermind::Result &result,
       std::cout << std::setw(25) << guess.pattern.toString(config);
       std::cout << std::setw(12) << std::fixed << std::setprecision(3)
                 << guess.ent;
+      std::cout << std::setw(12) << std::fixed << std::setprecision(3)
+                << guess.wnt;
       std::cout << std::setw(15) << std::fixed << std::setprecision(6)
                 << guess.probability << "\n";
     }
@@ -144,6 +150,8 @@ void MastermindGame::printResults(const Mastermind::Result &result,
       std::cout << std::setw(25) << guess.pattern.toString(config);
       std::cout << std::setw(12) << std::fixed << std::setprecision(3)
                 << guess.ent;
+      std::cout << std::setw(12) << std::fixed << std::setprecision(3)
+                << guess.wnt;
       std::cout << std::setw(15) << std::fixed << std::setprecision(6)
                 << guess.probability << "\n";
     }
@@ -167,12 +175,12 @@ void MastermindGame::saveResults(const Mastermind::Result &result,
     // Write possible patterns first (those with probability > 0)
     for (const auto &guess : result.sortedGuesses) {
       if (guess.probability > 0.0) {
-        out << guess.pattern.toString(config) << "," << guess.ent << ","
+        out << guess.pattern.toString(config) << "," << guess.ent << "," << guess.wnt << ","
             << guess.probability << "\n";
       }
     }
     for (const auto &guess : result.sortedGuesses) {
-      out << guess.pattern.toString(config) << "," << guess.ent << ","
+      out << guess.pattern.toString(config) << "," << guess.ent << "," << guess.wnt << ","
           << guess.probability << "\n";
     }
     out.close();

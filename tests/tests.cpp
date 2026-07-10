@@ -248,8 +248,8 @@ TEST(WordleTest, ProbabilityCalculationCorrect) {
     Wordle::Feedback generateFeedback(const Utils::Word &target, const Utils::Word &guess) const override {
       return Wordle::generateFeedback(target, guess.wordString);
     }
-    Wordle::WordGuess createGuess(const Utils::Word &word, double ent, double probability) const override {
-       Wordle::WordGuess g; g.word = word; g.probability = probability; return g; 
+    Wordle::WordGuess createGuess(const Utils::Word &word, double ent, double wnt, double probability) const override {
+       Wordle::WordGuess g; g.word = word; g.ent = ent; g.wnt = wnt; g.probability = probability; return g; 
     }
     Wordle::Result createResult(const std::vector<Wordle::WordGuess> &guesses, int totalPossible) const override {
        Wordle::Result r; r.sortedGuesses = guesses; return r;

@@ -8,7 +8,6 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
-#include <iostream>
 
 #ifdef TRACY_ENABLE
 #include <tracy/Tracy.hpp>
@@ -52,7 +51,7 @@ protected:
                                          const GuessType &guess) const = 0;
 
   // Pure virtual methods for creating result objects directly
-  virtual CalculatedGuessType createGuess(const GuessType &guess, double ent, double probability) const = 0;
+  virtual CalculatedGuessType createGuess(const GuessType &guess, double ent, double wnt, double probability) const = 0;
   virtual ResultType createResult(const std::vector<CalculatedGuessType> &guesses,
                                    int totalPossible) const = 0;
 
@@ -102,35 +101,88 @@ public:
       activeDepth = calculateOptimalDepth(allGuesses.size(), filteredCandidates.size());
     }
 
+    uint32_t R = (config.maxGuesses > config.feedbackHistory.size())
+                 ? (config.maxGuesses - config.feedbackHistory.size())
+                 : 1;
+
     // If activeDepth is 0, skip ENT calculation and just return filtered solutions
     if (activeDepth == 0) {
+      double estEnt = worstCaseExpectedTurns(filteredCandidates.size());
+      double estWnt = std::ceil(estEnt);
       for (const auto &guess : allGuesses) {
         double prob = calculateGuessProbability(guess, filteredCandidates);
-        CalculatedGuessType guessResult = createGuess(
-            guess, worstCaseExpectedTurns(filteredCandidates.size()), prob);
+        CalculatedGuessType guessResult = createGuess(guess, estEnt, estWnt, prob);
         guesses.push_back(guessResult);
       }
-
-      std::sort(guesses.begin(), guesses.end());
-
-      return createResult(guesses, totalPossible);
-    }
-
-    // Calculate Expected Number of Turns (ENT) for all guesses
-    for (const auto &guessInput : allGuesses) {
-      if (cancellationFlag && cancellationFlag->load()) {
-        cancellationFlag = nullptr;
-        return createResult(std::vector<CalculatedGuessType>{}, 0);
+    } else {
+      // Calculate Expected Number of Turns (ENT) and WNT for all guesses
+      for (const auto &guessInput : allGuesses) {
+        if (cancellationFlag && cancellationFlag->load()) {
+          cancellationFlag = nullptr;
+          return createResult(std::vector<CalculatedGuessType>{}, 0);
+        }
+        
+        SearchMetrics metrics = calculateMetrics(guessInput, filteredCandidates,
+                                                      allGuesses, activeDepth);
+        double prob = calculateGuessProbability(guessInput, filteredCandidates);
+        CalculatedGuessType guess = createGuess(guessInput, metrics.ent, metrics.wnt, prob);
+        guesses.push_back(guess);
       }
-      
-      double expectedTurns = calculateExpectedTurns(guessInput, filteredCandidates,
-                                                    allGuesses, activeDepth);
-      double prob = calculateGuessProbability(guessInput, filteredCandidates);
-      CalculatedGuessType guess = createGuess(guessInput, expectedTurns, prob);
-      guesses.push_back(guess);
     }
 
-    std::sort(guesses.begin(), guesses.end());
+    // Check if there is any guess that guarantees a win (i.e. WNT <= R)
+    bool guaranteeExists = false;
+    for (const auto &g : guesses) {
+        if (g.wnt > 0.0 && g.wnt <= static_cast<double>(R)) {
+            guaranteeExists = true;
+            break;
+        }
+    }
+
+    std::sort(guesses.begin(), guesses.end(), [R, guaranteeExists](const CalculatedGuessType &a, const CalculatedGuessType &b) {
+        const double tolerance = 1e-9;
+
+        if (R <= 1) {
+            // Last guess: prioritize individual probability first
+            if (std::abs(a.probability - b.probability) > tolerance)
+                return a.probability > b.probability;
+            
+            if (std::abs(a.wnt - b.wnt) > tolerance)
+                return a.wnt < b.wnt;
+
+            if (std::abs(a.ent - b.ent) > tolerance)
+                return a.ent < b.ent;
+        } else if (guaranteeExists) {
+            // If any guess guarantees a win (WNT <= R), we ONLY want guesses with WNT <= R.
+            // If one guarantees a win and the other does not, prefer the one that does.
+            bool aGuarantees = (a.wnt > 0.0 && a.wnt <= static_cast<double>(R));
+            bool bGuarantees = (b.wnt > 0.0 && b.wnt <= static_cast<double>(R));
+            if (aGuarantees != bGuarantees) {
+                return aGuarantees;
+            }
+            if (std::abs(a.ent - b.ent) > tolerance)
+                return a.ent < b.ent;
+            
+            if (std::abs(a.probability - b.probability) > tolerance)
+                return a.probability > b.probability;
+
+            if (std::abs(a.wnt - b.wnt) > tolerance)
+                return a.wnt < b.wnt;
+        } else {
+            // No guarantee: prioritize WNT first (survival mode), then ENT
+            if (std::abs(a.wnt - b.wnt) > tolerance)
+                return a.wnt < b.wnt;
+
+            if (std::abs(a.ent - b.ent) > tolerance)
+                return a.ent < b.ent;
+
+            if (std::abs(a.probability - b.probability) > tolerance)
+                return a.probability > b.probability;
+        }
+
+        // Single fallback tiebreaker using the types' own operator<
+        return a < b;
+    });
 
     cancellationFlag = nullptr;
     return createResult(guesses, totalPossible);
@@ -143,10 +195,15 @@ private:
   // Cancellation pointer set during solve(); helpers check this and return early
   std::atomic<bool> *cancellationFlag = nullptr;
 
+  struct SearchMetrics {
+      double ent = 0.0;
+      double wnt = 0.0;
+  };
+
   /**
-   * Single-value minimax helper that finds the minimum expected uncertainty
+   * Single-value minimax helper that finds the minimum expected and worst-case turns
    */
-  double findMinExpectedTurns(
+  SearchMetrics findMinMetrics(
       const CandidateSetType &candidates,
       const std::vector<GuessType> &allGuesses,
       const int maxDepth) {
@@ -154,57 +211,67 @@ private:
     ZoneScoped;
 #endif
     if (candidates.size() <= 1)
-      return 0.0;
+      return {0.0, 0.0};
 
-    if (maxDepth <= 0)
-      return worstCaseExpectedTurns(candidates.size());
+    if (maxDepth <= 0) {
+      double est = worstCaseExpectedTurns(candidates.size());
+      return {est, std::ceil(est)};
+    }
 
-    double minExpectedTurns = std::numeric_limits<double>::max();
+    double minWnt = std::numeric_limits<double>::max();
+    double bestEntForMinWnt = std::numeric_limits<double>::max();
 
     for (const auto &nextGuess : allGuesses) {
       if (cancellationFlag && cancellationFlag->load())
-        return std::numeric_limits<double>::infinity();
-      double expectedTurns = calculateExpectedTurns(nextGuess, candidates,
-                                                    allGuesses, maxDepth);
+        return {std::numeric_limits<double>::infinity(), std::numeric_limits<double>::infinity()};
 
-      minExpectedTurns = std::min(minExpectedTurns, expectedTurns);
+      SearchMetrics metrics = calculateMetrics(nextGuess, candidates, allGuesses, maxDepth);
+      
+      // Minimize WNT as primary, and ENT as secondary tiebreaker
+      if (metrics.wnt < minWnt) {
+          minWnt = metrics.wnt;
+          bestEntForMinWnt = metrics.ent;
+      } else if (std::abs(metrics.wnt - minWnt) < 1e-9) {
+          if (metrics.ent < bestEntForMinWnt) {
+              bestEntForMinWnt = metrics.ent;
+          }
+      }
     }
 
-    return minExpectedTurns;
+    return {bestEntForMinWnt, minWnt};
   }
 
   /**
-   * Calculates the Expected Number of Turns (ENT) that will need to be taken
+   * Calculates the Expected and Worst-case Number of Turns (ENT & WNT)
    * after making a specific guess.
    */
-  double
-  calculateExpectedTurns(const GuessType &guessInput,
-                         const CandidateSetType &candidates,
-                         const std::vector<GuessType> &allGuesses,
-                         const int maxDepth) {
+  SearchMetrics calculateMetrics(
+      const GuessType &guessInput,
+      const CandidateSetType &candidates,
+      const std::vector<GuessType> &allGuesses,
+      const int maxDepth) {
 #ifdef TRACY_ENABLE
     ZoneScoped;
 #endif
 
     if (candidates.size() <= 1) {
-        // If solved (0 or 1 candidate), 0 more turns needed.
-        return 0.0; 
+        return {0.0, 0.0}; 
     }
 
     double totalScore = candidates.totalScore();
     double expectedRemainingTurns = 0.0;
-    
-    // ENT = 1 (this guess) + Expected Turns for Subproblems
-    // Sum( P(outcome) * MinTurns(outcome) )
+    double maxSubWnt = 0.0;
     
     candidates.visitFeedbackGroups(
         guessInput,
-        [this, &expectedRemainingTurns, totalScore, &allGuesses, maxDepth](const FeedbackType&, const CandidateSetType& subset, double subsetScore) {
-             
+        [this, &expectedRemainingTurns, &maxSubWnt, totalScore, &allGuesses, maxDepth](const FeedbackType&, const CandidateSetType& subset, double subsetScore) {
              double prob = subsetScore / totalScore;
              if (prob > 0) {
-                 double optimalSubTurns = findMinExpectedTurns(subset, allGuesses, maxDepth - 1);
-                 expectedRemainingTurns += prob * optimalSubTurns;
+                 SearchMetrics subMetrics = findMinMetrics(subset, allGuesses, maxDepth - 1);
+                 expectedRemainingTurns += prob * subMetrics.ent;
+                 if (subMetrics.wnt > maxSubWnt) {
+                     maxSubWnt = subMetrics.wnt;
+                 }
              }
         },
         [this](const CandidateType& c, const GuessType& g) {
@@ -212,7 +279,7 @@ private:
         }
     );
 
-    return 1.0 + expectedRemainingTurns;
+    return {1.0 + expectedRemainingTurns, 1.0 + maxSubWnt};
   }
 
   /**
@@ -233,8 +300,6 @@ private:
 
   int calculateOptimalDepth(size_t numGuesses, size_t numCandidates) const {
       if (numCandidates <= 1) {
-          std::cout << "[AutoDepth Debug] Candidates: " << numCandidates
-                    << ", Guesses: " << numGuesses << " -> Selected Depth: 0\n";
           return 0;
       }
       
@@ -247,7 +312,6 @@ private:
       
       double activeCandidates = static_cast<double>(numCandidates);
       double totalOps = 0.0;
-      double lastSafeOps = 0.0;
       int resultDepth = maxDepth;
       
       // Operations at level d grow by the number of guesses G tested at each node,
@@ -264,7 +328,6 @@ private:
               break;
           }
           
-          lastSafeOps = totalOps;
           levelOps *= scaleFactor;
           
           // Shrink average candidate subset size for the next level
@@ -273,16 +336,10 @@ private:
           // If average candidates per subproblem falls below 1, further depth is wasted
           if (activeCandidates <= 1.0) {
               resultDepth = d;
-              lastSafeOps = totalOps;
               break;
           }
       }
-      
-      std::cout << "[AutoDepth Debug] Candidates: " << numCandidates
-                << ", Guesses: " << numGuesses
-                << ", branchingFactor: " << base
-                << ", estimatedOps: " << lastSafeOps
-                << " -> Selected Depth: " << resultDepth << "\n";
+
       return resultDepth;
   }
 };

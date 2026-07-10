@@ -85,6 +85,7 @@ struct Config {
   uint8_t maxDepth = 1; // How many moves ahead to calculate ENT
   bool autoDepth = false; // Dynamically choose optimal depth
   bool excludeUncommonWords = false;
+  uint32_t maxGuesses = 6; // Maximum allowed guesses / strikes
   std::vector<WordPattern> wordPatterns =
       {}; // Patterns for each word (e.g., {"_A__", "_A_", "_____"})
   std::vector<Feedback> feedbackHistory = {};
@@ -111,6 +112,7 @@ struct Feedback {
 struct LetterGuess {
   char letter;              // The letter (lowercase a-z)
   double ent = 0.0;         // Expected Number of Turns
+  double wnt = 0.0;         // Worst Number of Turns
   double probability = 0.0; // Probability this letter appears in the word
 
   bool operator<(const LetterGuess &other) const {
@@ -123,6 +125,10 @@ struct LetterGuess {
     // Secondary sort: Expected Number of Turns (lower is better)
     if (std::abs(ent - other.ent) > tolerance)
       return ent < other.ent;
+
+    // Third tiebreaker: WNT (lower is better)
+    if (std::abs(wnt - other.wnt) > tolerance)
+      return wnt < other.wnt;
 
     // Final tiebreaker: sort by letter for consistency
     return letter < other.letter;

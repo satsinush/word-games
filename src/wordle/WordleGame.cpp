@@ -24,6 +24,8 @@ Wordle::Config WordleGame::getConfigFromUser() {
   }
   config.excludeUncommonWords = Utils::Input::promptBool(
       "Exclude uncommon words from suggestions?", true);
+  config.maxGuesses = Utils::Input::promptInt(
+      "Maximum number of guesses allowed", 6, 1, 100);
 
   return config;
 }
@@ -36,6 +38,7 @@ WordleGame::getConfigFromArgs(const std::map<std::string, std::string> &args) {
   config.autoDepth = Utils::Input::getArgValue(args, "auto-depth", false);
   config.excludeUncommonWords =
       Utils::Input::getArgValue(args, "exclude-uncommon-words", false);
+  config.maxGuesses = Utils::Input::getArgValue(args, "max-guesses", 6);
   config.feedbackHistory =
       getFeedbackFromArgs(args); // Get feedback from args if provided
   return config;
@@ -92,9 +95,10 @@ void WordleGame::printResults(const Wordle::Result &result) {
     std::cout << std::setw(12) << "Word";
     std::cout << std::setw(12) << "Word Score";
     std::cout << std::setw(12) << "ENT Score";
+    std::cout << std::setw(12) << "WNT Score";
     std::cout << std::setw(15) << "Probability" << "\n";
 
-    int totalWidth = 10 + 12 + 12 + 12 + 15;
+    int totalWidth = 10 + 12 + 12 + 12 + 12 + 15;
     std::cout << std::string(std::max(0, totalWidth), '-') << "\n";
 
     int possibleCount = 0;
@@ -113,6 +117,8 @@ void WordleGame::printResults(const Wordle::Result &result) {
                 << guess.word.score;
       std::cout << std::setw(12) << std::fixed << std::setprecision(3)
                 << guess.ent;
+      std::cout << std::setw(12) << std::fixed << std::setprecision(3)
+                << guess.wnt;
       std::cout << std::setw(15) << std::fixed << std::setprecision(6)
                 << guess.probability << "\n";
     }
@@ -135,6 +141,8 @@ void WordleGame::printResults(const Wordle::Result &result) {
                 << guess.word.score;
       std::cout << std::setw(12) << std::fixed << std::setprecision(3)
                 << guess.ent;
+      std::cout << std::setw(12) << std::fixed << std::setprecision(3)
+                << guess.wnt;
       std::cout << std::setw(15) << std::fixed << std::setprecision(6)
                 << guess.probability << "\n";
     }
@@ -157,12 +165,12 @@ void WordleGame::saveResults(const Wordle::Result &result,
     // Write possible words first (those with probability > 0)
     for (const auto &guess : result.sortedGuesses) {
       if (guess.probability > 0.0) {
-        out << guess.word.wordString << "," << guess.ent << ","
+        out << guess.word.wordString << "," << guess.ent << "," << guess.wnt << ","
             << guess.probability << "\n";
       }
     }
     for (const auto &guess : result.sortedGuesses) {
-      out << guess.word.wordString << "," << guess.ent << ","
+      out << guess.word.wordString << "," << guess.ent << "," << guess.wnt << ","
           << guess.probability << "\n";
     }
     out.close();

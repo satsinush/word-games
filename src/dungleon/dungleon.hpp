@@ -63,6 +63,7 @@ struct Config {
   bool autoDepth = false; // Dynamically choose optimal depth
   bool excludeImpossiblePatterns =
       false; // Whether to exclude impossible patterns from guesses
+  uint32_t maxGuesses = 10; // Maximum allowed guesses
   std::vector<Feedback> feedbackHistory = {}; // History of previous feedbacks
   std::vector<Pattern> solutionHistory =
       {}; // History of previous solutions, used for Gauntlet mode where each
@@ -161,6 +162,7 @@ struct Feedback {
 struct PatternGuess {
   Pattern pattern;
   double ent = 0.0; // Expected Number of Turns
+  double wnt = 0.0; // Worst Number of Turns
   double probability = 0.0;
 
   bool operator<(const PatternGuess &other) const {
@@ -174,6 +176,10 @@ struct PatternGuess {
     // answers)
     if (std::abs(probability - other.probability) > tolerance)
       return probability > other.probability; // Sort higher probability first
+  
+    // Third tiebreaker: WNT (lower is better)
+    if (std::abs(wnt - other.wnt) > tolerance)
+      return wnt < other.wnt;
 
     // Final tiebreaker: sort by pattern for consistency
     return pattern < other.pattern;

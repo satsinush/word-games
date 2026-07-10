@@ -57,8 +57,7 @@ cmake --preset mingw-core
 cmake --build --preset mingw-core
 
 # Run the application (Interactive Mode)
-cd build/mingw-core
-./p++
+./build/mingw-core/p++
 ```
 
 *Note: Since there is no GUI, running the executable directly enters interactive CLI mode.*
