@@ -138,7 +138,6 @@ void HangmanWidget::rebuildFeedbackFromInputs() {
           Hangman::Feedback fb;
           fb.letter = c;
           fb.isInWord = false;
-          fb.occurrences = 0;
           config.feedbackHistory.push_back(fb);
           addedExcluded.insert(c);
         }

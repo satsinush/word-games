@@ -93,9 +93,8 @@ struct Config {
 
 // Represents a letter guess and its feedback
 struct Feedback {
-  char letter;        // The guessed letter (lowercase)
-  bool isInWord;      // Whether the letter is in any word
-  size_t occurrences; // Total occurrences across all words (0 if not in phrase)
+  char letter;   // The guessed letter (lowercase)
+  bool isInWord; // Whether the letter is in any word
 
   bool operator==(const Feedback &other) const {
     return letter == other.letter && isInWord == other.isInWord;
@@ -148,9 +147,6 @@ std::vector<WordPattern> parsePatternString(const std::string &patternStr);
 // Convert patterns to a display string
 std::string patternsToString(const std::vector<WordPattern> &patterns);
 
-// Parse feedback string like "a 1" or "e 0" (letter and whether it's in word)
-Feedback parseFeedback(const std::string &input);
-
 // Parse strikes string - letters that are NOT in the word (e.g., "etxzq")
 std::vector<Feedback> parseStrikes(const std::string &strikes);
 
@@ -161,7 +157,7 @@ bool matchesFeedback(const PhraseSolution &phrase, const Feedback &fb);
 bool matchesWordFeedback(const Utils::Word &word, const Feedback &fb);
 
 // Check if a word matches a pattern (considering revealed letters)
-bool matchesPattern(const Utils::Word &word, const WordPattern &pattern);
+bool matchesPattern(const Utils::Word &word, const WordPattern &pattern, const std::unordered_set<char> &globalRevealed);
 
 // Generate feedback for a letter guess against a target phrase
 Feedback generateFeedback(const PhraseSolution &target, char letter);

@@ -53,25 +53,6 @@ std::string patternsToString(const std::vector<WordPattern> &patterns) {
   }
   return result;
 }
-
-Feedback parseFeedback(const std::string &input) {
-  std::istringstream iss(input);
-  char letter;
-  int inWord;
-
-  if (!(iss >> letter >> inWord)) {
-    throw std::invalid_argument(
-        "Invalid feedback format. Expected: 'a 1' or 'e 0'");
-  }
-
-  Feedback fb;
-  fb.letter = static_cast<char>(std::tolower(letter));
-  fb.isInWord = (inWord != 0);
-  fb.occurrences = fb.isInWord ? 1 : 0;
-
-  return fb;
-}
-
 std::vector<Feedback> parseStrikes(const std::string &strikes) {
   std::vector<Feedback> feedbackList;
   for (char c : strikes) {
@@ -79,40 +60,38 @@ std::vector<Feedback> parseStrikes(const std::string &strikes) {
       Feedback fb;
       fb.letter = static_cast<char>(std::tolower(c));
       fb.isInWord = false;
-      fb.occurrences = 0;
       feedbackList.push_back(fb);
     }
   }
   return feedbackList;
 }
 
-bool matchesPattern(const Utils::Word &word, const WordPattern &pattern) {
+bool matchesPattern(const Utils::Word &word, const WordPattern &pattern, const std::unordered_set<char> &globalRevealed) {
   // Word must have same length as pattern
   if (word.wordString.length() != pattern.length()) {
     return false;
   }
 
-  // Check that revealed letters match and collect them
-  std::unordered_set<char> revealedLetters;
+  // Check that revealed letters match strictly at their positions
+  std::unordered_set<char> revealedLetters = globalRevealed;
   for (const auto &[pos, letter] : pattern.getRevealedLetters()) {
     if (pos >= word.wordString.length())
       return false;
-    if (std::tolower(word.wordString[pos]) != letter)
+    if (word.wordString[pos] != letter)
       return false;
     revealedLetters.insert(letter);
   }
 
-  // A letter that has been revealed in the pattern cannot appear in an
-  // unrevealed position
+  // Crucial Fix: If a letter is revealed locally or globally,
+  // it cannot hide in an unrevealed ('_') position in this word slot.
   for (size_t i = 0; i < word.wordString.length(); ++i) {
     char c = static_cast<char>(std::tolower(word.wordString[i]));
     if (revealedLetters.count(c) > 0) {
       if (std::tolower(pattern.pattern[i]) != c) {
-        return false;
+        return false; // Rejects "THE" from ___ because 'E' is hidden
       }
     }
   }
-
   return true;
 }
 
@@ -135,8 +114,7 @@ bool matchesWordFeedback(const Utils::Word &word, const Feedback &fb) {
 Feedback generateWordFeedback(const Utils::Word &target, char letter) {
   Feedback fb;
   fb.letter = static_cast<char>(std::tolower(letter));
-  fb.occurrences = target.letterCount[fb.letter - 'a'];
-  fb.isInWord = (fb.occurrences > 0);
+  fb.isInWord = (target.letterCount[fb.letter - 'a'] > 0);
   return fb;
 }
 
@@ -150,7 +128,6 @@ Feedback generateFeedback(const PhraseSolution &target, char letter) {
     totalOccurrences += word.letterCount[fb.letter - 'a'];
   }
 
-  fb.occurrences = totalOccurrences;
   fb.isInWord = (totalOccurrences > 0);
 
   return fb;
@@ -180,28 +157,6 @@ getAvailableLetters(const std::vector<Feedback> &feedbackHistory) {
     }
   }
   return available;
-}
-
-// Filter words that match a pattern and feedback history
-std::vector<Utils::Word>
-filterWordsForPattern(const std::vector<Utils::Word> &words,
-                      const WordPattern &pattern,
-                      [[maybe_unused]] const std::vector<Feedback> &feedbacks) {
-
-  std::vector<Utils::Word> filtered;
-
-  for (const auto &word : words) {
-    // Must match pattern length and revealed letters
-    if (!matchesPattern(word, pattern)) {
-      continue;
-    }
-
-    // For single-word filtering, we need a different approach
-    // We'll filter phrases later - for now just match pattern
-    filtered.push_back(word);
-  }
-
-  return filtered;
 }
 
 // Defines a set of possible phrase solutions without constructing them all
@@ -263,7 +218,6 @@ public:
         // Base case
         Feedback fb;
         fb.letter = guess;
-        fb.occurrences = static_cast<size_t>(accumCount);
         fb.isInWord = (accumCount > 0);
 
         HangmanCandidateSet subset(currentSlotSelection);
@@ -419,6 +373,14 @@ Result runHangmanSolver(const Config &config, std::atomic<bool> *cancel) {
   std::vector<Utils::Word> allWords = Utils::loadWords();
   size_t numSlots = config.wordPatterns.size();
 
+  // Gather ALL globally revealed letters first ---
+  std::unordered_set<char> globalRevealedLetters;
+  for (const auto &pattern : config.wordPatterns) {
+    for (const auto &[pos, letter] : pattern.getRevealedLetters()) {
+      globalRevealedLetters.insert(letter);
+    }
+  }
+
   // Build list of possible words for each slot (word position)
   std::vector<std::vector<Utils::Word>> wordsPerSlot(numSlots);
 
@@ -431,7 +393,7 @@ Result runHangmanSolver(const Config &config, std::atomic<bool> *cancel) {
       if (exclude)
         continue;
 
-      if (matchesPattern(word, pattern)) {
+      if (matchesPattern(word, pattern, globalRevealedLetters)) {
         // Check feedback history for this word
         bool matches = true;
         for (const auto &fb : config.feedbackHistory) {
@@ -452,19 +414,11 @@ Result runHangmanSolver(const Config &config, std::atomic<bool> *cancel) {
   std::vector<char> availableLetters =
       getAvailableLetters(config.feedbackHistory);
 
-  // Also exclude letters that are already revealed in patterns
-  std::unordered_set<char> revealedLetters;
-  for (const auto &pattern : config.wordPatterns) {
-    for (const auto &[pos, letter] : pattern.getRevealedLetters()) {
-      revealedLetters.insert(letter);
-    }
-  }
-
   // Remove revealed letters from available
   availableLetters.erase(std::remove_if(availableLetters.begin(),
                                         availableLetters.end(),
-                                        [&revealedLetters](char c) {
-                                          return revealedLetters.count(c) > 0;
+                                        [&globalRevealedLetters](char c) {
+                                          return globalRevealedLetters.count(c) > 0;
                                         }),
                          availableLetters.end());
 

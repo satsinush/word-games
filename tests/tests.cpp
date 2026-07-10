@@ -1145,33 +1145,23 @@ TEST(DungleonTest, PermutationsGenerateAndMatch) {
 
 TEST(HangmanTest, ParsePatternString) {
   std::vector<Hangman::WordPattern> patterns =
-      Hangman::parsePatternString("?A?? ??? ?????");
+      Hangman::parsePatternString("_A__ ___ _____");
 
   EXPECT_EQ(patterns.size(), 3);
-  EXPECT_EQ(patterns[0].pattern, "?a??");
+  EXPECT_EQ(patterns[0].pattern, "_a__");
   EXPECT_EQ(patterns[0].length(), 4);
-  EXPECT_EQ(patterns[1].pattern, "???");
+  EXPECT_EQ(patterns[1].pattern, "___");
   EXPECT_EQ(patterns[1].length(), 3);
-  EXPECT_EQ(patterns[2].pattern, "?????");
+  EXPECT_EQ(patterns[2].pattern, "_____");
   EXPECT_EQ(patterns[2].length(), 5);
 }
 
 TEST(HangmanTest, PatternToString) {
   std::vector<Hangman::WordPattern> patterns =
-      Hangman::parsePatternString("?a?? ??? ?????");
+      Hangman::parsePatternString("_a__ ___ _____");
 
   std::string str = Hangman::patternsToString(patterns);
-  EXPECT_EQ(str, "?A?? ??? ?????");
-}
-
-TEST(HangmanTest, ParseFeedback) {
-  Hangman::Feedback fb1 = Hangman::parseFeedback("a 1");
-  EXPECT_EQ(fb1.letter, 'a');
-  EXPECT_TRUE(fb1.isInWord);
-
-  Hangman::Feedback fb2 = Hangman::parseFeedback("E 0");
-  EXPECT_EQ(fb2.letter, 'e');
-  EXPECT_FALSE(fb2.isInWord);
+  EXPECT_EQ(str, "_A__ ___ _____");
 }
 
 TEST(HangmanTest, ParseStrikes) {
@@ -1181,7 +1171,6 @@ TEST(HangmanTest, ParseStrikes) {
   // All strikes should be marked as NOT in word
   for (const auto &fb : strikes) {
     EXPECT_FALSE(fb.isInWord);
-    EXPECT_EQ(fb.occurrences, 0);
   }
 
   EXPECT_EQ(strikes[0].letter, 'e');
@@ -1206,34 +1195,48 @@ TEST(HangmanTest, MatchesPattern) {
   Utils::Word word = makeWord("tares");
 
   Hangman::WordPattern pattern1;
-  pattern1.pattern = "?a???";
-  EXPECT_TRUE(Hangman::matchesPattern(word, pattern1));
+  pattern1.pattern = "_a___";
+  EXPECT_TRUE(Hangman::matchesPattern(word, pattern1, {}));
 
   Hangman::WordPattern pattern2;
-  pattern2.pattern = "?????";
-  EXPECT_TRUE(Hangman::matchesPattern(word, pattern2));
+  pattern2.pattern = "_____";
+  EXPECT_TRUE(Hangman::matchesPattern(word, pattern2, {}));
 
   Hangman::WordPattern pattern3;
-  pattern3.pattern = "?b???";
-  EXPECT_FALSE(Hangman::matchesPattern(word, pattern3));
+  pattern3.pattern = "_b___";
+  EXPECT_FALSE(Hangman::matchesPattern(word, pattern3, {}));
 
   Hangman::WordPattern pattern4;
-  pattern4.pattern = "????";
-  EXPECT_FALSE(Hangman::matchesPattern(word, pattern4));
+  pattern4.pattern = "____";
+  EXPECT_FALSE(Hangman::matchesPattern(word, pattern4, {}));
 
   // Test case where a revealed letter appears in an unrevealed position
   Utils::Word word2 = makeWord("fascinated");
   Hangman::WordPattern pattern5;
   pattern5.pattern = "_as_i__t__";
-  EXPECT_FALSE(Hangman::matchesPattern(word2, pattern5));
+  EXPECT_FALSE(Hangman::matchesPattern(word2, pattern5, {}));
 
   // Test case where another letter is duplicated and hits an unrevealed position
   Utils::Word word3 = makeWord("fascinates");
-  EXPECT_FALSE(Hangman::matchesPattern(word3, pattern5));
+  EXPECT_FALSE(Hangman::matchesPattern(word3, pattern5, {}));
 
   // Valid matching word (no duplicate of revealed letters at unrevealed positions)
   Utils::Word word4 = makeWord("xasyizztww");
-  EXPECT_TRUE(Hangman::matchesPattern(word4, pattern5));
+  EXPECT_TRUE(Hangman::matchesPattern(word4, pattern5, {}));
+
+  // Test: 'e' is revealed elsewhere. "the" should be blocked from an unrevealed "___" slot
+  Utils::Word bug1_word = makeWord("the");
+  Hangman::WordPattern bug1_slot0;
+  bug1_slot0.pattern = "___";
+  std::unordered_set<char> bug1_global_revealed = {'e'}; // 'E' is tracked as globally revealed
+  EXPECT_FALSE(Hangman::matchesPattern(bug1_word, bug1_slot0, bug1_global_revealed));
+
+  // Test: 't' is revealed elsewhere. "tush" should be blocked from an unrevealed "_ush" slot
+  Utils::Word bug2_word = makeWord("tush");
+  Hangman::WordPattern bug2_slot2;
+  bug2_slot2.pattern = "_ush";
+  std::unordered_set<char> bug2_global_revealed = {'t', 'u', 's', 'h'}; // 'T' is tracked as globally revealed
+  EXPECT_FALSE(Hangman::matchesPattern(bug2_word, bug2_slot2, bug2_global_revealed));
 }
 
 TEST(HangmanTest, MatchesFeedback) {
@@ -1263,12 +1266,10 @@ TEST(HangmanTest, GenerateFeedback) {
   Hangman::Feedback fb1 = Hangman::generateFeedback(phrase, 't');
   EXPECT_EQ(fb1.letter, 't');
   EXPECT_TRUE(fb1.isInWord);
-  EXPECT_EQ(fb1.occurrences, 1);
 
   Hangman::Feedback fb2 = Hangman::generateFeedback(phrase, 'z');
   EXPECT_EQ(fb2.letter, 'z');
   EXPECT_FALSE(fb2.isInWord);
-  EXPECT_EQ(fb2.occurrences, 0);
 }
 
 TEST(HangmanTest, GetAllLetters) {
@@ -1388,16 +1389,27 @@ TEST(HangmanTest, FeedbackEquality) {
   EXPECT_FALSE(strikes[1].isInWord);
 
   // Test equality
-  Hangman::Feedback fb1 = Hangman::parseFeedback("a 0");
-  Hangman::Feedback fb2 = Hangman::parseFeedback("a 0");
-  Hangman::Feedback fb3 = Hangman::parseFeedback("a 1");
-  Hangman::Feedback fb4 = Hangman::parseFeedback("b 0");
+  Hangman::Feedback fb1;
+  fb1.letter = 'a';
+  fb1.isInWord = false;
+
+  Hangman::Feedback fb2;
+  fb2.letter = 'a';
+  fb2.isInWord = false;
+
+  Hangman::Feedback fb3;
+  fb3.letter = 'a';
+  fb3.isInWord = true;
+
+  Hangman::Feedback fb4;
+  fb4.letter = 'b';
+  fb4.isInWord = false;
 
   EXPECT_EQ(fb1, fb2);
   EXPECT_FALSE(fb1 == fb3);
   EXPECT_FALSE(fb1 == fb4);
 
-  // Strike should equal parseFeedback with 0
+  // Strike should equal manual feedback with 0 occurrences
   EXPECT_EQ(strikes[0], fb1);
 }
 
@@ -1413,7 +1425,7 @@ TEST(HangmanTest, MultiWordPattern) {
   Hangman::Config config;
   config.maxDepth = 0;
   // Two 5-letter words
-  config.wordPatterns = Hangman::parsePatternString("????? ?????");
+  config.wordPatterns = Hangman::parsePatternString("_____ _____");
 
   Hangman::Result result = Hangman::runHangmanSolver(config);
 
@@ -1449,7 +1461,7 @@ TEST(HangmanTest, MultiWordProbabilityCalculation) {
   Hangman::Config config;
   config.maxDepth = 0;
   // Use patterns that will create interesting probability scenarios
-  config.wordPatterns = Hangman::parsePatternString("????? ???");
+  config.wordPatterns = Hangman::parsePatternString("_____ ___");
 
   Hangman::Result result = Hangman::runHangmanSolver(config);
 
@@ -1473,7 +1485,7 @@ TEST(HangmanTest, MultiWordDifferentLengths) {
 
   Hangman::Config config;
   config.maxDepth = 0;
-  config.wordPatterns = Hangman::parsePatternString("??? ????? ?????");
+  config.wordPatterns = Hangman::parsePatternString("___ _____ _____");
 
   Hangman::Result result = Hangman::runHangmanSolver(config);
 
@@ -1562,6 +1574,44 @@ TEST(HangmanTest, WordSlotSolutionToString) {
 
   std::string str = slot.toString();
   EXPECT_EQ(str, "[2]:test");
+}
+
+TEST(HangmanTest, SolverRejectsHiddenRevealedLetters_Bug1) {
+  std::vector<Utils::Word> words = loadTestWords();
+  ASSERT_FALSE(words.empty()) << "Failed to load word list";
+
+  Hangman::Config config;
+  config.maxDepth = 0;
+  // Scenario: ___ ___E ____
+  config.wordPatterns = Hangman::parsePatternString("___ ___e ____");
+
+  Hangman::Result result = Hangman::runHangmanSolver(config);
+
+  // Since 'E' is revealed in slot 1, "the" CANNOT hide in slot 0 or slot 2
+  for (const auto &word : result.possibleWords) {
+    if (word.wordString == "the") {
+      FAIL() << "Regression: 'the' should have been completely disqualified because 'e' is hidden in slots 0 and 2";
+    }
+  }
+}
+
+TEST(HangmanTest, SolverRejectsHiddenRevealedLetters_Bug2) {
+  std::vector<Utils::Word> words = loadTestWords();
+  ASSERT_FALSE(words.empty()) << "Failed to load word list";
+
+  Hangman::Config config;
+  config.maxDepth = 0;
+  // Scenario: _IG TI_E _USH
+  config.wordPatterns = Hangman::parsePatternString("_ig ti_e _ush");
+
+  Hangman::Result result = Hangman::runHangmanSolver(config);
+
+  // Since 't' is revealed in slot 1, "tush" CANNOT hide in slot 2 (_ush)
+  for (const auto &word : result.possibleWords) {
+    if (word.wordString == "tush") {
+      FAIL() << "Regression: 'tush' should have been completely disqualified because 't' is hidden in slot 2";
+    }
+  }
 }
 
 // =============================================================================
