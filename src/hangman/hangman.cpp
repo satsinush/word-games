@@ -102,7 +102,8 @@ bool matchesPattern(const Utils::Word &word, const WordPattern &pattern) {
     revealedLetters.insert(letter);
   }
 
-  // A letter that has been revealed in the pattern cannot appear in an unrevealed position
+  // A letter that has been revealed in the pattern cannot appear in an
+  // unrevealed position
   for (size_t i = 0; i < word.wordString.length(); ++i) {
     char c = static_cast<char>(std::tolower(word.wordString[i]));
     if (revealedLetters.count(c) > 0) {
@@ -203,8 +204,8 @@ filterWordsForPattern(const std::vector<Utils::Word> &words,
   return filtered;
 }
 
-// Defines a set of possible phrase solutions without constructing them all explicitly.
-// Uses a product of independent word sets per slot.
+// Defines a set of possible phrase solutions without constructing them all
+// explicitly. Uses a product of independent word sets per slot.
 class HangmanCandidateSet {
 public:
   using Container = std::vector<std::vector<Utils::Word>>;
@@ -218,87 +219,87 @@ public:
   bool empty() const { return cachedSize == 0; }
   double totalScore() const { return cachedTotalScore; }
 
-  template <typename Predicate>
-  HangmanCandidateSet filter(Predicate) const {
-     return *this;
+  template <typename Predicate> HangmanCandidateSet filter(Predicate) const {
+    return *this;
   }
 
   template <typename Predicate>
-  HangmanCandidateSet filter(const char &guess,
-                             const Feedback &feedback,
+  HangmanCandidateSet filter(const char &guess, const Feedback &feedback,
                              Predicate) const {
     (void)guess;
     (void)feedback;
-     // Specialized filtering happens via pattern matching before solver invocation.
-     // This method exists for interface compliance.
-     return *this;
+    // Specialized filtering happens via pattern matching before solver
+    // invocation. This method exists for interface compliance.
+    return *this;
   }
-  
+
   // Implementation of visitFeedbackGroups using Cartesian product
   template <typename Visitor, typename Generator>
   void visitFeedbackGroups(const char &guess, Visitor visitor,
                            Generator /*ignored*/) const {
-      // 1. Compute per-slot feedback groups
-      // Map "occurrences" (int) -> words.
-      std::vector<std::map<int, std::vector<Utils::Word>>> slotMaps(wordsPerSlot_.size());
-      
-      for(size_t i=0; i<wordsPerSlot_.size(); ++i) {
-          for(const auto& w : wordsPerSlot_[i]) {
-              // Generate local feedback (count of letter)
-              int count = w.letterCount[guess - 'a'];
-              slotMaps[i][count].push_back(w);
-          }
+    // 1. Compute per-slot feedback groups
+    // Map "occurrences" (int) -> words.
+    std::vector<std::map<int, std::vector<Utils::Word>>> slotMaps(
+        wordsPerSlot_.size());
+
+    for (size_t i = 0; i < wordsPerSlot_.size(); ++i) {
+      for (const auto &w : wordsPerSlot_[i]) {
+        // Generate local feedback (count of letter)
+        int count = w.letterCount[guess - 'a'];
+        slotMaps[i][count].push_back(w);
       }
-      
-      // 2. Cartesian product
-      // We need to yield (GlobalFeedback, NewCandidateSet, Score)
-      // GlobalFeedback.occurrences = sum(local_counts)
-      // GlobalFeedback.isInWord = sum > 0
-      
-      std::vector<std::vector<Utils::Word>> currentSlotSelection(wordsPerSlot_.size());
-      
-      auto recurse = [&](auto&& self, size_t index, int accumCount) -> void {
-          if (index == wordsPerSlot_.size()) {
-              // Base case
-              Feedback fb;
-              fb.letter = guess;
-              fb.occurrences = static_cast<size_t>(accumCount);
-              fb.isInWord = (accumCount > 0);
-              
-              HangmanCandidateSet subset(currentSlotSelection);
-              if (subset.size() > 0) {
-                  visitor(fb, subset, subset.totalScore());
-              }
-              return;
-          }
-          
-          // Iterate groups in this slot
-          for(const auto& [count, words] : slotMaps[index]) {
-              currentSlotSelection[index] = words; // copy vector
-              self(self, index + 1, accumCount + count);
-          }
-      };
-      
-      recurse(recurse, 0, 0);
+    }
+
+    // 2. Cartesian product
+    // We need to yield (GlobalFeedback, NewCandidateSet, Score)
+    // GlobalFeedback.occurrences = sum(local_counts)
+    // GlobalFeedback.isInWord = sum > 0
+
+    std::vector<std::vector<Utils::Word>> currentSlotSelection(
+        wordsPerSlot_.size());
+
+    auto recurse = [&](auto &&self, size_t index, int accumCount) -> void {
+      if (index == wordsPerSlot_.size()) {
+        // Base case
+        Feedback fb;
+        fb.letter = guess;
+        fb.occurrences = static_cast<size_t>(accumCount);
+        fb.isInWord = (accumCount > 0);
+
+        HangmanCandidateSet subset(currentSlotSelection);
+        if (subset.size() > 0) {
+          visitor(fb, subset, subset.totalScore());
+        }
+        return;
+      }
+
+      // Iterate groups in this slot
+      for (const auto &[count, words] : slotMaps[index]) {
+        currentSlotSelection[index] = words; // copy vector
+        self(self, index + 1, accumCount + count);
+      }
+    };
+
+    recurse(recurse, 0, 0);
   }
 
   double probabilityOfLetter(char letter) const {
-      double probNotInPhrase = 1.0;
-      for (const auto& slot : wordsPerSlot_) {
-          double slotTotal = 0.0;
-          double slotNoLetter = 0.0;
-          int idx = letter - 'a';
-          for (const auto& w : slot) {
-              slotTotal += w.score;
-              if (w.letterCount[idx] == 0) {
-                  slotNoLetter += w.score;
-              }
-          }
-          if (slotTotal > 0) {
-              probNotInPhrase *= (slotNoLetter / slotTotal);
-          }
+    double probNotInPhrase = 1.0;
+    for (const auto &slot : wordsPerSlot_) {
+      double slotTotal = 0.0;
+      double slotNoLetter = 0.0;
+      int idx = letter - 'a';
+      for (const auto &w : slot) {
+        slotTotal += w.score;
+        if (w.letterCount[idx] == 0) {
+          slotNoLetter += w.score;
+        }
       }
-      return 1.0 - probNotInPhrase;
+      if (slotTotal > 0) {
+        probNotInPhrase *= (slotNoLetter / slotTotal);
+      }
+    }
+    return 1.0 - probNotInPhrase;
   }
 
 private:
@@ -307,36 +308,39 @@ private:
   double cachedTotalScore = 0.0;
 
   void recalculateStats() {
-      cachedSize = 1;
-      cachedTotalScore = 0.0; 
-      
-      double productOfSums = 1.0;
-      bool emptySlot = false;
-      
-      if (wordsPerSlot_.empty()) {
-          cachedSize = 0;
-          cachedTotalScore = 0.0;
-          return;
-      }
+    cachedSize = 1;
+    cachedTotalScore = 0.0;
 
-      for (const auto& slot : wordsPerSlot_) {
-          size_t s = slot.size();
-          if (s == 0) emptySlot = true;
-          // check overflow?
-          cachedSize *= s;
-          
-          double slotSum = 0.0;
-          for(const auto& w : slot) slotSum += w.score;
-          productOfSums *= slotSum;
-      }
-      
-      cachedTotalScore = emptySlot ? 0.0 : productOfSums;
-      if (emptySlot) cachedSize = 0;
+    double productOfSums = 1.0;
+    bool emptySlot = false;
+
+    if (wordsPerSlot_.empty()) {
+      cachedSize = 0;
+      cachedTotalScore = 0.0;
+      return;
+    }
+
+    for (const auto &slot : wordsPerSlot_) {
+      size_t s = slot.size();
+      if (s == 0)
+        emptySlot = true;
+      // check overflow?
+      cachedSize *= s;
+
+      double slotSum = 0.0;
+      for (const auto &w : slot)
+        slotSum += w.score;
+      productOfSums *= slotSum;
+    }
+
+    cachedTotalScore = emptySlot ? 0.0 : productOfSums;
+    if (emptySlot)
+      cachedSize = 0;
   }
 };
 
-
-// Hangman solver traits - note GuessType (char) differs from CandidateType (PhraseSolution)
+// Hangman solver traits - note GuessType (char) differs from CandidateType
+// (PhraseSolution)
 struct HangmanSolverTraits {
   using CandidateType = PhraseSolution;
   using GuessType = char;
@@ -348,7 +352,8 @@ struct HangmanSolverTraits {
 };
 
 // Hangman-specific ENT solver implementation
-// Uses base AbstractEntSolver since guess type (char) differs from candidate type
+// Uses base AbstractEntSolver since guess type (char) differs from candidate
+// type
 class HangmanEntSolver : public Utils::AbstractEntSolver<HangmanSolverTraits> {
 public:
   HangmanEntSolver(const Config &cfg, size_t numSlots)
@@ -366,16 +371,18 @@ protected:
     return Hangman::generateFeedback(target, guess);
   }
 
-  double calculateGuessProbability(const char &guess, const HangmanCandidateSet &candidates) const override {
-      return candidates.probabilityOfLetter(guess);
+  double calculateGuessProbability(
+      const char &guess, const HangmanCandidateSet &candidates) const override {
+    return candidates.probabilityOfLetter(guess);
   }
 
-  LetterGuess createGuess(const char &letter, double ent, double wnt, double probability) const override {
+  LetterGuess createGuess(const char &letter, double ent, double wnt,
+                          double probability) const override {
     LetterGuess guess;
     guess.letter = letter;
     guess.ent = ent;
     guess.wnt = wnt;
-    guess.probability = probability; 
+    guess.probability = probability;
     return guess;
   }
 
@@ -388,14 +395,14 @@ protected:
   }
 
   double worstCaseExpectedTurns(size_t numCandidates) const override {
-    if (numCandidates <= 1) return 0.0;
+    if (numCandidates <= 1)
+      return 0.0;
     return std::log2(static_cast<double>(numCandidates));
   }
 
 private:
   size_t numWordSlots;
 };
-
 
 Result runHangmanSolver(const Config &config, std::atomic<bool> *cancel) {
 #ifdef TRACY_ENABLE
@@ -418,7 +425,9 @@ Result runHangmanSolver(const Config &config, std::atomic<bool> *cancel) {
   for (size_t slotIdx = 0; slotIdx < numSlots; ++slotIdx) {
     const auto &pattern = config.wordPatterns[slotIdx];
     for (const auto &word : allWords) {
-      bool exclude = config.excludeUncommonWords && (!word.is_scrabble);
+      bool exclude = config.excludeUncommonWords && (!word.is_scrabble) &&
+                     word.wordString.length() >
+                         1; // Explicitly include 1 letter words for hangman
       if (exclude)
         continue;
 
@@ -461,7 +470,7 @@ Result runHangmanSolver(const Config &config, std::atomic<bool> *cancel) {
 
   // Create initial candidate set using the product set approach
   HangmanCandidateSet initialCandidates(wordsPerSlot);
-  
+
   // Use the specialized Hangman ENT solver
   HangmanEntSolver solver(config, numSlots);
   result = solver.solve(availableLetters, initialCandidates, cancel);
@@ -474,7 +483,7 @@ Result runHangmanSolver(const Config &config, std::atomic<bool> *cancel) {
       uniqueWordsForDisplay.insert(word.wordString);
     }
   }
-  
+
   std::vector<Utils::Word> possibleWords;
   for (const auto &word : allWords) {
     if (uniqueWordsForDisplay.count(word.wordString) > 0) {

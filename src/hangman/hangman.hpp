@@ -82,7 +82,7 @@ struct WordSlotSolution {
 };
 
 struct Config {
-  uint8_t maxDepth = 1; // How many moves ahead to calculate ENT
+  uint8_t maxDepth = 1;   // How many moves ahead to calculate ENT
   bool autoDepth = false; // Dynamically choose optimal depth
   bool excludeUncommonWords = false;
   uint32_t maxGuesses = 6; // Maximum allowed guesses / strikes

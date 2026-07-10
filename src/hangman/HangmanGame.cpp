@@ -28,8 +28,8 @@ Hangman::Config HangmanGame::getConfigFromUser() {
       "Search depth for ENT calculation (0-2)", 1, 0, 2));
   config.excludeUncommonWords = Utils::Input::promptBool(
       "Exclude uncommon words from suggestions?", true);
-  config.maxGuesses = Utils::Input::promptInt(
-      "Maximum number of strikes allowed", 6, 1, 100);
+  config.maxGuesses =
+      Utils::Input::promptInt("Maximum number of strikes allowed", 6, 1, 100);
 
   return config;
 }
@@ -162,8 +162,8 @@ void HangmanGame::saveResults(const Hangman::Result &result,
   if (out.is_open()) {
     // Write letter guesses (no header, just data)
     for (const auto &guess : result.sortedGuesses) {
-      out << guess.letter << " " << guess.ent << " " << guess.wnt << " " << guess.probability
-          << "\n";
+      out << guess.letter << " " << guess.ent << " " << guess.wnt << " "
+          << guess.probability << "\n";
     }
     // Write possible words (no gap, no header)
     for (const auto &word : result.possibleWords) {

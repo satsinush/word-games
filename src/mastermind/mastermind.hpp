@@ -133,7 +133,7 @@ struct PatternGuess {
     // answers)
     if (std::abs(probability - other.probability) > tolerance)
       return probability > other.probability; // Sort higher probability first
-    
+
     // Third tiebreaker: WNT (lower is better)
     if (std::abs(wnt - other.wnt) > tolerance)
       return wnt < other.wnt;

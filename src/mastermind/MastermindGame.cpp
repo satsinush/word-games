@@ -17,7 +17,7 @@ Mastermind::Config MastermindGame::getConfigFromUser() {
       Utils::Input::promptInt("Enter number of pegs", 4, 1, 20));
 
   config.colorChars = Utils::Input::promptString(
-      "Enter available color characters (e.g., 'RGBCMY' or '012345')", 
+      "Enter available color characters (e.g., 'RGBCMY' or '012345')",
       "RGBCMY");
 
   config.allowDuplicates =
@@ -29,8 +29,8 @@ Mastermind::Config MastermindGame::getConfigFromUser() {
     config.maxDepth = static_cast<uint8_t>(
         Utils::Input::promptInt("Enter search depth (0-2)", 1, 0, 2));
   }
-  config.maxGuesses = Utils::Input::promptInt(
-      "Maximum number of guesses allowed", 10, 1, 100);
+  config.maxGuesses =
+      Utils::Input::promptInt("Maximum number of guesses allowed", 10, 1, 100);
 
   return config;
 }
@@ -175,13 +175,13 @@ void MastermindGame::saveResults(const Mastermind::Result &result,
     // Write possible patterns first (those with probability > 0)
     for (const auto &guess : result.sortedGuesses) {
       if (guess.probability > 0.0) {
-        out << guess.pattern.toString(config) << "," << guess.ent << "," << guess.wnt << ","
-            << guess.probability << "\n";
+        out << guess.pattern.toString(config) << "," << guess.ent << ","
+            << guess.wnt << "," << guess.probability << "\n";
       }
     }
     for (const auto &guess : result.sortedGuesses) {
-      out << guess.pattern.toString(config) << "," << guess.ent << "," << guess.wnt << ","
-          << guess.probability << "\n";
+      out << guess.pattern.toString(config) << "," << guess.ent << ","
+          << guess.wnt << "," << guess.probability << "\n";
     }
     out.close();
   } else {
