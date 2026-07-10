@@ -93,13 +93,15 @@ std::vector<Hangman::Feedback> HangmanGame::getFeedbackFromArgs(
 void HangmanGame::printResults(const Hangman::Result &result) {
   std::cout << "\n=== HANGMAN SOLVER RESULTS ===\n";
 
-  if (result.totalPossibleWords == 0) {
+  if (result.totalPossiblePatterns == 0) {
     std::cout << "No possible words found with given constraints.\n";
     return;
   }
 
-  std::cout << "Possible words remaining: " << result.totalPossibleWords
-            << "\n\n";
+  std::cout << "Possible patterns (phrases) remaining: " << result.totalPossiblePatterns
+            << "\n";
+  std::cout << "Possible unique words: " << result.possibleWords.size()
+            << "\n";
 
   if (!result.sortedGuesses.empty()) {
     std::cout << "=== Best letter guesses ===\n";
@@ -143,8 +145,8 @@ void HangmanGame::printResults(const Hangman::Result &result) {
       if (i < wordCount - 1)
         std::cout << ", ";
     }
-    if (result.totalPossibleWords > 20) {
-      std::cout << " ... and " << (result.totalPossibleWords - 20) << " more";
+    if (result.totalPossiblePatterns > 20) {
+      std::cout << " ... and " << (result.totalPossiblePatterns - 20) << " more";
     }
     std::cout << "\n";
   }
@@ -174,9 +176,11 @@ void HangmanGame::saveResults(const Hangman::Result &result,
     std::cerr << "Could not write to file: " << outputFile << "\n";
   }
 
-  std::cout << result.totalPossibleWords << "\n";
+  std::cout << result.totalPossiblePatterns << "\n";
   std::cout << result.sortedGuesses.size() << "\n";
-  std::cout << outputFile;
+  std::cout << outputFile << "\n";
+  std::cout << result.searchDepth << "\n";
+  std::cout << result.possibleWords.size();
 }
 
 void HangmanGame::runCLI() {
@@ -244,12 +248,12 @@ void HangmanGame::runCLI() {
       std::cout << "\nCalculating best next letter...\n";
       Hangman::Result result = Hangman::runHangmanSolver(config);
 
-      if (result.totalPossibleWords == 0) {
+      if (result.totalPossiblePatterns == 0) {
         std::cout << "\nNo words match these constraints. Check your inputs.\n";
         continue;
       }
 
-      if (result.totalPossibleWords == 1) {
+      if (result.totalPossiblePatterns == 1) {
         std::cout << "\n*** SOLVED! The answer is: "
                   << result.possibleWords[0].wordString << " ***\n";
         continue;

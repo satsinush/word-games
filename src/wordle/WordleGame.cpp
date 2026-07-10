@@ -180,7 +180,8 @@ void WordleGame::saveResults(const Wordle::Result &result,
 
   std::cout << result.totalPossibleWords << "\n";
   std::cout << result.sortedGuesses.size() << "\n";
-  std::cout << outputFile;
+  std::cout << outputFile << "\n";
+  std::cout << result.searchDepth;
 }
 
 void WordleGame::runCLI() {

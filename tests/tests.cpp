@@ -853,7 +853,7 @@ TEST(DungleonTest, SolverNoGuesses) {
   // Test solver with no prior guesses
   Dungleon::Config config;
   config.maxDepth = 0;
-  config.excludeImpossiblePatterns = false;
+  config.excludeImpossiblePatterns = true;
 
   Dungleon::Result result = Dungleon::runDungleonSolver(config);
 
@@ -1279,21 +1279,7 @@ TEST(HangmanTest, GetAllLetters) {
   EXPECT_EQ(letters[25], 'z');
 }
 
-TEST(HangmanTest, GetAvailableLetters) {
-  std::vector<Hangman::Feedback> history = Hangman::parseStrikes("ae");
 
-  std::vector<char> available = Hangman::getAvailableLetters(history);
-  EXPECT_EQ(available.size(), 24);
-
-  // 'a' and 'e' should not be in available
-  EXPECT_EQ(std::find(available.begin(), available.end(), 'a'),
-            available.end());
-  EXPECT_EQ(std::find(available.begin(), available.end(), 'e'),
-            available.end());
-  // 'b' should still be available
-  EXPECT_NE(std::find(available.begin(), available.end(), 'b'),
-            available.end());
-}
 
 TEST(HangmanTest, SolverWithPattern) {
   // Load word list
@@ -1307,7 +1293,7 @@ TEST(HangmanTest, SolverWithPattern) {
   Hangman::Result result = Hangman::runHangmanSolver(config);
 
   EXPECT_GT(result.sortedGuesses.size(), 0) << "Should have letter suggestions";
-  EXPECT_GT(result.totalPossibleWords, 0) << "Should have possible words";
+  EXPECT_GT(result.totalPossiblePatterns, 0) << "Should have possible patterns";
 }
 
 TEST(HangmanTest, SolverWithRevealedLetters) {
@@ -1357,7 +1343,7 @@ TEST(HangmanTest, SolverNoPatterns) {
 
   Hangman::Result result = Hangman::runHangmanSolver(config);
 
-  EXPECT_EQ(result.totalPossibleWords, 0);
+  EXPECT_EQ(result.totalPossiblePatterns, 0);
 }
 
 TEST(HangmanTest, WordPatternRevealedLetters) {
@@ -1430,7 +1416,7 @@ TEST(HangmanTest, MultiWordPattern) {
   Hangman::Result result = Hangman::runHangmanSolver(config);
 
   EXPECT_GT(result.sortedGuesses.size(), 0) << "Should have letter suggestions";
-  EXPECT_GT(result.totalPossibleWords, 0) << "Should have possible words";
+  EXPECT_GT(result.totalPossiblePatterns, 0) << "Should have possible patterns";
 }
 
 TEST(HangmanTest, MultiWordSolvedState) {

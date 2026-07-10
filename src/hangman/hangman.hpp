@@ -136,9 +136,10 @@ struct LetterGuess {
 
 struct Result {
   std::vector<LetterGuess> sortedGuesses; // All available letters ranked
-  int totalPossibleWords = 0;             // Number of unique possible words
+  int totalPossiblePatterns = 0;          // Number of unique possible patterns (combinations)
   std::vector<Utils::Word>
       possibleWords; // Unique words matching any pattern position
+  int searchDepth = 0;
 };
 
 // Parse a pattern string like "_A__ _A_ _____" into WordPatterns
@@ -164,10 +165,6 @@ Feedback generateFeedback(const PhraseSolution &target, char letter);
 
 // Get all possible letters (a-z)
 std::vector<char> getAllLetters();
-
-// Filter already guessed letters from available guesses
-std::vector<char>
-getAvailableLetters(const std::vector<Feedback> &feedbackHistory);
 
 // Run the Hangman solver with ENT-based algorithm
 Result runHangmanSolver(const Config &config = Config{},

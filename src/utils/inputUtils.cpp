@@ -6,24 +6,84 @@
 #include <sstream>
 #include <string>
 
+#ifndef _WIN32
+#include <termios.h>
+#include <unistd.h>
+#endif
+
 #include "utils/inputUtils.hpp"
 #include "utils/utils.hpp"
 
 namespace Utils {
 namespace Input {
+
+std::string readLine() {
+#ifdef _WIN32
+  std::string line;
+  std::getline(std::cin, line);
+  if (std::cin.eof()) {
+    std::cin.clear();
+    std::cout << "\n";
+    throw UserCancelledException();
+  }
+  return line;
+#else
+  std::string line;
+  struct termios oldt, newt;
+  if (tcgetattr(STDIN_FILENO, &oldt) != 0) {
+    // Fallback if stdin is not a TTY
+    std::getline(std::cin, line);
+    if (std::cin.eof()) {
+      std::cin.clear();
+      std::cout << "\n";
+      throw UserCancelledException();
+    }
+    return line;
+  }
+
+  newt = oldt;
+  newt.c_lflag &= ~(ICANON | ECHO);
+  tcsetattr(STDIN_FILENO, TCSANOW, &newt);
+
+  int ch;
+  while (true) {
+    ch = getchar();
+    if (ch == EOF) {
+      tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
+      std::cout << "\n";
+      throw UserCancelledException();
+    }
+    if (ch == '\n' || ch == '\r') {
+      std::cout << "\n";
+      break;
+    } else if (ch == 127 || ch == 8) { // Backspace
+      if (!line.empty()) {
+        line.pop_back();
+        std::cout << "\b \b" << std::flush;
+      }
+    } else if (ch == 27) { // Escape sequence
+      int next1 = getchar();
+      if (next1 == '[') {
+        getchar();
+        // Discard arrow keys
+        continue;
+      }
+    } else if (ch >= 32 && ch <= 126) {
+      line.push_back(ch);
+      std::cout << (char)ch << std::flush;
+    }
+  }
+
+  tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
+  return line;
+#endif
+}
+
 int promptInt(const std::string &prompt, const int defaultValue, const int min,
               const int max) {
   while (true) {
     std::cout << prompt << " (default: " << defaultValue << "): ";
-    std::string input;
-    std::getline(std::cin, input);
-
-    // Check for EOF
-    if (std::cin.eof()) {
-      std::cin.clear(); // Clear EOF state
-      std::cout << "\n";
-      throw UserCancelledException();
-    }
+    std::string input = readLine();
 
     input = Utils::trimToLower(input);
 
@@ -47,15 +107,7 @@ bool promptBool(const std::string &prompt, const bool defaultValue) {
   while (true) {
     std::cout << prompt << " (default: " << (defaultValue ? "yes" : "no")
               << "): ";
-    std::string input;
-    std::getline(std::cin, input);
-
-    // Check for EOF
-    if (std::cin.eof()) {
-      std::cin.clear(); // Clear EOF state
-      std::cout << "\n";
-      throw UserCancelledException();
-    }
+    std::string input = readLine();
 
     input = Utils::trimToLower(input);
 
@@ -82,15 +134,7 @@ std::string promptString(const std::string &prompt,
     else
       std::cout << prompt << ": ";
 
-    std::string input;
-    std::getline(std::cin, input);
-
-    // Check for EOF
-    if (std::cin.eof()) {
-      std::cin.clear(); // Clear EOF state
-      std::cout << "\n";
-      throw UserCancelledException();
-    }
+    std::string input = readLine();
 
     if (input.empty() && !defaultValue.empty())
       return defaultValue;
@@ -106,15 +150,7 @@ std::string promptLetters(const std::string &prompt, const size_t expectedCount,
                           const bool allowDuplicates) {
   while (true) {
     std::cout << prompt << std::endl;
-    std::string input;
-    std::getline(std::cin, input);
-
-    // Check for EOF
-    if (std::cin.eof()) {
-      std::cin.clear(); // Clear EOF state
-      std::cout << "\n";
-      throw UserCancelledException();
-    }
+    std::string input = readLine();
 
     // Remove all whitespace
     input.erase(std::remove_if(input.begin(), input.end(), ::isspace),

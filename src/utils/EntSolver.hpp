@@ -34,9 +34,11 @@ public:
   struct SearchMetrics {
     double ent = 0.0;
     double wnt = 0.0;
+    double probability = 0.0;
   };
 
-  virtual bool isBetterMetrics(const SearchMetrics &a, const SearchMetrics &b, uint32_t R) const {
+  virtual bool isBetterMetrics(const SearchMetrics &a, const SearchMetrics &b,
+                               uint32_t R) const {
     const double tolerance = 1e-9;
 
     bool aGuarantees = (a.wnt > 0.0 && a.wnt <= static_cast<double>(R));
@@ -46,11 +48,26 @@ public:
       return aGuarantees;
     }
 
+    if (R <= 1) {
+      if (std::abs(a.probability - b.probability) > tolerance) {
+        return a.probability > b.probability;
+      }
+    }
+
     // Prioritize ENT (average speed) first, then WNT (worst-case speed)
     if (std::abs(a.ent - b.ent) > tolerance) {
       return a.ent < b.ent;
     }
-    return a.wnt < b.wnt;
+
+    if (std::abs(a.wnt - b.wnt) > tolerance) {
+      return a.wnt < b.wnt;
+    }
+
+    if (std::abs(a.probability - b.probability) > tolerance) {
+      return a.probability > b.probability;
+    }
+
+    return false;
   }
 
   // Extract types from Traits for cleaner usage
@@ -127,7 +144,7 @@ public:
     std::vector<CalculatedGuessType> guesses;
     int totalPossible = static_cast<int>(filteredCandidates.size());
 
-    int activeDepth = config.maxDepth;
+    activeDepth = config.maxDepth;
     if (config.autoDepth) {
       activeDepth =
           calculateOptimalDepth(allGuesses.size(), filteredCandidates.size());
@@ -165,26 +182,20 @@ public:
       }
     }
 
-    std::sort(guesses.begin(), guesses.end(),
-              [this, R](const CalculatedGuessType &a,
-                        const CalculatedGuessType &b) {
-                const double tolerance = 1e-9;
+    std::sort(
+        guesses.begin(), guesses.end(),
+        [this, R](const CalculatedGuessType &a, const CalculatedGuessType &b) {
+          SearchMetrics ma = {a.ent, a.wnt, a.probability};
+          SearchMetrics mb = {b.ent, b.wnt, b.probability};
 
-                if (R <= 1) {
-                  // Last guess: prioritize individual probability first
-                  if (std::abs(a.probability - b.probability) > tolerance)
-                    return a.probability > b.probability;
-                }
+          if (isBetterMetrics(ma, mb, R))
+            return true;
+          if (isBetterMetrics(mb, ma, R))
+            return false;
 
-                SearchMetrics ma = {a.ent, a.wnt};
-                SearchMetrics mb = {b.ent, b.wnt};
-
-                if (isBetterMetrics(ma, mb, R)) return true;
-                if (isBetterMetrics(mb, ma, R)) return false;
-
-                // Default fallback / general case sorting using operator<
-                return a < b;
-              });
+          // Default fallback / general case sorting using operator<
+          return a < b;
+        });
 
     cancellationFlag = nullptr;
     return createResult(guesses, totalPossible);
@@ -192,6 +203,7 @@ public:
 
 protected:
   ConfigType config;
+  int activeDepth = 0;
 
 private:
   // Cancellation pointer set during solve(); helpers check this and return
@@ -204,26 +216,27 @@ private:
    */
   SearchMetrics findMinMetrics(const CandidateSetType &candidates,
                                const std::vector<GuessType> &allGuesses,
-                               const int maxDepth,
-                               const uint32_t R) {
+                               const int maxDepth, const uint32_t R) {
 #ifdef TRACY_ENABLE
     ZoneScoped;
 #endif
     if (candidates.size() <= 1)
-      return {0.0, 0.0};
+      return {0.0, 0.0, 0.0};
 
     if (maxDepth <= 0) {
       double est = worstCaseExpectedTurns(candidates.size());
-      return {est, std::ceil(est)};
+      return {est, std::ceil(est), 0.0};
     }
 
     SearchMetrics bestMetrics = {std::numeric_limits<double>::infinity(),
-                                 std::numeric_limits<double>::infinity()};
+                                 std::numeric_limits<double>::infinity(),
+                                 std::numeric_limits<double>::lowest()};
 
     for (const auto &nextGuess : allGuesses) {
       if (cancellationFlag && cancellationFlag->load())
         return {std::numeric_limits<double>::infinity(),
-                std::numeric_limits<double>::infinity()};
+                std::numeric_limits<double>::infinity(),
+                std::numeric_limits<double>::lowest()};
 
       SearchMetrics metrics =
           calculateMetrics(nextGuess, candidates, allGuesses, maxDepth, R);
@@ -243,14 +256,13 @@ private:
   SearchMetrics calculateMetrics(const GuessType &guessInput,
                                  const CandidateSetType &candidates,
                                  const std::vector<GuessType> &allGuesses,
-                                 const int maxDepth,
-                                 const uint32_t R) {
+                                 const int maxDepth, const uint32_t R) {
 #ifdef TRACY_ENABLE
     ZoneScoped;
 #endif
 
     if (candidates.size() <= 1) {
-      return {0.0, 0.0};
+      return {0.0, 0.0, 0.0};
     }
 
     double totalScore = candidates.totalScore();
@@ -277,7 +289,9 @@ private:
           return this->generateFeedback(c, g);
         });
 
-    return {1.0 + expectedRemainingTurns, 1.0 + maxSubWnt};
+    SearchMetrics result = {1.0 + expectedRemainingTurns, 1.0 + maxSubWnt, 0.0};
+    result.probability = calculateGuessProbability(guessInput, candidates);
+    return result;
   }
 
   /**

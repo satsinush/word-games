@@ -142,23 +142,6 @@ std::vector<char> getAllLetters() {
   return letters;
 }
 
-std::vector<char>
-getAvailableLetters(const std::vector<Feedback> &feedbackHistory) {
-  std::unordered_set<char> guessedLetters;
-  for (const auto &fb : feedbackHistory) {
-    guessedLetters.insert(fb.letter);
-  }
-
-  std::vector<char> available;
-  available.reserve(26 - guessedLetters.size());
-  for (char c = 'a'; c <= 'z'; ++c) {
-    if (guessedLetters.find(c) == guessedLetters.end()) {
-      available.push_back(c);
-    }
-  }
-  return available;
-}
-
 // Defines a set of possible phrase solutions without constructing them all
 // explicitly. Uses a product of independent word sets per slot.
 class HangmanCandidateSet {
@@ -315,6 +298,34 @@ public:
         numWordSlots(numSlots) {}
 
 protected:
+  using SearchMetrics = typename Utils::AbstractEntSolver<HangmanSolverTraits>::SearchMetrics;
+
+  bool isBetterMetrics(const SearchMetrics &a, const SearchMetrics &b,
+                       uint32_t R) const override {
+    const double tolerance = 1e-9;
+
+    bool aGuarantees = (a.wnt > 0.0 && a.wnt <= static_cast<double>(R));
+    bool bGuarantees = (b.wnt > 0.0 && b.wnt <= static_cast<double>(R));
+
+    if (aGuarantees != bGuarantees) {
+      return aGuarantees;
+    }
+
+    if (std::abs(a.probability - b.probability) > tolerance) {
+      return a.probability > b.probability;
+    }
+
+    if (std::abs(a.ent - b.ent) > tolerance) {
+      return a.ent < b.ent;
+    }
+
+    if (std::abs(a.wnt - b.wnt) > tolerance) {
+      return a.wnt < b.wnt;
+    }
+
+    return false;
+  }
+
   bool matchesFeedback(const PhraseSolution &candidate,
                        const Feedback &feedback) const override {
     return Hangman::matchesFeedback(candidate, feedback);
@@ -344,7 +355,8 @@ protected:
                       int totalPossible) const override {
     Result result;
     result.sortedGuesses = guesses;
-    result.totalPossibleWords = totalPossible;
+    result.totalPossiblePatterns = totalPossible;
+    result.searchDepth = this->activeDepth;
     return result;
   }
 
@@ -366,7 +378,7 @@ Result runHangmanSolver(const Config &config, std::atomic<bool> *cancel) {
 
   // If no patterns specified, return empty result
   if (config.wordPatterns.empty()) {
-    result.totalPossibleWords = 0;
+    result.totalPossiblePatterns = 0;
     return result;
   }
 
@@ -409,32 +421,48 @@ Result runHangmanSolver(const Config &config, std::atomic<bool> *cancel) {
     }
   }
 
-  // Get available letters (not yet guessed, and not already revealed in
-  // patterns)
-  std::vector<char> availableLetters =
-      getAvailableLetters(config.feedbackHistory);
+  // Get available letters (exclude guessed or revealed)
+  std::unordered_set<char> guessed;
+  for (const auto &fb : config.feedbackHistory) {
+    guessed.insert(std::tolower(fb.letter));
+  }
+  for (char c : globalRevealedLetters) {
+    guessed.insert(std::tolower(c));
+  }
 
-  // Remove revealed letters from available
-  availableLetters.erase(std::remove_if(availableLetters.begin(),
-                                        availableLetters.end(),
-                                        [&globalRevealedLetters](char c) {
-                                          return globalRevealedLetters.count(c) > 0;
-                                        }),
-                         availableLetters.end());
+  std::vector<char> availableLetters;
+  for (char c = 'a'; c <= 'z'; ++c) {
+    if (guessed.count(c) == 0) {
+      availableLetters.push_back(c);
+    }
+  }
+
+  // Filter out empty slots (slots with 0 matching words) if there is at least one slot with words.
+  std::vector<std::vector<Utils::Word>> validWordsPerSlot;
+  for (const auto &slot : wordsPerSlot) {
+    if (!slot.empty()) {
+      validWordsPerSlot.push_back(slot);
+    }
+  }
+
+  bool hasValidSlots = !validWordsPerSlot.empty();
+  const auto &solverWordsPerSlot = hasValidSlots ? validWordsPerSlot : wordsPerSlot;
 
   // Create initial candidate set using the product set approach
-  HangmanCandidateSet initialCandidates(wordsPerSlot);
+  HangmanCandidateSet initialCandidates(solverWordsPerSlot);
 
   // Use the specialized Hangman ENT solver
-  HangmanEntSolver solver(config, numSlots);
+  HangmanEntSolver solver(config, solverWordsPerSlot.size());
   result = solver.solve(availableLetters, initialCandidates, cancel);
 
   // Collect unique possible words for display (from all slots)
   // This is for UI display purposes only
   std::unordered_set<std::string> uniqueWordsForDisplay;
-  for (size_t slotIdx = 0; slotIdx < numSlots; ++slotIdx) {
-    for (const auto &word : wordsPerSlot[slotIdx]) {
-      uniqueWordsForDisplay.insert(word.wordString);
+  if (initialCandidates.size() > 0) {
+    for (const auto &slot : solverWordsPerSlot) {
+      for (const auto &word : slot) {
+        uniqueWordsForDisplay.insert(word.wordString);
+      }
     }
   }
 
@@ -447,7 +475,7 @@ Result runHangmanSolver(const Config &config, std::atomic<bool> *cancel) {
 
   // Store possible words for display
   result.possibleWords = possibleWords;
-  result.totalPossibleWords = static_cast<int>(initialCandidates.size());
+  result.totalPossiblePatterns = static_cast<int>(initialCandidates.size());
 
   // Sort by score (higher is better)
   std::sort(result.possibleWords.begin(), result.possibleWords.end(),

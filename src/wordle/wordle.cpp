@@ -209,6 +209,7 @@ protected:
     Result result;
     result.sortedGuesses = guesses;
     result.totalPossibleWords = totalPossible;
+    result.searchDepth = this->activeDepth;
     return result;
   }
 
@@ -225,9 +226,15 @@ Result runWordleSolver(const Config &config, std::atomic<bool> *cancel) {
 #endif
   std::vector<Utils::Word> allWords = Utils::loadWords();
 
+  std::unordered_set<std::string> guessedWords;
+  for (const auto &fb : config.feedbackHistory) {
+    guessedWords.insert(fb.word);
+  }
+
   // Filter words to only words of the specified length
   std::vector<Utils::Word> possibleWords;
   for (const auto &word : allWords) {
+    if (guessedWords.count(word.wordString) > 0) continue;
     bool exclude = config.excludeUncommonWords && (!word.is_scrabble);
     if (word.wordString.length() == config.wordLength && !exclude) {
       possibleWords.push_back(word);

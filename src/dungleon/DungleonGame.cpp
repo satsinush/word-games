@@ -225,7 +225,8 @@ void DungleonGame::saveResults(const Dungleon::Result &result,
 
   std::cout << result.totalPossiblePatterns << "\n";
   std::cout << result.sortedGuesses.size() << "\n";
-  std::cout << outputFile;
+  std::cout << outputFile << "\n";
+  std::cout << result.searchDepth;
 }
 
 void DungleonGame::runCLI() {

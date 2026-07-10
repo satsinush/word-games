@@ -498,6 +498,7 @@ protected:
     Result result;
     result.sortedGuesses = guesses;
     result.totalPossiblePatterns = totalPossible;
+    result.searchDepth = this->activeDepth;
     return result;
   }
 
@@ -525,16 +526,38 @@ Result runDungleonSolver(const Config &_config, std::atomic<bool> *cancel) {
     }
   }
 
-  std::vector<Pattern> allPatterns = config.excludeImpossiblePatterns
-                                         ? generateAllPossiblePatterns(config)
-                                         : generateAllPatterns();
   std::vector<Pattern> possiblePatterns = generateAllPossiblePatterns(config);
 
+  // Exclude already guessed patterns to speed up lookup
+  std::unordered_set<Pattern> guessedPatterns;
+  for (const auto &fb : config.feedbackHistory) {
+    guessedPatterns.insert(fb.pattern);
+  }
+
+  auto filterGuesses = [&guessedPatterns](const std::vector<Pattern> &list) {
+    std::vector<Pattern> filtered;
+    filtered.reserve(list.size());
+    for (const auto &p : list) {
+      if (guessedPatterns.count(p) == 0) {
+        filtered.push_back(p);
+      }
+    }
+    return filtered;
+  };
+
+  std::vector<Pattern> filteredPossible = filterGuesses(possiblePatterns);
+  std::vector<Pattern> filteredAll;
+  if (config.excludeImpossiblePatterns) {
+    filteredAll = filteredPossible;
+  } else {
+    filteredAll = filterGuesses(generateAllPatterns());
+  }
+
   // Create CandidateSet from the filtered patterns
-  Utils::VectorCandidateSet<Dungleon::Pattern> initialCandidates(possiblePatterns);
+  Utils::VectorCandidateSet<Dungleon::Pattern> initialCandidates(filteredPossible);
 
   // Use the specialized Dungleon ENT solver - returns Result directly!
   DungleonEntSolver solver(config);
-  return solver.solve(allPatterns, initialCandidates, cancel);
+  return solver.solve(filteredAll, initialCandidates, cancel);
 }
 } // namespace Dungleon
