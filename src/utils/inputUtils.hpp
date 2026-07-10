@@ -35,6 +35,9 @@ promptString(const std::string &prompt, const std::string &defaultValue = "",
 std::string promptLetters(const std::string &prompt, const size_t expectedCount,
                           const bool allowDuplicates = true);
 
+// Read a line of input with arrow keys and backspace editing handled gracefully
+std::string readLine();
+
 // Parse command line arguments into flags and positional arguments
 CommandArgs parseCommandArgs(int argc, char *argv[]);
 

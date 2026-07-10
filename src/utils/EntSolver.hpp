@@ -127,7 +127,7 @@ public:
     std::vector<CalculatedGuessType> guesses;
     int totalPossible = static_cast<int>(filteredCandidates.size());
 
-    int activeDepth = config.maxDepth;
+    activeDepth = config.maxDepth;
     if (config.autoDepth) {
       activeDepth =
           calculateOptimalDepth(allGuesses.size(), filteredCandidates.size());
@@ -192,6 +192,7 @@ public:
 
 protected:
   ConfigType config;
+  int activeDepth = 0;
 
 private:
   // Cancellation pointer set during solve(); helpers check this and return

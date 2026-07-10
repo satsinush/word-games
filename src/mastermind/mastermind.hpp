@@ -146,6 +146,7 @@ struct PatternGuess {
 struct Result {
   std::vector<PatternGuess> sortedGuesses;
   int totalPossiblePatterns = 0;
+  int searchDepth = 0;
 };
 
 // Parse feedback string like "rgbc 2 1" (pattern correctPos correctCol)

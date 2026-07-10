@@ -275,6 +275,7 @@ protected:
     Result result;
     result.sortedGuesses = guesses;
     result.totalPossiblePatterns = totalPossible;
+    result.searchDepth = this->activeDepth;
     return result;
   }
 
@@ -296,11 +297,25 @@ Result runMastermindSolver(const Config &config, std::atomic<bool> *cancel) {
   // Generate all possible patterns for the given configuration
   std::vector<Pattern> allPatterns = Mastermind::generateAllPatterns(config);
 
+  // Exclude already guessed patterns to speed up lookup
+  std::unordered_set<Pattern> guessedPatterns;
+  for (const auto &fb : config.feedbackHistory) {
+    guessedPatterns.insert(fb.guess);
+  }
+
+  std::vector<Pattern> possiblePatterns;
+  possiblePatterns.reserve(allPatterns.size());
+  for (const auto &p : allPatterns) {
+    if (guessedPatterns.count(p) == 0) {
+      possiblePatterns.push_back(p);
+    }
+  }
+
   // Create CandidateSet from the filtered patterns
-  Utils::VectorCandidateSet<Mastermind::Pattern> initialCandidates(allPatterns);
+  Utils::VectorCandidateSet<Mastermind::Pattern> initialCandidates(possiblePatterns);
 
   // Use the specialized Mastermind ENT solver - returns Result directly!
   MastermindEntSolver solver(config);
-  return solver.solve(allPatterns, initialCandidates, cancel);
+  return solver.solve(possiblePatterns, initialCandidates, cancel);
 }
 } // namespace Mastermind

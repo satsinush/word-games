@@ -94,6 +94,7 @@ struct WordGuess {
 struct Result {
   std::vector<WordGuess> sortedGuesses;
   int totalPossibleWords = 0;
+  int searchDepth = 0;
 };
 
 // Parse feedback string like "STEAL 01201"

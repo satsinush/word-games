@@ -190,7 +190,8 @@ void MastermindGame::saveResults(const Mastermind::Result &result,
 
   std::cout << result.totalPossiblePatterns << "\n";
   std::cout << result.sortedGuesses.size() << "\n";
-  std::cout << outputFile;
+  std::cout << outputFile << "\n";
+  std::cout << result.searchDepth;
 }
 
 void MastermindGame::runCLI() {
