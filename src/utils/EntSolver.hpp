@@ -31,6 +31,28 @@ namespace Utils {
  */
 template <typename Traits> class AbstractEntSolver {
 public:
+  struct SearchMetrics {
+    double ent = 0.0;
+    double wnt = 0.0;
+  };
+
+  virtual bool isBetterMetrics(const SearchMetrics &a, const SearchMetrics &b, uint32_t R) const {
+    const double tolerance = 1e-9;
+
+    bool aGuarantees = (a.wnt > 0.0 && a.wnt <= static_cast<double>(R));
+    bool bGuarantees = (b.wnt > 0.0 && b.wnt <= static_cast<double>(R));
+
+    if (aGuarantees != bGuarantees) {
+      return aGuarantees;
+    }
+
+    // Prioritize ENT (average speed) first, then WNT (worst-case speed)
+    if (std::abs(a.ent - b.ent) > tolerance) {
+      return a.ent < b.ent;
+    }
+    return a.wnt < b.wnt;
+  }
+
   // Extract types from Traits for cleaner usage
   using CandidateType = typename Traits::CandidateType;
   using GuessType = typename Traits::GuessType;
@@ -135,7 +157,7 @@ public:
         }
 
         SearchMetrics metrics = calculateMetrics(guessInput, filteredCandidates,
-                                                 allGuesses, activeDepth);
+                                                 allGuesses, activeDepth, R);
         double prob = calculateGuessProbability(guessInput, filteredCandidates);
         CalculatedGuessType guess =
             createGuess(guessInput, metrics.ent, metrics.wnt, prob);
@@ -143,63 +165,24 @@ public:
       }
     }
 
-    // Check if there is any guess that guarantees a win (i.e. WNT <= R)
-    bool guaranteeExists = false;
-    for (const auto &g : guesses) {
-      if (g.wnt > 0.0 && g.wnt <= static_cast<double>(R)) {
-        guaranteeExists = true;
-        break;
-      }
-    }
-
     std::sort(guesses.begin(), guesses.end(),
-              [R, guaranteeExists](const CalculatedGuessType &a,
-                                   const CalculatedGuessType &b) {
+              [this, R](const CalculatedGuessType &a,
+                        const CalculatedGuessType &b) {
                 const double tolerance = 1e-9;
 
                 if (R <= 1) {
                   // Last guess: prioritize individual probability first
                   if (std::abs(a.probability - b.probability) > tolerance)
                     return a.probability > b.probability;
-
-                  if (std::abs(a.wnt - b.wnt) > tolerance)
-                    return a.wnt < b.wnt;
-
-                  if (std::abs(a.ent - b.ent) > tolerance)
-                    return a.ent < b.ent;
-                } else if (guaranteeExists) {
-                  // If any guess guarantees a win (WNT <= R), we ONLY want
-                  // guesses with WNT <= R. If one guarantees a win and the
-                  // other does not, prefer the one that does.
-                  bool aGuarantees =
-                      (a.wnt > 0.0 && a.wnt <= static_cast<double>(R));
-                  bool bGuarantees =
-                      (b.wnt > 0.0 && b.wnt <= static_cast<double>(R));
-                  if (aGuarantees != bGuarantees) {
-                    return aGuarantees;
-                  }
-                  if (std::abs(a.ent - b.ent) > tolerance)
-                    return a.ent < b.ent;
-
-                  if (std::abs(a.probability - b.probability) > tolerance)
-                    return a.probability > b.probability;
-
-                  if (std::abs(a.wnt - b.wnt) > tolerance)
-                    return a.wnt < b.wnt;
-                } else {
-                  // No guarantee: prioritize WNT first (survival mode), then
-                  // ENT
-                  if (std::abs(a.wnt - b.wnt) > tolerance)
-                    return a.wnt < b.wnt;
-
-                  if (std::abs(a.ent - b.ent) > tolerance)
-                    return a.ent < b.ent;
-
-                  if (std::abs(a.probability - b.probability) > tolerance)
-                    return a.probability > b.probability;
                 }
 
-                // Single fallback tiebreaker using the types' own operator<
+                SearchMetrics ma = {a.ent, a.wnt};
+                SearchMetrics mb = {b.ent, b.wnt};
+
+                if (isBetterMetrics(ma, mb, R)) return true;
+                if (isBetterMetrics(mb, ma, R)) return false;
+
+                // Default fallback / general case sorting using operator<
                 return a < b;
               });
 
@@ -215,18 +198,14 @@ private:
   // early
   std::atomic<bool> *cancellationFlag = nullptr;
 
-  struct SearchMetrics {
-    double ent = 0.0;
-    double wnt = 0.0;
-  };
-
   /**
    * Single-value minimax helper that finds the minimum expected and worst-case
    * turns
    */
   SearchMetrics findMinMetrics(const CandidateSetType &candidates,
                                const std::vector<GuessType> &allGuesses,
-                               const int maxDepth) {
+                               const int maxDepth,
+                               const uint32_t R) {
 #ifdef TRACY_ENABLE
     ZoneScoped;
 #endif
@@ -238,8 +217,8 @@ private:
       return {est, std::ceil(est)};
     }
 
-    double minWnt = std::numeric_limits<double>::max();
-    double bestEntForMinWnt = std::numeric_limits<double>::max();
+    SearchMetrics bestMetrics = {std::numeric_limits<double>::infinity(),
+                                 std::numeric_limits<double>::infinity()};
 
     for (const auto &nextGuess : allGuesses) {
       if (cancellationFlag && cancellationFlag->load())
@@ -247,20 +226,14 @@ private:
                 std::numeric_limits<double>::infinity()};
 
       SearchMetrics metrics =
-          calculateMetrics(nextGuess, candidates, allGuesses, maxDepth);
+          calculateMetrics(nextGuess, candidates, allGuesses, maxDepth, R);
 
-      // Minimize WNT as primary, and ENT as secondary tiebreaker
-      if (metrics.wnt < minWnt) {
-        minWnt = metrics.wnt;
-        bestEntForMinWnt = metrics.ent;
-      } else if (std::abs(metrics.wnt - minWnt) < 1e-9) {
-        if (metrics.ent < bestEntForMinWnt) {
-          bestEntForMinWnt = metrics.ent;
-        }
+      if (isBetterMetrics(metrics, bestMetrics, R)) {
+        bestMetrics = metrics;
       }
     }
 
-    return {bestEntForMinWnt, minWnt};
+    return bestMetrics;
   }
 
   /**
@@ -270,7 +243,8 @@ private:
   SearchMetrics calculateMetrics(const GuessType &guessInput,
                                  const CandidateSetType &candidates,
                                  const std::vector<GuessType> &allGuesses,
-                                 const int maxDepth) {
+                                 const int maxDepth,
+                                 const uint32_t R) {
 #ifdef TRACY_ENABLE
     ZoneScoped;
 #endif
@@ -286,12 +260,13 @@ private:
     candidates.visitFeedbackGroups(
         guessInput,
         [this, &expectedRemainingTurns, &maxSubWnt, totalScore, &allGuesses,
-         maxDepth](const FeedbackType &, const CandidateSetType &subset,
-                   double subsetScore) {
+         maxDepth, R](const FeedbackType &, const CandidateSetType &subset,
+                      double subsetScore) {
           double prob = subsetScore / totalScore;
           if (prob > 0) {
+            uint32_t nextR = (R > 1) ? (R - 1) : 1;
             SearchMetrics subMetrics =
-                findMinMetrics(subset, allGuesses, maxDepth - 1);
+                findMinMetrics(subset, allGuesses, maxDepth - 1, nextR);
             expectedRemainingTurns += prob * subMetrics.ent;
             if (subMetrics.wnt > maxSubWnt) {
               maxSubWnt = subMetrics.wnt;
