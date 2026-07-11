@@ -213,10 +213,16 @@ protected:
     return result;
   }
 
-  double worstCaseExpectedTurns(size_t numCandidates) const override {
-    if (numCandidates <= 1) return 0.0;
-    double base = std::max(2.0, static_cast<double>(config.wordLength));
-    return std::log(static_cast<double>(numCandidates)) / std::log(base);
+  double maxFeedbackGroups() const override {
+    // 3 states (green/yellow/gray) per letter position
+    double k = 1.0;
+    for (uint8_t i = 0; i < config.wordLength; ++i)
+      k *= 3.0;
+    return k;
+  }
+
+  double feedbackEfficiency() const override {
+    return 0.75; // Wordle word lexicon correlations
   }
 };
 

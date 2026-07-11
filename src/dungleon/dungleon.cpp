@@ -502,10 +502,16 @@ protected:
     return result;
   }
 
-  double worstCaseExpectedTurns(size_t numCandidates) const override {
-    if (numCandidates <= 1) return 0.0;
-    return std::log(static_cast<double>(numCandidates)) /
-           std::log(static_cast<double>(NUM_CHARACTERS));
+  double maxFeedbackGroups() const override {
+    // 5 feedback states per slot, NUM_SLOTS slots
+    double k = 1.0;
+    for (uint8_t i = 0; i < NUM_SLOTS; ++i)
+      k *= 5.0;
+    return k; // 3125
+  }
+
+  double feedbackEfficiency() const override {
+    return 0.60; // Highly constrained character pairing rules
   }
 };
 

@@ -108,10 +108,50 @@ protected:
     return 0.0;
   }
 
-  virtual double worstCaseExpectedTurns(size_t numCandidates) const {
+  /// Returns the maximum number of distinct feedback groups (k_max).
+  /// This is a physical constant of the game's feedback function:
+  ///   Wordle:     3^wordLength (e.g., 243 for 5-letter words)
+  ///   Mastermind: (P+1)(P+2)/2 (e.g., 15 for 4 pegs)
+  ///   Hangman:    2^unrevealed (positional bitmask)
+  ///   Dungleon:   5^5 = 3125
+  virtual double maxFeedbackGroups() const { return 2.0; }
+
+  /// Returns the entropy distribution efficiency (alpha) of the game.
+  /// Represents how uniformly guesses partition the candidate space.
+  ///   Wordle:     0.50 (correlated natural language)
+  ///   Mastermind: 0.95 (independent peg colors)
+  ///   Hangman:    0.25 (highly correlated positional letter bitmasks)
+  ///   Dungleon:   0.60 (highly constrained character combinations)
+  virtual double feedbackEfficiency() const { return 1.0; }
+
+  /// Estimates the Expected Number of Turns (ENT) to solve N candidates.
+  /// Each loop iteration represents one guess, so the result already
+  /// includes the first guess — callers should NOT add +1.
+  /// Formula: k_eff = k_max^alpha, B(N) = k_eff*(1-e^(-N/k_eff)),
+  /// iterate N ← N/B(N) counting steps until N ≤ 2.
+  double estimateENT(size_t numCandidates) const {
     if (numCandidates <= 1)
       return 0.0;
-    return std::log2(static_cast<double>(numCandidates));
+
+    double N = static_cast<double>(numCandidates);
+    double kEff = std::pow(maxFeedbackGroups(), feedbackEfficiency());
+
+    double turns = 0.0;
+    while (N > 2.0) {
+      double B = kEff * (1.0 - std::exp(-N / kEff));
+
+      if (B <= 1.001) {
+        turns += N - 1.0;
+        return turns;
+      }
+
+      N /= B;
+      turns += 1.0;
+    }
+
+    // Interpolate final fractional turn for 1.0 < N ≤ 2.0
+    turns += (N - 1.0);
+    return turns;
   }
 
 public:
@@ -154,10 +194,11 @@ public:
                      ? (config.maxGuesses - config.feedbackHistory.size())
                      : 1;
 
-    // If activeDepth is 0, skip ENT calculation and just return filtered
-    // solutions
+    // If activeDepth is 0, skip partition analysis and use the global-state
+    // heuristic. Per-guess discrimination would require O(G×C) partition work
+    // — the same cost as depth 1 — so if we're at depth 0, just use O(G).
     if (activeDepth == 0) {
-      double estEnt = worstCaseExpectedTurns(filteredCandidates.size());
+      double estEnt = estimateENT(filteredCandidates.size());
       double estWnt = std::ceil(estEnt);
       for (const auto &guess : allGuesses) {
         double prob = calculateGuessProbability(guess, filteredCandidates);
@@ -175,9 +216,8 @@ public:
 
         SearchMetrics metrics = calculateMetrics(guessInput, filteredCandidates,
                                                  allGuesses, activeDepth, R);
-        double prob = calculateGuessProbability(guessInput, filteredCandidates);
         CalculatedGuessType guess =
-            createGuess(guessInput, metrics.ent, metrics.wnt, prob);
+            createGuess(guessInput, metrics.ent, metrics.wnt, metrics.probability);
         guesses.push_back(guess);
       }
     }
@@ -211,8 +251,9 @@ private:
   std::atomic<bool> *cancellationFlag = nullptr;
 
   /**
-   * Single-value minimax helper that finds the minimum expected and worst-case
-   * turns
+   * Returns the minimum total turns to solve candidates from scratch.
+   * At leaf (maxDepth=0), delegates to estimateENT.
+   * Otherwise, tries all guesses via calculateMetrics and picks the best.
    */
   SearchMetrics findMinMetrics(const CandidateSetType &candidates,
                                const std::vector<GuessType> &allGuesses,
@@ -224,7 +265,7 @@ private:
       return {0.0, 0.0, 0.0};
 
     if (maxDepth <= 0) {
-      double est = worstCaseExpectedTurns(candidates.size());
+      double est = estimateENT(candidates.size());
       return {est, std::ceil(est), 0.0};
     }
 
@@ -250,8 +291,9 @@ private:
   }
 
   /**
-   * Calculates the Expected and Worst-case Number of Turns (ENT & WNT)
-   * after making a specific guess.
+   * Returns total turns (ENT & WNT) when using a specific guess.
+   * Equals 1 (this guess) + expected findMinMetrics of resulting subsets.
+   * The +1 on line 333 is the ONLY +1 in the scoring chain.
    */
   SearchMetrics calculateMetrics(const GuessType &guessInput,
                                  const CandidateSetType &candidates,
@@ -262,7 +304,8 @@ private:
 #endif
 
     if (candidates.size() <= 1) {
-      return {0.0, 0.0, 0.0};
+      return {0.0, 0.0,
+              calculateGuessProbability(guessInput, candidates)};
     }
 
     double totalScore = candidates.totalScore();
@@ -289,27 +332,22 @@ private:
           return this->generateFeedback(c, g);
         });
 
-    SearchMetrics result = {1.0 + expectedRemainingTurns, 1.0 + maxSubWnt, 0.0};
-    result.probability = calculateGuessProbability(guessInput, candidates);
+    SearchMetrics result = {
+      1.0 + expectedRemainingTurns, 
+      1.0 + maxSubWnt, 
+      calculateGuessProbability(guessInput, candidates)
+    };
     return result;
   }
 
   /**
-   * Dynamically extracts the game's intrinsic branching factor (B) by reversing
-   * the logarithmic formula implemented in the subclass's
-   * worstCaseExpectedTurns.
-   *
-   * Derivation:
-   *   T = worstCaseExpectedTurns(C) = ln(C) / ln(B)
-   *   ln(B) = ln(C) / T
-   *   B = exp(ln(C) / T)
-   * We use C = 128 (a power of 2) as a dummy candidate size to solve for B.
+   * Returns the game's intrinsic branching factor from maxFeedbackGroups().
+   * At large N, B_optimal → k_eff, so k_eff is the asymptotic branching factor.
    */
   double getBranchingFactor() const {
-    double turns = worstCaseExpectedTurns(128);
-    if (turns <= 0.0)
-      return 2.0; // Fallback safe base
-    return std::exp(std::log(128.0) / turns);
+    double kMax = maxFeedbackGroups();
+    double alpha = feedbackEfficiency();
+    return std::max(1.5, std::pow(kMax, alpha));
   }
 
   int calculateOptimalDepth(size_t numGuesses, size_t numCandidates) const {

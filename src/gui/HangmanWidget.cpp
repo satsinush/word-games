@@ -137,7 +137,7 @@ void HangmanWidget::rebuildFeedbackFromInputs() {
         if (revealedLetters.count(c) == 0 && addedExcluded.count(c) == 0) {
           Hangman::Feedback fb;
           fb.letter = c;
-          fb.isInWord = false;
+          // positions defaults to all zeros (letter not in word)
           config.feedbackHistory.push_back(fb);
           addedExcluded.insert(c);
         }

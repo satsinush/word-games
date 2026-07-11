@@ -1170,7 +1170,7 @@ TEST(HangmanTest, ParseStrikes) {
 
   // All strikes should be marked as NOT in word
   for (const auto &fb : strikes) {
-    EXPECT_FALSE(fb.isInWord);
+    EXPECT_FALSE(fb.isInWord());
   }
 
   EXPECT_EQ(strikes[0].letter, 'e');
@@ -1245,17 +1245,17 @@ TEST(HangmanTest, MatchesFeedback) {
 
   Hangman::Feedback fb1;
   fb1.letter = 't';
-  fb1.isInWord = true;
+  fb1.positions.set(0); // 't' is at position 0 in "tares"
   EXPECT_TRUE(Hangman::matchesFeedback(phrase, fb1));
 
   Hangman::Feedback fb2;
   fb2.letter = 'z';
-  fb2.isInWord = false;
+  // positions defaults to empty (no 'z' in "tares")
   EXPECT_TRUE(Hangman::matchesFeedback(phrase, fb2));
 
   Hangman::Feedback fb3;
   fb3.letter = 't';
-  fb3.isInWord = false;
+  // positions empty but 't' IS in "tares" → mismatch
   EXPECT_FALSE(Hangman::matchesFeedback(phrase, fb3));
 }
 
@@ -1265,11 +1265,12 @@ TEST(HangmanTest, GenerateFeedback) {
 
   Hangman::Feedback fb1 = Hangman::generateFeedback(phrase, 't');
   EXPECT_EQ(fb1.letter, 't');
-  EXPECT_TRUE(fb1.isInWord);
+  EXPECT_TRUE(fb1.isInWord());
+  EXPECT_TRUE(fb1.positions.test(0)); // 't' at position 0
 
   Hangman::Feedback fb2 = Hangman::generateFeedback(phrase, 'z');
   EXPECT_EQ(fb2.letter, 'z');
-  EXPECT_FALSE(fb2.isInWord);
+  EXPECT_FALSE(fb2.isInWord());
 }
 
 TEST(HangmanTest, GetAllLetters) {
@@ -1371,31 +1372,31 @@ TEST(HangmanTest, FeedbackEquality) {
   std::vector<Hangman::Feedback> strikes = Hangman::parseStrikes("ab");
   EXPECT_EQ(strikes[0].letter, 'a');
   EXPECT_EQ(strikes[1].letter, 'b');
-  EXPECT_FALSE(strikes[0].isInWord);
-  EXPECT_FALSE(strikes[1].isInWord);
+  EXPECT_FALSE(strikes[0].isInWord());
+  EXPECT_FALSE(strikes[1].isInWord());
 
   // Test equality
   Hangman::Feedback fb1;
   fb1.letter = 'a';
-  fb1.isInWord = false;
+  // positions defaults to empty (not in word)
 
   Hangman::Feedback fb2;
   fb2.letter = 'a';
-  fb2.isInWord = false;
+  // positions defaults to empty (not in word)
 
   Hangman::Feedback fb3;
   fb3.letter = 'a';
-  fb3.isInWord = true;
+  fb3.positions.set(0); // letter IS in word at position 0
 
   Hangman::Feedback fb4;
   fb4.letter = 'b';
-  fb4.isInWord = false;
+  // positions defaults to empty (not in word)
 
   EXPECT_EQ(fb1, fb2);
   EXPECT_FALSE(fb1 == fb3);
   EXPECT_FALSE(fb1 == fb4);
 
-  // Strike should equal manual feedback with 0 occurrences
+  // Strike should equal manual feedback with empty positions
   EXPECT_EQ(strikes[0], fb1);
 }
 

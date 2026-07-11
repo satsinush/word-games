@@ -93,18 +93,21 @@ struct Config {
 
 // Represents a letter guess and its feedback
 struct Feedback {
-  char letter;   // The guessed letter (lowercase)
-  bool isInWord; // Whether the letter is in any word
+  char letter;                  // The guessed letter (lowercase)
+  std::bitset<64> positions;    // Bitmask of positions where letter appears
 
   bool operator==(const Feedback &other) const {
-    return letter == other.letter && isInWord == other.isInWord;
+    return letter == other.letter && positions == other.positions;
   }
 
   bool operator<(const Feedback &other) const {
     if (letter != other.letter)
       return letter < other.letter;
-    return isInWord < other.isInWord;
+    return positions.to_ullong() < other.positions.to_ullong();
   }
+
+  bool isInWord() const { return positions.any(); }
+  size_t occurrences() const { return positions.count(); }
 };
 
 // Represents a single letter as a guess input
@@ -176,9 +179,8 @@ Result runHangmanSolver(const Config &config = Config{},
 namespace std {
 template <> struct hash<Hangman::Feedback> {
   size_t operator()(const Hangman::Feedback &fb) const noexcept {
-    // Simple hash combining letter and isInWord flag
     size_t h1 = std::hash<char>{}(fb.letter);
-    size_t h2 = std::hash<bool>{}(fb.isInWord);
+    size_t h2 = std::hash<unsigned long long>{}(fb.positions.to_ullong());
     return h1 ^ (h2 << 1);
   }
 };

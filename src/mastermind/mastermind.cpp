@@ -279,11 +279,13 @@ protected:
     return result;
   }
 
-  double worstCaseExpectedTurns(size_t numCandidates) const override {
-    if (numCandidates <= 1)
-      return 0.0;
-    double base = std::max(2.0, static_cast<double>(config.numPegs));
-    return std::log(static_cast<double>(numCandidates)) / std::log(base);
+  double maxFeedbackGroups() const override {
+    // Valid (exact, misplaced) pairs where exact + misplaced <= numPegs
+    return static_cast<double>((config.numPegs + 1) * (config.numPegs + 2)) / 2.0;
+  }
+
+  double feedbackEfficiency() const override {
+    return 0.95; // Highly independent peg options
   }
 };
 

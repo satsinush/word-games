@@ -59,7 +59,7 @@ std::vector<Feedback> parseStrikes(const std::string &strikes) {
     if (std::isalpha(static_cast<unsigned char>(c))) {
       Feedback fb;
       fb.letter = static_cast<char>(std::tolower(c));
-      fb.isInWord = false;
+      // positions defaults to all zeros (letter not in word)
       feedbackList.push_back(fb);
     }
   }
@@ -96,40 +96,47 @@ bool matchesPattern(const Utils::Word &word, const WordPattern &pattern, const s
 }
 
 bool matchesFeedback(const PhraseSolution &phrase, const Feedback &fb) {
-  // Count total occurrences of the letter across all words
-  size_t totalOccurrences = 0;
+  std::bitset<64> expected;
+  size_t offset = 0;
   for (const auto &word : phrase.words) {
-    totalOccurrences += word.letterCount[fb.letter - 'a'];
+    for (size_t j = 0; j < word.wordString.size(); ++j) {
+      if (word.wordString[j] == fb.letter) {
+        expected.set(offset + j);
+      }
+    }
+    offset += word.wordString.size();
   }
-
-  bool letterInPhrase = (totalOccurrences > 0);
-  return letterInPhrase == fb.isInWord;
+  return expected == fb.positions;
 }
 
 bool matchesWordFeedback(const Utils::Word &word, const Feedback &fb) {
   bool letterInWord = (word.letterCount[fb.letter - 'a'] > 0);
-  return letterInWord == fb.isInWord;
+  return letterInWord == fb.isInWord();
 }
 
 Feedback generateWordFeedback(const Utils::Word &target, char letter) {
   Feedback fb;
   fb.letter = static_cast<char>(std::tolower(letter));
-  fb.isInWord = (target.letterCount[fb.letter - 'a'] > 0);
+  for (size_t j = 0; j < target.wordString.size(); ++j) {
+    if (target.wordString[j] == fb.letter) {
+      fb.positions.set(j);
+    }
+  }
   return fb;
 }
 
 Feedback generateFeedback(const PhraseSolution &target, char letter) {
   Feedback fb;
   fb.letter = static_cast<char>(std::tolower(letter));
-
-  // Count total occurrences across all words
-  size_t totalOccurrences = 0;
+  size_t offset = 0;
   for (const auto &word : target.words) {
-    totalOccurrences += word.letterCount[fb.letter - 'a'];
+    for (size_t j = 0; j < word.wordString.size(); ++j) {
+      if (word.wordString[j] == fb.letter) {
+        fb.positions.set(offset + j);
+      }
+    }
+    offset += word.wordString.size();
   }
-
-  fb.isInWord = (totalOccurrences > 0);
-
   return fb;
 }
 
@@ -172,36 +179,40 @@ public:
   }
 
   // Implementation of visitFeedbackGroups using Cartesian product
+  // Groups per-slot by positional bitmask, combines across slots with bit offsets
   template <typename Visitor, typename Generator>
   void visitFeedbackGroups(const char &guess, Visitor visitor,
                            Generator /*ignored*/) const {
-    // 1. Compute per-slot feedback groups
-    // Map "occurrences" (int) -> words.
-    std::vector<std::map<int, std::vector<Utils::Word>>> slotMaps(
+    // 1. Compute per-slot feedback groups by position bitmask
+    std::vector<std::map<uint64_t, std::vector<Utils::Word>>> slotMaps(
         wordsPerSlot_.size());
+    std::vector<size_t> slotLengths(wordsPerSlot_.size());
 
     for (size_t i = 0; i < wordsPerSlot_.size(); ++i) {
+      slotLengths[i] = wordsPerSlot_[i].empty()
+                           ? 0
+                           : wordsPerSlot_[i][0].wordString.size();
       for (const auto &w : wordsPerSlot_[i]) {
-        // Generate local feedback (count of letter)
-        int count = w.letterCount[guess - 'a'];
-        slotMaps[i][count].push_back(w);
+        uint64_t mask = 0;
+        for (size_t j = 0; j < w.wordString.size(); ++j) {
+          if (w.wordString[j] == guess) {
+            mask |= (1ULL << j);
+          }
+        }
+        slotMaps[i][mask].push_back(w);
       }
     }
 
-    // 2. Cartesian product
-    // We need to yield (GlobalFeedback, NewCandidateSet, Score)
-    // GlobalFeedback.occurrences = sum(local_counts)
-    // GlobalFeedback.isInWord = sum > 0
-
+    // 2. Cartesian product with bit offset accumulation
     std::vector<std::vector<Utils::Word>> currentSlotSelection(
         wordsPerSlot_.size());
 
-    auto recurse = [&](auto &&self, size_t index, int accumCount) -> void {
+    auto recurse = [&](auto &&self, size_t index, uint64_t accumMask,
+                       size_t bitOffset) -> void {
       if (index == wordsPerSlot_.size()) {
-        // Base case
         Feedback fb;
         fb.letter = guess;
-        fb.isInWord = (accumCount > 0);
+        fb.positions = std::bitset<64>(accumMask);
 
         HangmanCandidateSet subset(currentSlotSelection);
         if (subset.size() > 0) {
@@ -210,14 +221,14 @@ public:
         return;
       }
 
-      // Iterate groups in this slot
-      for (const auto &[count, words] : slotMaps[index]) {
-        currentSlotSelection[index] = words; // copy vector
-        self(self, index + 1, accumCount + count);
+      for (const auto &[mask, words] : slotMaps[index]) {
+        currentSlotSelection[index] = words;
+        self(self, index + 1, accumMask | (mask << bitOffset),
+             bitOffset + slotLengths[index]);
       }
     };
 
-    recurse(recurse, 0, 0);
+    recurse(recurse, 0, 0ULL, 0);
   }
 
   double probabilityOfLetter(char letter) const {
@@ -360,10 +371,20 @@ protected:
     return result;
   }
 
-  double worstCaseExpectedTurns(size_t numCandidates) const override {
-    if (numCandidates <= 1)
-      return 0.0;
-    return std::log2(static_cast<double>(numCandidates));
+  double maxFeedbackGroups() const override {
+    size_t unrevealedCount = 0;
+    for (const auto &pattern : this->config.wordPatterns) {
+      for (char c : pattern.pattern) {
+        if (c == '_') {
+          unrevealedCount++;
+        }
+      }
+    }
+    return std::pow(2.0, static_cast<double>(unrevealedCount));
+  }
+
+  double feedbackEfficiency() const override {
+    return 0.25; // Positional bitmask options are highly correlated/sparse
   }
 
 private:
