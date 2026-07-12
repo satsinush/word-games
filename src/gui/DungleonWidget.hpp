@@ -6,6 +6,7 @@
 #include "gui/GameWidget.hpp"
 
 #include <QLabel>
+#include <QKeyEvent>
 #include <QMouseEvent>
 #include <QPushButton>
 #include <QScrollArea>
@@ -103,9 +104,13 @@ public:
 public slots:
   void newGame() override;
 
+protected:
+  void keyPressEvent(QKeyEvent *event) override;
+
 private slots:
   void onCharacterBankClicked(int charId);
   void onSubmit();
+  void onAddOnly();
   void onSubmitSolution();
   void onNewGame() override;
   void onSettings() override;

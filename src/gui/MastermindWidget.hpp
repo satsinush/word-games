@@ -8,7 +8,6 @@
 #include <QProgressDialog>
 #include <QPushButton>
 #include <QScrollArea>
-#include <QSpinBox>
 #include <QTableWidget>
 #include <QThread>
 #include <QVBoxLayout>
@@ -20,7 +19,7 @@ namespace Ui {
 class MastermindWidget;
 }
 
-// FeedbackRow: Display a submitted pattern with its feedback
+// FeedbackRow: Display a submitted pattern with black/white key counts
 class FeedbackRow : public QWidget {
   Q_OBJECT
 
@@ -40,13 +39,17 @@ signals:
   void feedbackChanged(int index);
 
 private:
+  void refreshValueLabels();
+  void adjustPositions(int delta);
+  void adjustColors(int delta);
+
   int rowIndex;
   int correctColors;
   int correctPositions;
   int maxPegs;
   QLabel *patternLabel;
-  QSpinBox *colorsSpinBox;
-  QSpinBox *positionsSpinBox;
+  QLabel *positionsValueLabel;
+  QLabel *colorsValueLabel;
   QPushButton *deleteButton;
 };
 
@@ -62,6 +65,8 @@ public slots:
 
 private slots:
   void onSubmit();
+  void onAddOnly();
+  void onInputReturn();
   void onNewGame() override;
   void onSolve();
   void onTableRowClicked(int row, int column);

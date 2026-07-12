@@ -366,6 +366,7 @@ DungleonWidget::DungleonWidget(QWidget *parent)
       currentBackspaceBtn(nullptr), currentSlotIndex(0) {
   ui = new Ui::DungleonWidget();
   ui->setupUi(this);
+  setFocusPolicy(Qt::StrongFocus);
 
   // Initialize config (match web frontend defaults)
   config.autoDepth = true;
@@ -463,6 +464,8 @@ DungleonWidget::DungleonWidget(QWidget *parent)
   // Connect signals
   connect(ui->submitBtn, &QPushButton::clicked, this,
           &DungleonWidget::onSubmit);
+  connect(ui->addOnlyBtn, &QPushButton::clicked, this,
+          &DungleonWidget::onAddOnly);
   connect(ui->submitSolutionBtn, &QPushButton::clicked, this,
           &DungleonWidget::onSubmitSolution);
   connect(ui->newGameBtn, &QPushButton::clicked, this,
@@ -595,6 +598,7 @@ void DungleonWidget::initGame() {
 void DungleonWidget::setUIEnabled(bool enabled) {
   ui->bankScrollArea->setVisible(enabled);
   ui->submitBtn->setVisible(enabled);
+  ui->addOnlyBtn->setVisible(enabled);
   ui->solveBtn->setVisible(enabled);
   patternListScrollArea->setVisible(enabled);
   ui->resultsTabWidget->setVisible(enabled);
@@ -697,10 +701,26 @@ void DungleonWidget::onCharacterBankClicked(int charId) {
 }
 
 void DungleonWidget::onSubmit() {
-  // "Add & Solve" — match frontend primary action
   if (submitCurrentPattern()) {
     solveDungleon();
   }
+}
+
+void DungleonWidget::onAddOnly() { submitCurrentPattern(); }
+
+void DungleonWidget::keyPressEvent(QKeyEvent *event) {
+  if (event->key() == Qt::Key_Return || event->key() == Qt::Key_Enter) {
+    // Match frontend: full pattern adds without solving; empty + history solves
+    if (currentSlotIndex >= 5) {
+      onAddOnly();
+      return;
+    }
+    if (currentSlotIndex == 0 && !config.feedbackHistory.empty()) {
+      solveDungleon();
+      return;
+    }
+  }
+  GameWidget::keyPressEvent(event);
 }
 
 void DungleonWidget::onSubmitSolution() { submitCurrentSolution(); }
@@ -915,6 +935,7 @@ void DungleonWidget::solveDungleon() {
 
   // Disable UI elements that could interfere with solving
   ui->submitBtn->setEnabled(false);
+  ui->addOnlyBtn->setEnabled(false);
   ui->solveBtn->setEnabled(false);
   ui->newGameBtn->setEnabled(false);
   ui->settingsBtn->setEnabled(false);
@@ -1065,6 +1086,7 @@ void DungleonWidget::populateResults(int maxRows) {
 void DungleonWidget::onSolverFinished() {
   // Re-enable UI elements
   ui->submitBtn->setEnabled(true);
+  ui->addOnlyBtn->setEnabled(true);
   ui->solveBtn->setEnabled(true);
   ui->newGameBtn->setEnabled(true);
   ui->settingsBtn->setEnabled(true);

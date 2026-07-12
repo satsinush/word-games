@@ -3,6 +3,7 @@
 #include "gui/MastermindWidget.hpp"
 #include "ui_MastermindWidget.h"
 
+#include <QCheckBox>
 #include <QDialog>
 #include <QDialogButtonBox>
 #include <QFormLayout>
@@ -10,84 +11,135 @@
 #include <QHeaderView>
 #include <QLineEdit>
 #include <QMessageBox>
-#include <QCheckBox>
 #include <QSpinBox>
+#include <QToolButton>
 #include <QVBoxLayout>
+#include <algorithm>
 #include <sstream>
 
-// FeedbackRow implementation
+namespace {
+QToolButton *makeStepButton(const QString &text, QWidget *parent) {
+  auto *btn = new QToolButton(parent);
+  btn->setText(text);
+  btn->setFixedSize(24, 24);
+  btn->setAutoRaise(false);
+  btn->setStyleSheet(
+      "QToolButton { border: 1px solid #bbb; border-radius: 3px; "
+      "background: #f5f5f5; font-weight: bold; }"
+      "QToolButton:hover { background: #e8e8e8; }"
+      "QToolButton:pressed { background: #ddd; }");
+  return btn;
+}
+
+QLabel *makeCountLabel(QWidget *parent) {
+  auto *label = new QLabel(QStringLiteral("0"), parent);
+  QFont font = label->font();
+  font.setBold(true);
+  font.setPointSize(font.pointSize() + 1);
+  label->setFont(font);
+  label->setMinimumWidth(18);
+  label->setAlignment(Qt::AlignCenter);
+  label->setStyleSheet("QLabel { color: #111; background: transparent; }");
+  return label;
+}
+} // namespace
+
 FeedbackRow::FeedbackRow(int index, const QString &pattern, int colors,
                          int positions, int maxPegs, QWidget *parent)
     : QWidget(parent), rowIndex(index), correctColors(colors),
       correctPositions(positions), maxPegs(maxPegs) {
-  QHBoxLayout *layout = new QHBoxLayout(this);
-  layout->setContentsMargins(5, 2, 5, 2);
+  auto *layout = new QHBoxLayout(this);
+  layout->setContentsMargins(8, 4, 8, 4);
+  layout->setSpacing(8);
 
-  // Pattern label with monospace font
   patternLabel = new QLabel(pattern, this);
-  QFont monoFont("Consolas", 10);
+  QFont monoFont(QStringLiteral("Consolas"), 11);
   monoFont.setBold(true);
   patternLabel->setFont(monoFont);
-  patternLabel->setMinimumWidth(100);
+  patternLabel->setMinimumWidth(80);
+  patternLabel->setStyleSheet("QLabel { color: #111; background: transparent; }");
 
-  // Label for "Colors:"
-  QLabel *colorsLabel = new QLabel("Colors:", this);
+  // Black pegs = correct position (matches frontend ⚫)
+  auto *positionsMinus = makeStepButton(QStringLiteral("-"), this);
+  positionsValueLabel = makeCountLabel(this);
+  auto *positionsPlus = makeStepButton(QStringLiteral("+"), this);
+  auto *positionsCaption = new QLabel(QStringLiteral("Pos"), this);
+  positionsCaption->setStyleSheet(
+      "QLabel { color: #444; background: transparent; }");
 
-  // Colors spinbox
-  colorsSpinBox = new QSpinBox(this);
-  colorsSpinBox->setMinimum(0);
-  colorsSpinBox->setMaximum(maxPegs);
-  colorsSpinBox->setValue(colors);
-  colorsSpinBox->setMaximumWidth(60);
-  connect(colorsSpinBox, QOverload<int>::of(&QSpinBox::valueChanged), this,
-          [this](int value) {
-            correctColors = value;
-            if (correctPositions > this->maxPegs - correctColors) {
-              correctPositions = this->maxPegs - correctColors;
-              positionsSpinBox->setValue(correctPositions);
-            }
-            emit feedbackChanged(rowIndex);
-          });
+  // White pegs = correct color, wrong position (matches frontend ⚪)
+  auto *colorsMinus = makeStepButton(QStringLiteral("-"), this);
+  colorsValueLabel = makeCountLabel(this);
+  auto *colorsPlus = makeStepButton(QStringLiteral("+"), this);
+  auto *colorsCaption = new QLabel(QStringLiteral("Color"), this);
+  colorsCaption->setStyleSheet(
+      "QLabel { color: #444; background: transparent; }");
 
-  // Label for "Positions:"
-  QLabel *positionsLabel = new QLabel("Positions:", this);
+  connect(positionsMinus, &QToolButton::clicked, this,
+          [this]() { adjustPositions(-1); });
+  connect(positionsPlus, &QToolButton::clicked, this,
+          [this]() { adjustPositions(1); });
+  connect(colorsMinus, &QToolButton::clicked, this,
+          [this]() { adjustColors(-1); });
+  connect(colorsPlus, &QToolButton::clicked, this,
+          [this]() { adjustColors(1); });
 
-  // Positions spinbox
-  positionsSpinBox = new QSpinBox(this);
-  positionsSpinBox->setMinimum(0);
-  positionsSpinBox->setMaximum(maxPegs);
-  positionsSpinBox->setValue(positions);
-  positionsSpinBox->setMaximumWidth(60);
-  connect(positionsSpinBox, QOverload<int>::of(&QSpinBox::valueChanged), this,
-          [this](int value) {
-            correctPositions = value;
-            if (correctColors > this->maxPegs - correctPositions) {
-              correctColors = this->maxPegs - correctPositions;
-              colorsSpinBox->setValue(correctColors);
-            }
-            emit feedbackChanged(rowIndex);
-          });
-
-  // Delete button
-  deleteButton = new QPushButton("Delete", this);
-  deleteButton->setMaximumWidth(60);
+  deleteButton = new QPushButton(QStringLiteral("Delete"), this);
+  deleteButton->setMaximumWidth(70);
   connect(deleteButton, &QPushButton::clicked, this,
           [this]() { emit deleteRequested(rowIndex); });
 
   layout->addWidget(patternLabel);
-  layout->addWidget(colorsLabel);
-  layout->addWidget(colorsSpinBox);
-  layout->addWidget(positionsLabel);
-  layout->addWidget(positionsSpinBox);
-  layout->addStretch();
+  layout->addStretch(1);
+  layout->addWidget(positionsCaption);
+  layout->addWidget(positionsMinus);
+  layout->addWidget(positionsValueLabel);
+  layout->addWidget(positionsPlus);
+  layout->addSpacing(10);
+  layout->addWidget(colorsCaption);
+  layout->addWidget(colorsMinus);
+  layout->addWidget(colorsValueLabel);
+  layout->addWidget(colorsPlus);
+  layout->addSpacing(8);
   layout->addWidget(deleteButton);
 
-  setLayout(layout);
+  setMinimumHeight(36);
+  setStyleSheet("FeedbackRow { background: #fafafa; border-bottom: 1px solid "
+                "#e0e0e0; }");
+  refreshValueLabels();
+}
+
+void FeedbackRow::refreshValueLabels() {
+  positionsValueLabel->setText(QString::number(correctPositions));
+  colorsValueLabel->setText(QString::number(correctColors));
+}
+
+void FeedbackRow::adjustPositions(int delta) {
+  const int newVal =
+      std::clamp(correctPositions + delta, 0, maxPegs);
+  if (newVal == correctPositions)
+    return;
+  correctPositions = newVal;
+  if (correctColors > maxPegs - correctPositions)
+    correctColors = maxPegs - correctPositions;
+  refreshValueLabels();
+  emit feedbackChanged(rowIndex);
+}
+
+void FeedbackRow::adjustColors(int delta) {
+  const int maxColors = maxPegs - correctPositions;
+  const int newVal = std::clamp(correctColors + delta, 0, maxColors);
+  if (newVal == correctColors)
+    return;
+  correctColors = newVal;
+  refreshValueLabels();
+  emit feedbackChanged(rowIndex);
 }
 
 void FeedbackRow::updateFeedback(int colors, int positions) {
   correctColors = colors;
   correctPositions = positions;
+  refreshValueLabels();
 }
 
 MastermindWidget::MastermindWidget(QWidget *parent)
@@ -106,8 +158,11 @@ MastermindWidget::MastermindWidget(QWidget *parent)
   feedbackListScrollArea = ui->feedbackListScrollArea;
   feedbackListContainer = new QWidget();
   feedbackListLayout = new QVBoxLayout(feedbackListContainer);
-  feedbackListLayout->setAlignment(Qt::AlignTop | Qt::AlignHCenter);
+  feedbackListLayout->setAlignment(Qt::AlignTop);
+  feedbackListLayout->setContentsMargins(0, 0, 0, 0);
+  feedbackListLayout->setSpacing(0);
   feedbackListScrollArea->setWidget(feedbackListContainer);
+  feedbackListScrollArea->setWidgetResizable(true);
 
   // Get result tables from UI and configure them
   allResultsTable = ui->allResultsTable;
@@ -125,12 +180,14 @@ MastermindWidget::MastermindWidget(QWidget *parent)
   // Connect signals
   connect(ui->submitBtn, &QPushButton::clicked, this,
           &MastermindWidget::onSubmit);
+  connect(ui->addOnlyBtn, &QPushButton::clicked, this,
+          &MastermindWidget::onAddOnly);
   connect(ui->newGameBtn, &QPushButton::clicked, this,
           &MastermindWidget::onNewGame);
   connect(ui->solveBtn, &QPushButton::clicked, this,
           &MastermindWidget::onSolve);
   connect(ui->patternField, &QLineEdit::returnPressed, this,
-          &MastermindWidget::onSubmit);
+          &MastermindWidget::onInputReturn);
 
   connect(allResultsTable, &QTableWidget::cellClicked, this,
           &MastermindWidget::onTableRowClicked);
@@ -242,8 +299,18 @@ bool MastermindWidget::showConfigDialog() {
 }
 
 void MastermindWidget::onSubmit() {
-  // "Add & Solve" — match frontend primary action
   if (submitPattern()) {
+    solveMastermind();
+  }
+}
+
+void MastermindWidget::onAddOnly() { submitPattern(); }
+
+void MastermindWidget::onInputReturn() {
+  // Match frontend: Enter adds without solving; empty input + history solves
+  if (!ui->patternField->text().trimmed().isEmpty()) {
+    onAddOnly();
+  } else if (!config.feedbackHistory.empty()) {
     solveMastermind();
   }
 }
@@ -487,6 +554,7 @@ void MastermindWidget::solveMastermind() {
   // Disable UI elements that could interfere with solving
   ui->patternField->setEnabled(false);
   ui->submitBtn->setEnabled(false);
+  ui->addOnlyBtn->setEnabled(false);
   ui->solveBtn->setEnabled(false);
   ui->newGameBtn->setEnabled(false);
   ui->settingsBtn->setEnabled(false);
@@ -503,6 +571,7 @@ void MastermindWidget::onSolverFinished() {
   // Re-enable UI elements
   ui->patternField->setEnabled(true);
   ui->submitBtn->setEnabled(true);
+  ui->addOnlyBtn->setEnabled(true);
   ui->solveBtn->setEnabled(true);
   ui->newGameBtn->setEnabled(true);
   ui->settingsBtn->setEnabled(true);
@@ -546,6 +615,7 @@ void MastermindWidget::setUIEnabled(bool enabled) {
   // Show/hide all UI elements except title, config info, and new game button
   ui->patternField->setVisible(enabled);
   ui->submitBtn->setVisible(enabled);
+  ui->addOnlyBtn->setVisible(enabled);
   ui->feedbackListLabel->setVisible(enabled);
   feedbackListScrollArea->setVisible(enabled);
   ui->resultsTabWidget->setVisible(enabled);
@@ -579,9 +649,9 @@ void MastermindWidget::rebuildFeedbackList() {
   for (size_t i = 0; i < config.feedbackHistory.size(); ++i) {
     const auto &fb = config.feedbackHistory[i];
     QString displayPattern = QString::fromStdString(fb.guess.toString(config));
-    FeedbackRow *row =
-        new FeedbackRow(i, displayPattern, fb.correctColor, fb.correctPosition,
-                        config.numPegs, this);
+    FeedbackRow *row = new FeedbackRow(i, displayPattern, fb.correctColor,
+                                       fb.correctPosition, config.numPegs,
+                                       feedbackListContainer);
     connect(row, &FeedbackRow::deleteRequested, this,
             &MastermindWidget::onDeleteFeedback);
     connect(row, &FeedbackRow::feedbackChanged, this,

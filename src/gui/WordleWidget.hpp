@@ -88,6 +88,8 @@ public slots:
 
 private slots:
   void onSubmit();
+  void onAddOnly();
+  void onInputReturn();
   void onNewGame() override;
   void onHint();
   void onLetterBoxClicked();

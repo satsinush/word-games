@@ -214,13 +214,15 @@ WordleWidget::WordleWidget(QWidget *parent)
 
   // Connect signals
   connect(ui->submitBtn, &QPushButton::clicked, this, &WordleWidget::onSubmit);
+  connect(ui->addOnlyBtn, &QPushButton::clicked, this,
+          &WordleWidget::onAddOnly);
   connect(ui->newGameBtn, &QPushButton::clicked, this,
           &WordleWidget::onNewGame);
   connect(ui->solveBtn, &QPushButton::clicked, this, &WordleWidget::onHint);
   connect(ui->inputField, &QLineEdit::textChanged, this,
           &WordleWidget::onInputChanged);
   connect(ui->inputField, &QLineEdit::returnPressed, this,
-          &WordleWidget::onSubmit);
+          &WordleWidget::onInputReturn);
 
   // Set input field to max word length (default 5, configurable up to 32)
   ui->inputField->setMaxLength(config.wordLength);
@@ -382,6 +384,7 @@ void WordleWidget::initGame() {
 void WordleWidget::setUIEnabled(bool enabled) {
   ui->inputField->setVisible(enabled);
   ui->submitBtn->setVisible(enabled);
+  ui->addOnlyBtn->setVisible(enabled);
   ui->solveBtn->setVisible(enabled);
   guessListScrollArea->setVisible(enabled);
   ui->resultsTabWidget->setVisible(enabled);
@@ -481,8 +484,19 @@ void WordleWidget::onTableRowClicked(int row, int column) {
 void WordleWidget::newGame() { onNewGame(); }
 
 void WordleWidget::onSubmit() {
-  // "Add & Solve" — match frontend primary action
   if (submitCurrentGuess()) {
+    solveWordle();
+  }
+}
+
+void WordleWidget::onAddOnly() { submitCurrentGuess(); }
+
+void WordleWidget::onInputReturn() {
+  // Match frontend: Enter adds without solving; empty input + history solves
+  const QString text = ui->inputField->text().trimmed();
+  if (text.length() == config.wordLength) {
+    onAddOnly();
+  } else if (text.isEmpty() && !config.feedbackHistory.empty()) {
     solveWordle();
   }
 }
@@ -651,6 +665,7 @@ void WordleWidget::solveWordle() {
   // Disable UI elements that could interfere with solving
   ui->inputField->setEnabled(false);
   ui->submitBtn->setEnabled(false);
+  ui->addOnlyBtn->setEnabled(false);
   ui->solveBtn->setEnabled(false);
   ui->newGameBtn->setEnabled(false);
   ui->settingsBtn->setEnabled(false);
@@ -667,6 +682,7 @@ void WordleWidget::onSolverFinished() {
   // Re-enable UI elements
   ui->inputField->setEnabled(true);
   ui->submitBtn->setEnabled(true);
+  ui->addOnlyBtn->setEnabled(true);
   ui->solveBtn->setEnabled(true);
   ui->newGameBtn->setEnabled(true);
   ui->settingsBtn->setEnabled(true);
