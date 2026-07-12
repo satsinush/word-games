@@ -23,6 +23,12 @@ struct Config {
   std::vector<Feedback> feedbackHistory = {};
 };
 
+enum class Color {
+  Grey = 0,
+  Yellow = 1,
+  Green = 2
+};
+
 struct Feedback {
   std::string word;       // Variable-length guess
   std::bitset<64> colors; // Support up to 32-letter words (32*2=64 bits)
@@ -55,12 +61,27 @@ struct Feedback {
     colors.set(i * 2 + 1);
   }
 
-  int getColor(const int i) const {
+  void setColor(const int i, Color color) {
+    switch (color) {
+      case Color::Green:
+        setGreen(i);
+        break;
+      case Color::Yellow:
+        setYellow(i);
+        break;
+      case Color::Grey:
+      default:
+        setGrey(i);
+        break;
+    }
+  }
+
+  Color getColor(const int i) const {
     if (colors[i * 2 + 1])
-      return 2; // green
+      return Color::Green;
     if (colors[i * 2])
-      return 1; // yellow
-    return 0;   // grey
+      return Color::Yellow;
+    return Color::Grey;
   }
 };
 

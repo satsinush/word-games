@@ -136,11 +136,11 @@ TEST(EntSolverTest, EmptyCandidateSetReturnsEmpty) {
 TEST(WordleTest, BasicFeedbackParsing) {
   Wordle::Feedback fb = Wordle::parseFeedback("STEAL 20100");
   EXPECT_EQ(fb.word, "steal");
-  EXPECT_EQ(fb.getColor(0), 2); // S - green
-  EXPECT_EQ(fb.getColor(1), 0); // T - grey
-  EXPECT_EQ(fb.getColor(2), 1); // E - yellow
-  EXPECT_EQ(fb.getColor(3), 0); // A - grey
-  EXPECT_EQ(fb.getColor(4), 0); // L - grey
+  EXPECT_EQ(fb.getColor(0), Wordle::Color::Green); // S - green
+  EXPECT_EQ(fb.getColor(1), Wordle::Color::Grey); // T - grey
+  EXPECT_EQ(fb.getColor(2), Wordle::Color::Yellow); // E - yellow
+  EXPECT_EQ(fb.getColor(3), Wordle::Color::Grey); // A - grey
+  EXPECT_EQ(fb.getColor(4), Wordle::Color::Grey); // L - grey
 }
 
 TEST(WordleTest, SolverWithGuesses) {
@@ -807,11 +807,11 @@ TEST(DungleonTest, ParseFeedback) {
   EXPECT_EQ(fb.pattern.characters[4], static_cast<uint8_t>(Dungleon::DRAGON));
 
   // Check colors parsed correctly
-  EXPECT_EQ(fb.getColor(0), 0);
-  EXPECT_EQ(fb.getColor(1), 1);
-  EXPECT_EQ(fb.getColor(2), 2);
-  EXPECT_EQ(fb.getColor(3), 3);
-  EXPECT_EQ(fb.getColor(4), 4);
+  EXPECT_EQ(fb.getColor(0), Dungleon::Color::Red);
+  EXPECT_EQ(fb.getColor(1), Dungleon::Color::Yellow);
+  EXPECT_EQ(fb.getColor(2), Dungleon::Color::YellowPlus);
+  EXPECT_EQ(fb.getColor(3), Dungleon::Color::Green);
+  EXPECT_EQ(fb.getColor(4), Dungleon::Color::GreenPlus);
 }
 
 TEST(DungleonTest, GeneratePossiblePatternsNonEmpty) {
@@ -931,17 +931,17 @@ TEST(DungleonTest, FeedbackColorEncoding) {
                            Dungleon::BAT, Dungleon::DRAGON};
 
   // Test all 5 color values
-  fb.setColor(0, 0); // not present
-  fb.setColor(1, 1); // diff pos no more
-  fb.setColor(2, 2); // correct pos no more
-  fb.setColor(3, 3); // diff pos one more
-  fb.setColor(4, 4); // correct pos one more
+  fb.setColor(0, Dungleon::Color::Red); // not present
+  fb.setColor(1, Dungleon::Color::Yellow); // diff pos no more
+  fb.setColor(2, Dungleon::Color::YellowPlus); // correct pos no more
+  fb.setColor(3, Dungleon::Color::Green); // diff pos one more
+  fb.setColor(4, Dungleon::Color::GreenPlus); // correct pos one more
 
-  EXPECT_EQ(fb.getColor(0), 0);
-  EXPECT_EQ(fb.getColor(1), 1);
-  EXPECT_EQ(fb.getColor(2), 2);
-  EXPECT_EQ(fb.getColor(3), 3);
-  EXPECT_EQ(fb.getColor(4), 4);
+  EXPECT_EQ(fb.getColor(0), Dungleon::Color::Red);
+  EXPECT_EQ(fb.getColor(1), Dungleon::Color::Yellow);
+  EXPECT_EQ(fb.getColor(2), Dungleon::Color::YellowPlus);
+  EXPECT_EQ(fb.getColor(3), Dungleon::Color::Green);
+  EXPECT_EQ(fb.getColor(4), Dungleon::Color::GreenPlus);
 }
 
 TEST(DungleonTest, GenerateFeedbackConsistency) {
@@ -1097,11 +1097,11 @@ TEST(DungleonTest, PermutationsGenerateAndMatch) {
 
   Dungleon::Feedback expectedFB_A_B;
   expectedFB_A_B.pattern = B;
-  expectedFB_A_B.setColor(0, 2);
-  expectedFB_A_B.setColor(1, 0);
-  expectedFB_A_B.setColor(2, 2);
-  expectedFB_A_B.setColor(3, 2);
-  expectedFB_A_B.setColor(4, 0);
+  expectedFB_A_B.setColor(0, Dungleon::Color::Green);
+  expectedFB_A_B.setColor(1, Dungleon::Color::Red);
+  expectedFB_A_B.setColor(2, Dungleon::Color::Green);
+  expectedFB_A_B.setColor(3, Dungleon::Color::Green);
+  expectedFB_A_B.setColor(4, Dungleon::Color::Red);
   Dungleon::Feedback fbAB = Dungleon::generateFeedback(A, B);
   EXPECT_EQ(expectedFB_A_B, fbAB) << "Unexpected feedback for A vs B";
 
@@ -1112,11 +1112,11 @@ TEST(DungleonTest, PermutationsGenerateAndMatch) {
 
   Dungleon::Feedback expectedFB_B_C;
   expectedFB_B_C.pattern = C;
-  expectedFB_B_C.setColor(0, 2);
-  expectedFB_B_C.setColor(1, 0);
-  expectedFB_B_C.setColor(2, 2);
-  expectedFB_B_C.setColor(3, 4);
-  expectedFB_B_C.setColor(4, 0);
+  expectedFB_B_C.setColor(0, Dungleon::Color::Green);
+  expectedFB_B_C.setColor(1, Dungleon::Color::Red);
+  expectedFB_B_C.setColor(2, Dungleon::Color::Green);
+  expectedFB_B_C.setColor(3, Dungleon::Color::GreenPlus);
+  expectedFB_B_C.setColor(4, Dungleon::Color::Red);
   Dungleon::Feedback fbBC = Dungleon::generateFeedback(B, C);
   EXPECT_EQ(expectedFB_B_C, fbBC) << "Unexpected feedback for B vs C";
 
@@ -1611,7 +1611,7 @@ TEST(WordleTest, AllGreens) {
   Wordle::Feedback fb = Wordle::generateFeedback(target, "tares");
 
   for (size_t i = 0; i < 5; ++i) {
-    EXPECT_EQ(fb.getColor(i), 2) << "Position " << i << " should be green";
+    EXPECT_EQ(fb.getColor(i), Wordle::Color::Green) << "Position " << i << " should be green";
   }
 }
 
@@ -1621,7 +1621,7 @@ TEST(WordleTest, AllGrays) {
   Wordle::Feedback fb = Wordle::generateFeedback(target, "lymph");
 
   for (size_t i = 0; i < 5; ++i) {
-    EXPECT_EQ(fb.getColor(i), 0) << "Position " << i << " should be gray";
+    EXPECT_EQ(fb.getColor(i), Wordle::Color::Grey) << "Position " << i << " should be gray";
   }
 }
 
@@ -1636,9 +1636,9 @@ TEST(WordleTest, DuplicateLettersInGuess) {
   int yellowCount = 0;
   int grayCount = 0;
   for (size_t i = 0; i < 5; ++i) {
-    if (fb.getColor(i) == 1)
+    if (fb.getColor(i) == Wordle::Color::Yellow)
       yellowCount++;
-    if (fb.getColor(i) == 0)
+    if (fb.getColor(i) == Wordle::Color::Grey)
       grayCount++;
   }
   // Should have exactly one yellow 'e' and remaining grays
@@ -1756,8 +1756,8 @@ TEST(DungleonTest, AllCorrectPosition) {
 
   // All positions should be "correct position" (color 2 or 4)
   for (size_t i = 0; i < 5; ++i) {
-    uint8_t color = fb.getColor(i);
-    EXPECT_TRUE(color == 2 || color == 4)
+    Dungleon::Color color = fb.getColor(i);
+    EXPECT_TRUE(color == Dungleon::Color::Green || color == Dungleon::Color::GreenPlus)
         << "Position " << i << " should be correct position";
   }
 }
@@ -1779,7 +1779,7 @@ TEST(DungleonTest, NoneMatch) {
 
   // All positions should be "not present" (color 0)
   for (size_t i = 0; i < 5; ++i) {
-    EXPECT_EQ(fb.getColor(i), 0)
+    EXPECT_EQ(fb.getColor(i), Dungleon::Color::Red)
         << "Position " << i << " should be not present";
   }
 }
@@ -1799,7 +1799,7 @@ TEST(DungleonTest, DuplicateCharactersInGuess) {
   Dungleon::Feedback fb = Dungleon::generateFeedback(target, guess);
 
   // First MAGE is correct position, rest should indicate "no more"
-  EXPECT_EQ(fb.getColor(0), 2); // correct position, no more
+  EXPECT_EQ(fb.getColor(0), Dungleon::Color::Green); // correct position, no more
 }
 
 // =============================================================================

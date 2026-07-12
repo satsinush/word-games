@@ -91,7 +91,7 @@ void CharacterSlot::setCharacter(int charId) {
   // Update badge visibility according to current color
   QLabel *badge = findChild<QLabel *>("plusBadge");
   if (badge) {
-    if (m_color == 3 || m_color == 4)
+    if (m_color == 2 || m_color == 4)
       badge->show();
     else
       badge->hide();
@@ -104,10 +104,10 @@ void CharacterSlot::setColor(int color) {
   m_color = color % 5; // 0-4
   updateStyle();
 
-  // Show or hide + badge for colors 3 and 4 (one more present)
+  // Show or hide + badge for colors 2 and 4 (one more present)
   if (m_characterId >= 0) {
     QLabel *badge = findChild<QLabel *>("plusBadge");
-    if (m_color == 3 || m_color == 4) {
+    if (m_color == 2 || m_color == 4) {
       if (!badge) {
         badge = new QLabel(this); // No text initially
         badge->setObjectName("plusBadge");
@@ -180,17 +180,17 @@ void CharacterSlot::updateStyle() {
     border = "#878a8c";
     textColor = "#000";
   } else {
-    // Dungleon colors: 0=not present, 1=diff pos no more, 2=correct pos no
-    // more, 3=diff pos one more, 4=correct pos one more
+    // Dungleon colors: 0=not present, 1=diff pos no more, 2=diff pos one more,
+    // 3=correct pos no more, 4=correct pos one more
     if (m_color == 0) {
       bgColor = "#cd4848";
       textColor = "white";
       border = "#cd4848";
-    } else if (m_color == 1 || m_color == 3) {
+    } else if (m_color == 1 || m_color == 2) {
       bgColor = "#c9b458";
       textColor = "white";
       border = "#c9b458";
-    } else if (m_color == 2 || m_color == 4) {
+    } else if (m_color == 3 || m_color == 4) {
       bgColor = "#6aaa64";
       textColor = "white";
       border = "#6aaa64";
@@ -265,7 +265,7 @@ PatternRow::PatternRow(const Dungleon::Feedback &feedback, QWidget *parent)
   for (int i = 0; i < 5; ++i) {
     CharacterSlot *slot = new CharacterSlot(this);
     slot->setCharacter(feedback.pattern.characters[i]);
-    slot->setColor(feedback.getColor(i));
+    slot->setColor(static_cast<int>(feedback.getColor(i)));
     connect(slot, &CharacterSlot::clicked, this, &PatternRow::onSlotClicked);
     characterSlots[i] = slot;
     layout->addWidget(slot);
@@ -289,7 +289,7 @@ Dungleon::Feedback PatternRow::getFeedback() const {
   Dungleon::Feedback fb;
   for (int i = 0; i < 5; ++i) {
     fb.pattern.characters[i] = characterSlots[i]->getCharacter();
-    fb.setColor(i, characterSlots[i]->getColor());
+    fb.setColor(i, static_cast<Dungleon::Color>(characterSlots[i]->getColor()));
   }
   fb.pattern.computeCharacterCount();
   return fb;
@@ -690,7 +690,7 @@ void DungleonWidget::submitCurrentPattern() {
   Dungleon::Feedback fb;
   for (int i = 0; i < 5; ++i) {
     fb.pattern.characters[i] = currentSlots[i]->getCharacter();
-    fb.setColor(i, currentSlots[i]->getColor());
+    fb.setColor(i, static_cast<Dungleon::Color>(currentSlots[i]->getColor()));
   }
   fb.pattern.computeCharacterCount();
 

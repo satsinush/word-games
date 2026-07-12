@@ -209,7 +209,7 @@ void WordleGame::runCLI() {
         for (const auto &fb : config.feedbackHistory) {
           std::cout << "  " << fb.word << " -> ";
           for (size_t i = 0; i < fb.word.size(); ++i) {
-            std::cout << fb.getColor(i);
+            std::cout << static_cast<int>(fb.getColor(i));
           }
           std::cout << "\n";
         }

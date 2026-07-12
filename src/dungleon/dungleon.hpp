@@ -118,6 +118,14 @@ struct Pattern {
   }
 };
 
+enum class Color {
+  Red = 0,
+  Yellow = 1,
+  YellowPlus = 2,
+  Green = 3,
+  GreenPlus = 4
+};
+
 struct Feedback {
   Pattern pattern;
   std::bitset<15>
@@ -134,28 +142,29 @@ struct Feedback {
   }
 
   // Helper methods to get/set feedback for position i
-  // 0 = not present
-  // 1 = different position, no more
-  // 2 = correct position, no more
-  // 3 = different position, one more
-  // 4 = correct position, one more
-  void setColor(const int i, const int color) {
+  // 0 = not present (Red)
+  // 1 = different position, no more (Yellow)
+  // 2 = different position, one more (YellowPlus)
+  // 3 = correct position, no more (Green)
+  // 4 = correct position, one more (GreenPlus)
+  void setColor(const int i, const Color color) {
     int bitPos = i * 3;
-    colors[bitPos] = (color & 1) != 0;
-    colors[bitPos + 1] = (color & 2) != 0;
-    colors[bitPos + 2] = (color & 4) != 0;
+    int colorVal = static_cast<int>(color);
+    colors[bitPos] = (colorVal & 1) != 0;
+    colors[bitPos + 1] = (colorVal & 2) != 0;
+    colors[bitPos + 2] = (colorVal & 4) != 0;
   }
 
-  int getColor(const int i) const {
+  Color getColor(const int i) const {
     int bitPos = i * 3;
-    int color = 0;
+    int colorVal = 0;
     if (colors[bitPos])
-      color |= 1;
+      colorVal |= 1;
     if (colors[bitPos + 1])
-      color |= 2;
+      colorVal |= 2;
     if (colors[bitPos + 2])
-      color |= 4;
-    return color;
+      colorVal |= 4;
+    return static_cast<Color>(colorVal);
   }
 };
 

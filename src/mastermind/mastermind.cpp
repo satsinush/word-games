@@ -299,19 +299,7 @@ Result runMastermindSolver(const Config &config, std::atomic<bool> *cancel) {
   // Generate all possible patterns for the given configuration
   std::vector<Pattern> allPatterns = Mastermind::generateAllPatterns(config);
 
-  // Exclude already guessed patterns to speed up lookup
-  std::unordered_set<Pattern> guessedPatterns;
-  for (const auto &fb : config.feedbackHistory) {
-    guessedPatterns.insert(fb.guess);
-  }
-
-  std::vector<Pattern> possiblePatterns;
-  possiblePatterns.reserve(allPatterns.size());
-  for (const auto &p : allPatterns) {
-    if (guessedPatterns.count(p) == 0) {
-      possiblePatterns.push_back(p);
-    }
-  }
+  std::vector<Pattern> possiblePatterns = allPatterns;
 
   // Create CandidateSet from the filtered patterns
   Utils::VectorCandidateSet<Mastermind::Pattern> initialCandidates(possiblePatterns);

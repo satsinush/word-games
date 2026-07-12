@@ -36,13 +36,8 @@ Feedback parseFeedback(const std::string &input) {
   for (size_t i = 0; i < word.size(); ++i) {
     if (colors[i] < '0' || colors[i] > '2')
       throw std::runtime_error("Invalid color digit");
-    int color = colors[i] - '0';
-    if (color == 0)
-      fb.setGrey(i);
-    else if (color == 1)
-      fb.setYellow(i);
-    else
-      fb.setGreen(i);
+    Color color = static_cast<Color>(colors[i] - '0');
+    fb.setColor(i, color);
   }
   return fb;
 }
@@ -232,15 +227,9 @@ Result runWordleSolver(const Config &config, std::atomic<bool> *cancel) {
 #endif
   std::vector<Utils::Word> allWords = Utils::loadWords();
 
-  std::unordered_set<std::string> guessedWords;
-  for (const auto &fb : config.feedbackHistory) {
-    guessedWords.insert(fb.word);
-  }
-
   // Filter words to only words of the specified length
   std::vector<Utils::Word> possibleWords;
   for (const auto &word : allWords) {
-    if (guessedWords.count(word.wordString) > 0) continue;
     bool exclude = config.excludeUncommonWords && (!word.is_scrabble);
     if (word.wordString.length() == config.wordLength && !exclude) {
       possibleWords.push_back(word);

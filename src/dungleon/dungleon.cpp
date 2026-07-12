@@ -108,12 +108,12 @@ Feedback parseFeedback(const std::string &input, const Config &config) {
   for (size_t i = 0; i < NUM_SLOTS; ++i) {
     char colorChar = colorStr[i];
     if (colorChar >= '0' && colorChar <= '4') {
-      fb.setColor(i, colorChar - '0');
+      fb.setColor(i, static_cast<Color>(colorChar - '0'));
     } else {
       throw std::runtime_error(
           "Invalid color digit '" + std::string(1, colorChar) +
           "'. Must be 0-4 (0=not present, 1=diff pos no more, "
-          "2=correct pos no more, 3=diff pos one more, 4=correct pos one "
+          "2=diff pos one more, 3=correct pos no more, 4=correct pos one "
           "more)");
     }
   }
@@ -132,20 +132,20 @@ bool matchesFeedback(const Pattern &candidate, const Feedback &fb) {
   // Use precomputed character counts from the candidate
   std::array<uint8_t, NUM_CHARACTERS> remainingCount = candidate.characterCount;
 
-  // First pass: Check all positions marked as correct (2 or 4)
+  // First pass: Check all positions marked as correct (3 or 4)
   for (size_t i = 0; i < NUM_SLOTS; ++i) {
-    int color = fb.getColor(i);
+    Color color = fb.getColor(i);
     uint8_t guessChar = guess.characters[i];
-    if (color == 2 || color == 4) {
+    if (color == Color::Green || color == Color::GreenPlus) {
       // Must match at this position
       if (candidate.characters[i] != guessChar) {
         return false;
       }
-      if (color == 2 && candidate.characterCount[guessChar] >
+      if (color == Color::Green && candidate.characterCount[guessChar] >
                             fb.pattern.characterCount[guessChar]) {
         return false; // Too many instances in the candidate
       }
-      if (color == 4 && candidate.characterCount[guessChar] <=
+      if (color == Color::GreenPlus && candidate.characterCount[guessChar] <=
                             fb.pattern.characterCount[guessChar]) {
         return false; // Not enough instances in the candidate
       }
@@ -155,13 +155,13 @@ bool matchesFeedback(const Pattern &candidate, const Feedback &fb) {
 
   // Second pass: Check other constraints
   for (size_t i = 0; i < NUM_SLOTS; ++i) {
-    int color = fb.getColor(i);
+    Color color = fb.getColor(i);
     uint8_t guessChar = guess.characters[i];
 
-    if (color == 2 || color == 4) {
+    if (color == Color::Green || color == Color::GreenPlus) {
       // Already handled in first pass
       continue;
-    } else if (color == 1 || color == 3) {
+    } else if (color == Color::Yellow || color == Color::YellowPlus) {
       // Character is in the pattern but not at this position
       if (candidate.characters[i] == guessChar) {
         return false; // Cannot be in the same spot
@@ -169,16 +169,16 @@ bool matchesFeedback(const Pattern &candidate, const Feedback &fb) {
       if (remainingCount[guessChar] <= 0) {
         return false; // Must have this character elsewhere
       }
-      if (color == 1 && candidate.characterCount[guessChar] >
+      if (color == Color::Yellow && candidate.characterCount[guessChar] >
                             fb.pattern.characterCount[guessChar]) {
         return false; // Too many instances in the candidate
       }
-      if (color == 3 && candidate.characterCount[guessChar] <=
+      if (color == Color::YellowPlus && candidate.characterCount[guessChar] <=
                             fb.pattern.characterCount[guessChar]) {
         return false; // Not enough instances in the candidate
       }
       remainingCount[guessChar]--;
-    } else if (color == 0) {
+    } else if (color == Color::Red) {
       // Character is not present (or all instances already accounted for)
       if (remainingCount[guessChar] > 0) {
         return false; // Candidate has more of this character than allowed
@@ -207,9 +207,9 @@ Feedback generateFeedback(const Pattern &target, const Pattern &guess) {
     if (target.characters[i] == guessChar) {
       // Correct position
       if (target.characterCount[guessChar] > guess.characterCount[guessChar]) {
-        fb.setColor(i, 4); // Correct position, more in the target
+        fb.setColor(i, Color::GreenPlus); // Correct position, more in the target
       } else {
-        fb.setColor(i, 2); // Correct position, no more in the target
+        fb.setColor(i, Color::Green); // Correct position, no more in the target
       }
       remainingCount[guessChar]--; // Decrement remaining count
     }
@@ -225,13 +225,13 @@ Feedback generateFeedback(const Pattern &target, const Pattern &guess) {
     } else {
       // Not in correct position
       if (remainingCount[guessChar] == 0) {
-        fb.setColor(i, 0); // No more instances in target
+        fb.setColor(i, Color::Red); // No more instances in target
       } else {
         if (target.characterCount[guessChar] >
             guess.characterCount[guessChar]) {
-          fb.setColor(i, 3); // Different position, more in target
+          fb.setColor(i, Color::YellowPlus); // Different position, more in target
         } else {
-          fb.setColor(i, 1); // Different position, no more in target
+          fb.setColor(i, Color::Yellow); // Different position, no more in target
         }
         remainingCount[guessChar]--; // Decrement remaining count
       }
@@ -534,29 +534,12 @@ Result runDungleonSolver(const Config &_config, std::atomic<bool> *cancel) {
 
   std::vector<Pattern> possiblePatterns = generateAllPossiblePatterns(config);
 
-  // Exclude already guessed patterns to speed up lookup
-  std::unordered_set<Pattern> guessedPatterns;
-  for (const auto &fb : config.feedbackHistory) {
-    guessedPatterns.insert(fb.pattern);
-  }
-
-  auto filterGuesses = [&guessedPatterns](const std::vector<Pattern> &list) {
-    std::vector<Pattern> filtered;
-    filtered.reserve(list.size());
-    for (const auto &p : list) {
-      if (guessedPatterns.count(p) == 0) {
-        filtered.push_back(p);
-      }
-    }
-    return filtered;
-  };
-
-  std::vector<Pattern> filteredPossible = filterGuesses(possiblePatterns);
+  std::vector<Pattern> filteredPossible = possiblePatterns;
   std::vector<Pattern> filteredAll;
   if (config.excludeImpossiblePatterns) {
     filteredAll = filteredPossible;
   } else {
-    filteredAll = filterGuesses(generateAllPatterns());
+    filteredAll = generateAllPatterns();
   }
 
   // Create CandidateSet from the filtered patterns

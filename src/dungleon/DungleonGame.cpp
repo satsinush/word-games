@@ -240,9 +240,9 @@ void DungleonGame::runCLI() {
       std::cout << "Format: 'ar kn ma bt dr 01234' (colors 0-4)\n";
       std::cout
           << "        'ar kn ma bt dr' (past solution for Gauntlet mode)\n";
-      std::cout << "Colors: 0=not present, 1=diff pos no more, 2=correct pos "
-                   "no more,\n";
-      std::cout << "        3=diff pos one more, 4=correct pos one more\n\n";
+      std::cout << "Colors: 0=not present, 1=diff pos no more, 2=diff pos "
+                   "one more,\n";
+      std::cout << "        3=correct pos no more, 4=correct pos one more\n\n";
 
       if (!config.solutionHistory.empty()) {
         std::cout << "Past solutions (Gauntlet mode):\n";
@@ -257,7 +257,7 @@ void DungleonGame::runCLI() {
         for (const auto &fb : feedbackHistory) {
           std::cout << "  " << fb.pattern.toString() << " -> ";
           for (size_t i = 0; i < 5; ++i)
-            std::cout << fb.getColor(i);
+            std::cout << static_cast<int>(fb.getColor(i));
           std::cout << "\n";
         }
         std::cout << "\n";

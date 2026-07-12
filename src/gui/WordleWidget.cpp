@@ -114,7 +114,7 @@ GuessRow::GuessRow(const Wordle::Feedback &feedback, QWidget *parent)
   for (size_t i = 0; i < wordLen; ++i) {
     boxes[i] = new LetterBox(this);
     boxes[i]->setLetter(feedback.word[i]);
-    boxes[i]->setColor(feedback.getColor(i));
+    boxes[i]->setColor(static_cast<int>(feedback.getColor(i)));
     connect(boxes[i], &LetterBox::clicked, this, &GuessRow::onLetterBoxClicked);
     layout->addWidget(boxes[i]);
   }
