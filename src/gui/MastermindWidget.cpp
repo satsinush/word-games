@@ -150,11 +150,12 @@ void FeedbackRow::adjustPositions(int delta) {
 }
 
 void FeedbackRow::adjustColors(int delta) {
-  const int maxColors = maxPegs - correctPositions;
-  const int newVal = std::clamp(correctColors + delta, 0, maxColors);
+  const int newVal = std::clamp(correctColors + delta, 0, maxPegs);
   if (newVal == correctColors)
     return;
   correctColors = newVal;
+  if (correctPositions > maxPegs - correctColors)
+    correctPositions = maxPegs - correctColors;
   refreshValueLabels();
   emit feedbackChanged(rowIndex);
 }
