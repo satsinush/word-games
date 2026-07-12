@@ -430,6 +430,7 @@ void LetterBoxedWidget::populateResults(int maxRows) {
 
   for (int i = 0; i < limit; ++i) {
     const auto &solution = solutions[i];
+    const QString text = QString::fromStdString(solution.text).toUpper();
     QString lettersOnly = text;
     lettersOnly.remove(QChar(' '));
 
