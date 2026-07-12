@@ -122,10 +122,7 @@
    <item>
     <widget class="QScrollArea" name="feedbackListScrollArea">
      <property name="maximumHeight">
-      <number>260</number>
-     </property>
-     <property name="minimumHeight">
-      <number>140</number>
+      <number>200</number>
      </property>
      <property name="widgetResizable">
       <bool>true</bool>
