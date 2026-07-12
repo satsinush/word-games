@@ -7,6 +7,7 @@
 #include "utils/utils.hpp"
 #include <QBoxLayout>
 #include <QCheckBox>
+#include <QColor>
 #include <QDialog>
 #include <QDialogButtonBox>
 #include <QFormLayout>
@@ -366,8 +367,10 @@ DungleonWidget::DungleonWidget(QWidget *parent)
   ui = new Ui::DungleonWidget();
   ui->setupUi(this);
 
-  // Initialize config
-  config.maxDepth = 1;
+  // Initialize config (match web frontend defaults)
+  config.autoDepth = true;
+  config.maxDepth = 0;
+  config.maxGuesses = 6;
 
   // Create character bank
   m_bankContainer = new QWidget(ui->bankScrollArea);
@@ -497,19 +500,34 @@ DungleonWidget::~DungleonWidget() { delete ui; }
 
 bool DungleonWidget::showConfigDialog() {
   QDialog dialog(this);
-  dialog.setWindowTitle("Dungleon Solver Configuration");
-  dialog.setMinimumWidth(300);
+  dialog.setWindowTitle("Dungleon Settings");
+  dialog.setMinimumWidth(320);
 
   QVBoxLayout *layout = new QVBoxLayout(&dialog);
   QFormLayout *formLayout = new QFormLayout();
 
-  // Max Depth
+  QCheckBox *autoDepthCheckBox = new QCheckBox(&dialog);
+  autoDepthCheckBox->setChecked(config.autoDepth);
+  autoDepthCheckBox->setToolTip(
+      "Dynamically choose search depth based on available time.");
+  formLayout->addRow("Auto Depth (Recommended):", autoDepthCheckBox);
+
   QSpinBox *maxDepthSpinner = new QSpinBox(&dialog);
   maxDepthSpinner->setRange(0, 2);
   maxDepthSpinner->setValue(config.maxDepth);
-  formLayout->addRow("Search Depth:", maxDepthSpinner);
+  maxDepthSpinner->setEnabled(!config.autoDepth);
+  maxDepthSpinner->setToolTip(
+      "0: Fastest, 1: Balanced, 2: Deep. Disabled when Auto Depth is on.");
+  formLayout->addRow("Manual Search Depth:", maxDepthSpinner);
 
-  // Exclude Impossible Patterns
+  connect(autoDepthCheckBox, &QCheckBox::toggled, maxDepthSpinner,
+          [maxDepthSpinner](bool checked) { maxDepthSpinner->setEnabled(!checked); });
+
+  QSpinBox *maxGuessesSpinner = new QSpinBox(&dialog);
+  maxGuessesSpinner->setRange(1, 100);
+  maxGuessesSpinner->setValue(static_cast<int>(config.maxGuesses));
+  formLayout->addRow("Maximum Guesses Allowed:", maxGuessesSpinner);
+
   QCheckBox *excludeImpossibleCheckbox = new QCheckBox(&dialog);
   excludeImpossibleCheckbox->setChecked(config.excludeImpossiblePatterns);
   formLayout->addRow("Exclude Impossible Patterns:", excludeImpossibleCheckbox);
@@ -523,7 +541,9 @@ bool DungleonWidget::showConfigDialog() {
   layout->addWidget(buttonBox);
 
   if (dialog.exec() == QDialog::Accepted) {
+    config.autoDepth = autoDepthCheckBox->isChecked();
     config.maxDepth = static_cast<uint8_t>(maxDepthSpinner->value());
+    config.maxGuesses = static_cast<uint32_t>(maxGuessesSpinner->value());
     config.excludeImpossiblePatterns = excludeImpossibleCheckbox->isChecked();
     return true;
   }
@@ -562,8 +582,8 @@ void DungleonWidget::initGame() {
   allResultsTable->setRowCount(0);
   probablePatternsTable->setRowCount(0);
 
-  // Reset tab texts
-  ui->resultsTabWidget->setTabText(0, "All Suggestions");
+  // Reset tab texts to match frontend
+  ui->resultsTabWidget->setTabText(0, "Suggested Guesses");
   ui->resultsTabWidget->setTabText(1, "Possible Solutions");
 
   // Setup fresh current pattern
@@ -581,10 +601,13 @@ void DungleonWidget::setUIEnabled(bool enabled) {
 }
 
 void DungleonWidget::updateConfigInfo() {
+  QString depthStr = config.autoDepth ? QStringLiteral("auto")
+                                      : QString::number(config.maxDepth);
   QString info =
-      QString("<span style='color:#666; font-size:11pt;'>Search "
-              "Depth: %1 | %2 | Guesses: %3 | Past Solutions: %4</span>")
-          .arg(config.maxDepth)
+      QString("<span style='color:#666; font-size:11pt;'>Depth: %1 | Max "
+              "guesses: %2 | %3 | Guesses: %4 | Past Solutions: %5</span>")
+          .arg(depthStr)
+          .arg(config.maxGuesses)
           .arg(config.excludeImpossiblePatterns ? "Possible Patterns"
                                                 : "All Patterns")
           .arg(config.feedbackHistory.size())
@@ -673,17 +696,22 @@ void DungleonWidget::onCharacterBankClicked(int charId) {
   }
 }
 
-void DungleonWidget::onSubmit() { submitCurrentPattern(); }
+void DungleonWidget::onSubmit() {
+  // "Add & Solve" — match frontend primary action
+  if (submitCurrentPattern()) {
+    solveDungleon();
+  }
+}
 
 void DungleonWidget::onSubmitSolution() { submitCurrentSolution(); }
 
-void DungleonWidget::submitCurrentPattern() {
+bool DungleonWidget::submitCurrentPattern() {
   // Check if all 5 slots are filled
   if (currentSlotIndex < 5) {
     QMessageBox::warning(
         this, "Incomplete Pattern",
         "Please fill all 5 character slots before submitting.");
-    return;
+    return false;
   }
 
   // Create feedback object with pattern
@@ -717,6 +745,8 @@ void DungleonWidget::submitCurrentPattern() {
 
   // Setup new current pattern
   setupCurrentPattern();
+  updateConfigInfo();
+  return true;
 }
 
 void DungleonWidget::submitCurrentSolution() {
@@ -897,31 +927,25 @@ void DungleonWidget::solveDungleon() {
   solverThread->start();
 }
 
-// Populate both results tables in one call. This ensures the "Possible
-// Solutions" table shows the actual rank of a pattern as it appears in the
-// full sorted list (lastAllResults). maxRows limits rows shown per table.
+// Populate both results tables in one call. Columns match frontend:
+// Pattern | Probability | ENT | WNT (icons in Pattern column).
 void DungleonWidget::populateResults(int maxRows) {
-  // --- All suggestions table ---
-  const std::vector<Dungleon::PatternGuess> &all = lastAllResults;
-  int allRows = std::min(maxRows, static_cast<int>(all.size()));
-  allResultsTable->setRowCount(allRows);
-  for (int i = 0; i < allRows; ++i) {
-    allResultsTable->setRowHeight(i, 50);
+  auto setupHeaders = [](QTableWidget *table) {
+    table->setColumnCount(4);
+    table->setHorizontalHeaderLabels(
+        {QStringLiteral("Pattern"), QStringLiteral("Probability"),
+         QStringLiteral("ENT"), QStringLiteral("WNT")});
+  };
+  setupHeaders(allResultsTable);
+  setupHeaders(probablePatternsTable);
 
-    const Dungleon::PatternGuess &guess = all[i];
-
-    // Rank (1-based)
-    QTableWidgetItem *rankItem = new QTableWidgetItem(QString::number(i + 1));
-    rankItem->setTextAlignment(Qt::AlignCenter);
-    allResultsTable->setItem(i, 0, rankItem);
-
-    // Pattern widget (icons or fallback text)
+  auto makePatternWidget = [](const Dungleon::Pattern &pattern) -> QWidget * {
     QWidget *patternWidget = new QWidget();
     QHBoxLayout *patternLayout = new QHBoxLayout(patternWidget);
     patternLayout->setSpacing(2);
     patternLayout->setContentsMargins(2, 2, 2, 2);
     for (int j = 0; j < 5; ++j) {
-      uint8_t charId = guess.pattern.characters[j];
+      uint8_t charId = pattern.characters[j];
       QLabel *charLabel = new QLabel();
       charLabel->setFixedSize(40, 40);
       charLabel->setAlignment(Qt::AlignCenter);
@@ -949,146 +973,93 @@ void DungleonWidget::populateResults(int maxRows) {
     }
     patternLayout->addStretch();
     patternWidget->setLayout(patternLayout);
-    allResultsTable->setCellWidget(i, 1, patternWidget);
+    return patternWidget;
+  };
 
-    // ENT
+  auto colorPatternWidget = [](QWidget *patternWidget, double probability) {
+    if (!patternWidget)
+      return;
+    QColor bg;
+    if (probability >= 0.9999) {
+      bg = QColor(76, 175, 80, 40);
+    } else if (probability > 0.0) {
+      bg = QColor(255, 235, 59, 40);
+    } else {
+      return;
+    }
+    patternWidget->setStyleSheet(
+        QString("QWidget { background-color: rgba(%1,%2,%3,%4); }")
+            .arg(bg.red())
+            .arg(bg.green())
+            .arg(bg.blue())
+            .arg(bg.alpha()));
+  };
+
+  const std::vector<Dungleon::PatternGuess> &all = lastAllResults;
+  int allRows = std::min(maxRows, static_cast<int>(all.size()));
+  allResultsTable->setRowCount(allRows);
+  for (int i = 0; i < allRows; ++i) {
+    allResultsTable->setRowHeight(i, 50);
+    const Dungleon::PatternGuess &guess = all[i];
+
+    QWidget *patternWidget = makePatternWidget(guess.pattern);
+    allResultsTable->setCellWidget(i, 0, patternWidget);
+
+    QTableWidgetItem *probItem =
+        new QTableWidgetItem(formatProbabilityPercent(guess.probability));
+    probItem->setTextAlignment(Qt::AlignCenter);
+    allResultsTable->setItem(i, 1, probItem);
+
     QTableWidgetItem *entItem =
-        new QTableWidgetItem(QString::number(guess.ent, 'f', 3));
+        new QTableWidgetItem(formatRoundedNum(guess.ent));
     entItem->setTextAlignment(Qt::AlignCenter);
     allResultsTable->setItem(i, 2, entItem);
 
-    // Probability
-    QTableWidgetItem *probItem = new QTableWidgetItem(
-        QString::number(guess.probability * 100.0, 'f', 2) + "%");
-    probItem->setTextAlignment(Qt::AlignCenter);
-    allResultsTable->setItem(i, 3, probItem);
+    QTableWidgetItem *wntItem =
+        new QTableWidgetItem(formatRoundedNum(guess.wnt));
+    wntItem->setTextAlignment(Qt::AlignCenter);
+    allResultsTable->setItem(i, 3, wntItem);
 
-    // Color coding
-    if (guess.probability >= 1.0) {
-      QColor bgColor(144, 238, 144);
-      for (int col = 0; col < 4; ++col) {
-        if (allResultsTable->item(i, col)) {
-          allResultsTable->item(i, col)->setBackground(bgColor);
-          allResultsTable->item(i, col)->setForeground(Qt::black);
-        }
-      }
-      patternWidget->setStyleSheet(
-          QString("QWidget { background-color: %1; }").arg(bgColor.name()));
-    } else if (guess.probability > 0.0) {
-      QColor bgColor(255, 255, 153);
-      for (int col = 0; col < 4; ++col) {
-        if (allResultsTable->item(i, col)) {
-          allResultsTable->item(i, col)->setBackground(bgColor);
-          allResultsTable->item(i, col)->setForeground(Qt::black);
-        }
-      }
-      patternWidget->setStyleSheet(
-          QString("QWidget { background-color: %1; }").arg(bgColor.name()));
-    }
+    applyProbabilityRowColors(allResultsTable, i, 4, guess.probability);
+    colorPatternWidget(patternWidget, guess.probability);
   }
 
-  // --- Possible solutions table ---
-  // Build rows from the full list but only include entries with non-zero
-  // probability, preserving their original rank from the full list.
-  std::vector<std::pair<int, Dungleon::PatternGuess>> probable;
+  std::vector<Dungleon::PatternGuess> probable;
   probable.reserve(all.size());
-  for (int i = 0; i < static_cast<int>(all.size()); ++i) {
-    if (all[i].probability > 0.0) {
-      probable.emplace_back(i + 1, all[i]); // store original rank (1-based)
-    }
+  for (const auto &g : all) {
+    if (g.probability > 0.0)
+      probable.push_back(g);
   }
 
   int probRows = std::min(maxRows, static_cast<int>(probable.size()));
   probablePatternsTable->setRowCount(probRows);
   for (int r = 0; r < probRows; ++r) {
     probablePatternsTable->setRowHeight(r, 50);
-    int originalRank = probable[r].first;
-    const Dungleon::PatternGuess &guess = probable[r].second;
+    const Dungleon::PatternGuess &guess = probable[r];
 
-    // Rank column shows the original rank from the full list
-    QTableWidgetItem *rankItem =
-        new QTableWidgetItem(QString::number(originalRank));
-    rankItem->setTextAlignment(Qt::AlignCenter);
-    probablePatternsTable->setItem(r, 0, rankItem);
+    QWidget *patternWidget = makePatternWidget(guess.pattern);
+    probablePatternsTable->setCellWidget(r, 0, patternWidget);
 
-    // Pattern widget
-    QWidget *patternWidget = new QWidget();
-    QHBoxLayout *patternLayout = new QHBoxLayout(patternWidget);
-    patternLayout->setSpacing(2);
-    patternLayout->setContentsMargins(2, 2, 2, 2);
-    for (int j = 0; j < 5; ++j) {
-      uint8_t charId = guess.pattern.characters[j];
-      QLabel *charLabel = new QLabel();
-      charLabel->setFixedSize(40, 40);
-      charLabel->setAlignment(Qt::AlignCenter);
+    QTableWidgetItem *probItem =
+        new QTableWidgetItem(formatProbabilityPercent(guess.probability));
+    probItem->setTextAlignment(Qt::AlignCenter);
+    probablePatternsTable->setItem(r, 1, probItem);
 
-      std::string name = Dungleon::CHARACTER_NAMES[charId];
-      std::transform(name.begin(), name.end(), name.begin(),
-                     [](unsigned char c) {
-                       if (c == ' ')
-                         return '_';
-                       return static_cast<char>(std::tolower(c));
-                     });
-      QString iconPath = QString::fromStdString(
-          Utils::getResourceFile("dungleon/" + name + ".png"));
-      QPixmap icon(iconPath);
-      if (!icon.isNull()) {
-        charLabel->setPixmap(
-            icon.scaled(36, 36, Qt::KeepAspectRatio, Qt::SmoothTransformation));
-      } else {
-        charLabel->setText(
-            QString::fromStdString(Dungleon::CHARACTER_IDS[charId]));
-        charLabel->setStyleSheet("QLabel { background-color: #d3d6da; border: "
-                                 "1px solid #878a8c; border-radius: 3px; }");
-      }
-      patternLayout->addWidget(charLabel);
-    }
-    patternLayout->addStretch();
-    patternWidget->setLayout(patternLayout);
-    probablePatternsTable->setCellWidget(r, 1, patternWidget);
-
-    // ENT
     QTableWidgetItem *entItem =
-        new QTableWidgetItem(QString::number(guess.ent, 'f', 3));
+        new QTableWidgetItem(formatRoundedNum(guess.ent));
     entItem->setTextAlignment(Qt::AlignCenter);
     probablePatternsTable->setItem(r, 2, entItem);
 
-    // Probability
-    QTableWidgetItem *probItem = new QTableWidgetItem(
-        QString::number(guess.probability * 100.0, 'f', 2) + "%");
-    probItem->setTextAlignment(Qt::AlignCenter);
-    probablePatternsTable->setItem(r, 3, probItem);
+    QTableWidgetItem *wntItem =
+        new QTableWidgetItem(formatRoundedNum(guess.wnt));
+    wntItem->setTextAlignment(Qt::AlignCenter);
+    probablePatternsTable->setItem(r, 3, wntItem);
 
-    // Color coding
-    if (guess.probability >= 1.0) {
-      QColor bgColor(144, 238, 144);
-      for (int col = 0; col < 4; ++col) {
-        if (probablePatternsTable->item(r, col)) {
-          probablePatternsTable->item(r, col)->setBackground(bgColor);
-          probablePatternsTable->item(r, col)->setForeground(Qt::black);
-        }
-      }
-      patternWidget->setStyleSheet(
-          QString("QWidget { background-color: %1; }").arg(bgColor.name()));
-    } else {
-      QColor bgColor(255, 255, 153);
-      for (int col = 0; col < 4; ++col) {
-        if (probablePatternsTable->item(r, col)) {
-          probablePatternsTable->item(r, col)->setBackground(bgColor);
-          probablePatternsTable->item(r, col)->setForeground(Qt::black);
-        }
-      }
-      patternWidget->setStyleSheet(
-          QString("QWidget { background-color: %1; }").arg(bgColor.name()));
-    }
+    applyProbabilityRowColors(probablePatternsTable, r, 4, guess.probability);
+    colorPatternWidget(patternWidget, guess.probability);
   }
 
-  // Update cached probable results to match what is displayed (keeping
-  // lastProbableResults usable elsewhere if needed)
-  lastProbableResults.clear();
-  lastProbableResults.reserve(probable.size());
-  for (auto &p : probable)
-    lastProbableResults.push_back(p.second);
+  lastProbableResults = std::move(probable);
 }
 
 void DungleonWidget::onSolverFinished() {
@@ -1136,7 +1107,7 @@ void DungleonWidget::onSolverFinished() {
 
     // Update tab labels
     ui->resultsTabWidget->setTabText(
-        0, QString("All Suggestions (%1)").arg(allGuesses.size()));
+        0, QString("Suggested Guesses (%1)").arg(allGuesses.size()));
     ui->resultsTabWidget->setTabText(
         1,
         QString("Possible Solutions (%1)").arg(result.totalPossiblePatterns));

@@ -180,9 +180,11 @@ WordleWidget::WordleWidget(QWidget *parent)
     : GameWidget(parent), ui(new Ui::WordleWidget), currentRowWidget(nullptr) {
   ui->setupUi(this);
 
-  // Initialize config
+  // Initialize config (match web frontend defaults)
   config.maxDepth = 1;
+  config.autoDepth = true;
   config.excludeUncommonWords = true;
+  config.maxGuesses = 6;
 
   // Create guess list container
   guessListWidget = new QWidget(this);
@@ -261,27 +263,40 @@ WordleWidget::~WordleWidget() {
 }
 
 bool WordleWidget::showConfigDialog() {
-  // Show configuration dialog
   QDialog dialog(this);
-  dialog.setWindowTitle("Wordle Solver Configuration");
-  dialog.setMinimumWidth(300);
+  dialog.setWindowTitle("Wordle Settings");
+  dialog.setMinimumWidth(320);
 
   QVBoxLayout *layout = new QVBoxLayout(&dialog);
   QFormLayout *formLayout = new QFormLayout();
 
-  // Word Length
   QSpinBox *wordLengthSpinner = new QSpinBox(&dialog);
   wordLengthSpinner->setRange(1, 32);
   wordLengthSpinner->setValue(config.wordLength);
   formLayout->addRow("Word Length:", wordLengthSpinner);
 
-  // Max Depth
+  QCheckBox *autoDepthCheckBox = new QCheckBox(&dialog);
+  autoDepthCheckBox->setChecked(config.autoDepth);
+  autoDepthCheckBox->setToolTip(
+      "Dynamically choose search depth based on available time.");
+  formLayout->addRow("Auto Depth (Recommended):", autoDepthCheckBox);
+
   QSpinBox *maxDepthSpinner = new QSpinBox(&dialog);
   maxDepthSpinner->setRange(0, 2);
   maxDepthSpinner->setValue(config.maxDepth);
-  formLayout->addRow("Search Depth:", maxDepthSpinner);
+  maxDepthSpinner->setEnabled(!config.autoDepth);
+  maxDepthSpinner->setToolTip(
+      "0: Fastest, 1: Balanced, 2: Deep. Disabled when Auto Depth is on.");
+  formLayout->addRow("Manual Search Depth:", maxDepthSpinner);
 
-  // Exclude Uncommon Words
+  connect(autoDepthCheckBox, &QCheckBox::toggled, maxDepthSpinner,
+          [maxDepthSpinner](bool checked) { maxDepthSpinner->setEnabled(!checked); });
+
+  QSpinBox *maxGuessesSpinner = new QSpinBox(&dialog);
+  maxGuessesSpinner->setRange(1, 100);
+  maxGuessesSpinner->setValue(static_cast<int>(config.maxGuesses));
+  formLayout->addRow("Maximum Guesses Allowed:", maxGuessesSpinner);
+
   QCheckBox *excludeCheckbox = new QCheckBox(&dialog);
   excludeCheckbox->setChecked(config.excludeUncommonWords);
   formLayout->addRow("Exclude Uncommon Words:", excludeCheckbox);
@@ -298,34 +313,30 @@ bool WordleWidget::showConfigDialog() {
     uint8_t oldWordLength = config.wordLength;
 
     config.wordLength = wordLengthSpinner->value();
+    config.autoDepth = autoDepthCheckBox->isChecked();
     config.maxDepth = maxDepthSpinner->value();
+    config.maxGuesses = static_cast<uint32_t>(maxGuessesSpinner->value());
     config.excludeUncommonWords = excludeCheckbox->isChecked();
 
-    // Update input field max length
     ui->inputField->setMaxLength(config.wordLength);
 
-    // Clear feedback history if word length changed
     if (oldWordLength != config.wordLength) {
       config.feedbackHistory.clear();
 
-      // Delete all GuessRow widgets
       for (GuessRow *row : guessRows) {
         guessListLayout->removeWidget(row);
         row->deleteLater();
       }
       guessRows.clear();
 
-      // Remove current row if it exists
       if (currentRowWidget) {
         guessListLayout->removeWidget(currentRowWidget);
         currentRowWidget->deleteLater();
       }
 
-      // Clear result tables
       allResultsTable->setRowCount(0);
       probableWordsTable->setRowCount(0);
 
-      // Setup fresh current row
       setupCurrentRow();
       ui->inputField->clear();
     }
@@ -356,9 +367,9 @@ void WordleWidget::initGame() {
   allResultsTable->setRowCount(0);
   probableWordsTable->setRowCount(0);
 
-  // Reset tab texts to default
-  ui->resultsTabWidget->setTabText(0, "All Suggestions");
-  ui->resultsTabWidget->setTabText(1, "Possible Solutions");
+  // Reset tab texts to match frontend
+  ui->resultsTabWidget->setTabText(0, "Suggested Guesses");
+  ui->resultsTabWidget->setTabText(1, "Possible Words");
 
   // Setup fresh current row
   setupCurrentRow();
@@ -377,12 +388,14 @@ void WordleWidget::setUIEnabled(bool enabled) {
 }
 
 void WordleWidget::updateConfigInfo() {
+  QString depthStr = config.autoDepth ? QStringLiteral("auto")
+                                      : QString::number(config.maxDepth);
   QString info =
-      QString("<span style='color:#666; font-size:11pt;'>%1 letters | Search "
-              "Depth: "
-              "%2 | %3</span>")
+      QString("<span style='color:#666; font-size:11pt;'>%1 letters | Depth: "
+              "%2 | Max guesses: %3 | %4</span>")
           .arg(config.wordLength)
-          .arg(config.maxDepth)
+          .arg(depthStr)
+          .arg(config.maxGuesses)
           .arg(config.excludeUncommonWords ? "Common words" : "All words");
   configInfoLabel->setText(info);
 }
@@ -467,16 +480,21 @@ void WordleWidget::onTableRowClicked(int row, int column) {
 
 void WordleWidget::newGame() { onNewGame(); }
 
-void WordleWidget::onSubmit() { submitCurrentGuess(); }
+void WordleWidget::onSubmit() {
+  // "Add & Solve" — match frontend primary action
+  if (submitCurrentGuess()) {
+    solveWordle();
+  }
+}
 
-void WordleWidget::submitCurrentGuess() {
+bool WordleWidget::submitCurrentGuess() {
   // Get word from input field
   QString inputText = ui->inputField->text().trimmed();
   if (inputText.length() != config.wordLength) {
     QMessageBox::information(
         this, "Incomplete Word",
         QString("Please enter a %1-letter word!").arg(config.wordLength));
-    return;
+    return false;
   }
 
   std::string word = inputText.toLower().toStdString();
@@ -512,6 +530,7 @@ void WordleWidget::submitCurrentGuess() {
   // Clear input and create new row
   ui->inputField->clear();
   setupCurrentRow();
+  return true;
 }
 
 void WordleWidget::onNewGame() {
@@ -527,7 +546,16 @@ void WordleWidget::onSettings() {
 }
 
 void WordleWidget::populateResults(int maxRows) {
-  // Fill All Suggestions from cached lastAllResults
+  // Match frontend columns: Word | Probability | ENT | WNT
+  auto setupHeaders = [](QTableWidget *table) {
+    table->setColumnCount(4);
+    table->setHorizontalHeaderLabels(
+        {QStringLiteral("Word"), QStringLiteral("Probability"),
+         QStringLiteral("ENT"), QStringLiteral("WNT")});
+  };
+  setupHeaders(allResultsTable);
+  setupHeaders(probableWordsTable);
+
   const auto &all = lastAllResults;
   int allRows = std::min(maxRows, static_cast<int>(all.size()));
   allResultsTable->setRowCount(allRows);
@@ -535,66 +563,44 @@ void WordleWidget::populateResults(int maxRows) {
     allResultsTable->setRowHeight(i, 24);
     const auto &guess = all[i];
 
-    QTableWidgetItem *rankItem = new QTableWidgetItem(QString::number(i + 1));
-    rankItem->setTextAlignment(Qt::AlignCenter);
-    allResultsTable->setItem(i, 0, rankItem);
-
     QTableWidgetItem *wordItem = new QTableWidgetItem(
         QString::fromStdString(guess.word.wordString).toUpper());
     QFont monoFont("Consolas", 10);
     monoFont.setBold(true);
     wordItem->setFont(monoFont);
     wordItem->setTextAlignment(Qt::AlignCenter);
-    allResultsTable->setItem(i, 1, wordItem);
+    allResultsTable->setItem(i, 0, wordItem);
 
-    QTableWidgetItem *scoreItem =
-        new QTableWidgetItem(QString::number(guess.word.score, 'f', 3));
-    scoreItem->setTextAlignment(Qt::AlignCenter);
-    allResultsTable->setItem(i, 2, scoreItem);
+    QTableWidgetItem *probItem =
+        new QTableWidgetItem(formatProbabilityPercent(guess.probability));
+    probItem->setTextAlignment(Qt::AlignCenter);
+    allResultsTable->setItem(i, 1, probItem);
 
     QTableWidgetItem *entItem =
-        new QTableWidgetItem(QString::number(guess.ent, 'f', 3));
+        new QTableWidgetItem(formatRoundedNum(guess.ent));
     entItem->setTextAlignment(Qt::AlignCenter);
-    allResultsTable->setItem(i, 3, entItem);
+    allResultsTable->setItem(i, 2, entItem);
 
-    QTableWidgetItem *probItem = new QTableWidgetItem(
-        QString::number(guess.probability * 100.0, 'f', 2) + "%");
-    probItem->setTextAlignment(Qt::AlignCenter);
-    allResultsTable->setItem(i, 4, probItem);
+    QTableWidgetItem *wntItem =
+        new QTableWidgetItem(formatRoundedNum(guess.wnt));
+    wntItem->setTextAlignment(Qt::AlignCenter);
+    allResultsTable->setItem(i, 3, wntItem);
 
-    // highlight
-    if (guess.probability >= 1.0) {
-      for (int col = 0; col < 5; ++col) {
-        allResultsTable->item(i, col)->setBackground(QColor(144, 238, 144));
-        allResultsTable->item(i, col)->setForeground(QColor(0, 0, 0));
-      }
-    } else if (guess.probability > 0.0) {
-      for (int col = 0; col < 5; ++col) {
-        allResultsTable->item(i, col)->setBackground(QColor(255, 255, 153));
-        allResultsTable->item(i, col)->setForeground(QColor(0, 0, 0));
-      }
-    }
+    applyProbabilityRowColors(allResultsTable, i, 4, guess.probability);
   }
 
-  // Build probable list from full list but keep original ranks
-  std::vector<std::pair<int, Wordle::WordGuess>> probable;
+  std::vector<Wordle::WordGuess> probable;
   probable.reserve(all.size());
-  for (int i = 0; i < static_cast<int>(all.size()); ++i) {
-    if (all[i].probability > 0.0)
-      probable.emplace_back(i + 1, all[i]);
+  for (const auto &g : all) {
+    if (g.probability > 0.0)
+      probable.push_back(g);
   }
 
   int probRows = std::min(maxRows, static_cast<int>(probable.size()));
   probableWordsTable->setRowCount(probRows);
   for (int r = 0; r < probRows; ++r) {
     probableWordsTable->setRowHeight(r, 24);
-    int originalRank = probable[r].first;
-    const auto &guess = probable[r].second;
-
-    QTableWidgetItem *rankItem =
-        new QTableWidgetItem(QString::number(originalRank));
-    rankItem->setTextAlignment(Qt::AlignCenter);
-    probableWordsTable->setItem(r, 0, rankItem);
+    const auto &guess = probable[r];
 
     QTableWidgetItem *wordItem = new QTableWidgetItem(
         QString::fromStdString(guess.word.wordString).toUpper());
@@ -602,40 +608,33 @@ void WordleWidget::populateResults(int maxRows) {
     monoFont2.setBold(true);
     wordItem->setFont(monoFont2);
     wordItem->setTextAlignment(Qt::AlignCenter);
-    probableWordsTable->setItem(r, 1, wordItem);
+    probableWordsTable->setItem(r, 0, wordItem);
 
-    QTableWidgetItem *scoreItem =
-        new QTableWidgetItem(QString::number(guess.word.score, 'f', 3));
-    scoreItem->setTextAlignment(Qt::AlignCenter);
-    probableWordsTable->setItem(r, 2, scoreItem);
+    QTableWidgetItem *probItem =
+        new QTableWidgetItem(formatProbabilityPercent(guess.probability));
+    probItem->setTextAlignment(Qt::AlignCenter);
+    probableWordsTable->setItem(r, 1, probItem);
 
     QTableWidgetItem *entItem =
-        new QTableWidgetItem(QString::number(guess.ent, 'f', 3));
+        new QTableWidgetItem(formatRoundedNum(guess.ent));
     entItem->setTextAlignment(Qt::AlignCenter);
-    probableWordsTable->setItem(r, 3, entItem);
+    probableWordsTable->setItem(r, 2, entItem);
 
-    QTableWidgetItem *probItem = new QTableWidgetItem(
-        QString::number(guess.probability * 100.0, 'f', 2) + "%");
-    probItem->setTextAlignment(Qt::AlignCenter);
-    probableWordsTable->setItem(r, 4, probItem);
+    QTableWidgetItem *wntItem =
+        new QTableWidgetItem(formatRoundedNum(guess.wnt));
+    wntItem->setTextAlignment(Qt::AlignCenter);
+    probableWordsTable->setItem(r, 3, wntItem);
 
-    if (guess.probability >= 1.0) {
-      for (int col = 0; col < 5; ++col) {
-        probableWordsTable->item(r, col)->setBackground(QColor(144, 238, 144));
-        probableWordsTable->item(r, col)->setForeground(QColor(0, 0, 0));
-      }
-    } else if (guess.probability > 0.0) {
-      for (int col = 0; col < 5; ++col) {
-        probableWordsTable->item(r, col)->setBackground(QColor(255, 255, 153));
-        probableWordsTable->item(r, col)->setForeground(QColor(0, 0, 0));
-      }
-    }
+    applyProbabilityRowColors(probableWordsTable, r, 4, guess.probability);
   }
 
-  lastProbableResults.clear();
-  lastProbableResults.reserve(probable.size());
-  for (auto &p : probable)
-    lastProbableResults.push_back(p.second);
+  lastProbableResults = std::move(probable);
+
+  // Tab titles match frontend naming
+  ui->resultsTabWidget->setTabText(
+      0, QString("Suggested Guesses (%1)").arg(allResultsTable->rowCount()));
+  ui->resultsTabWidget->setTabText(
+      1, QString("Possible Words (%1)").arg(probableWordsTable->rowCount()));
 }
 
 void WordleWidget::solveWordle() {

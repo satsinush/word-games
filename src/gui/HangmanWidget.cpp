@@ -30,6 +30,7 @@ HangmanWidget::HangmanWidget(QWidget *parent)
   config.maxDepth = 1;
   config.autoDepth = true;
   config.excludeUncommonWords = true;
+  config.maxGuesses = 6;
   config.wordPatterns = {{"____"}}; // Default: single 4-letter word
 
   // Setup the input widgets
@@ -208,6 +209,11 @@ bool HangmanWidget::showConfigDialog() {
   connect(autoDepthCheckBox, &QCheckBox::toggled, depthSpinBox,
           [depthSpinBox](bool checked) { depthSpinBox->setEnabled(!checked); });
 
+  QSpinBox *maxGuessesSpinBox = new QSpinBox(&dialog);
+  maxGuessesSpinBox->setRange(1, 100);
+  maxGuessesSpinBox->setValue(static_cast<int>(config.maxGuesses));
+  formLayout->addRow("Maximum Strikes Allowed:", maxGuessesSpinBox);
+
   // Exclude uncommon words
   QCheckBox *excludeUncommonCheckBox = new QCheckBox(&dialog);
   excludeUncommonCheckBox->setChecked(config.excludeUncommonWords);
@@ -226,6 +232,7 @@ bool HangmanWidget::showConfigDialog() {
   if (dialog.exec() == QDialog::Accepted) {
     config.autoDepth = autoDepthCheckBox->isChecked();
     config.maxDepth = static_cast<uint8_t>(depthSpinBox->value());
+    config.maxGuesses = static_cast<uint32_t>(maxGuessesSpinBox->value());
     config.excludeUncommonWords = excludeUncommonCheckBox->isChecked();
     return true;
   }
@@ -244,6 +251,10 @@ void HangmanWidget::initGame() {
   // Clear tables
   ui->letterSuggestionsTable->setRowCount(0);
   ui->possibleWordsTable->setRowCount(0);
+
+  // Reset tab titles to match frontend
+  ui->resultsTabWidget->setTabText(0, "Letter Suggestions");
+  ui->resultsTabWidget->setTabText(1, "Possible Words");
 
   // Update guessed label
   ui->guessedLabel->setText("Known Letters: (none)");
@@ -267,8 +278,10 @@ void HangmanWidget::updateConfigInfo() {
       QString::fromStdString(Hangman::patternsToString(config.wordPatterns));
   QString depthStr =
       config.autoDepth ? QString("auto") : QString::number(config.maxDepth);
-  QString info =
-      QString("Pattern: %1 | Depth: %2").arg(patternStr).arg(depthStr);
+  QString info = QString("Pattern: %1 | Depth: %2 | Max strikes: %3")
+                     .arg(patternStr)
+                     .arg(depthStr)
+                     .arg(config.maxGuesses);
   ui->configInfoLabel->setText(info);
 }
 
@@ -334,7 +347,12 @@ void HangmanWidget::onSettings() {
 }
 
 void HangmanWidget::populateResults(int maxRows) {
-  // Populate letter suggestions table
+  // Match frontend columns: Letter | Probability | ENT | WNT
+  ui->letterSuggestionsTable->setColumnCount(4);
+  ui->letterSuggestionsTable->setHorizontalHeaderLabels(
+      {QStringLiteral("Letter"), QStringLiteral("Probability"),
+       QStringLiteral("ENT"), QStringLiteral("WNT")});
+
   ui->letterSuggestionsTable->setRowCount(0);
   int letterCount =
       std::min(maxRows, static_cast<int>(lastResult.sortedGuesses.size()));
@@ -343,31 +361,31 @@ void HangmanWidget::populateResults(int maxRows) {
   for (int i = 0; i < letterCount; ++i) {
     const auto &guess = lastResult.sortedGuesses[i];
 
-    // Rank
-    QTableWidgetItem *rankItem = new QTableWidgetItem(QString::number(i + 1));
-    rankItem->setTextAlignment(Qt::AlignCenter);
-    ui->letterSuggestionsTable->setItem(i, 0, rankItem);
-
-    // Letter
     QTableWidgetItem *letterItem =
         new QTableWidgetItem(QString(QChar(std::toupper(guess.letter))));
     letterItem->setTextAlignment(Qt::AlignCenter);
     QFont font = letterItem->font();
     font.setBold(true);
     letterItem->setFont(font);
-    ui->letterSuggestionsTable->setItem(i, 1, letterItem);
+    ui->letterSuggestionsTable->setItem(i, 0, letterItem);
 
-    // ENT Score
+    QTableWidgetItem *probItem =
+        new QTableWidgetItem(formatProbabilityPercent(guess.probability));
+    probItem->setTextAlignment(Qt::AlignCenter);
+    ui->letterSuggestionsTable->setItem(i, 1, probItem);
+
     QTableWidgetItem *entItem =
-        new QTableWidgetItem(QString::number(guess.ent, 'f', 3));
+        new QTableWidgetItem(formatRoundedNum(guess.ent));
     entItem->setTextAlignment(Qt::AlignCenter);
     ui->letterSuggestionsTable->setItem(i, 2, entItem);
 
-    // Probability
-    QTableWidgetItem *probItem = new QTableWidgetItem(
-        QString::number(guess.probability * 100.0, 'f', 1) + "%");
-    probItem->setTextAlignment(Qt::AlignCenter);
-    ui->letterSuggestionsTable->setItem(i, 3, probItem);
+    QTableWidgetItem *wntItem =
+        new QTableWidgetItem(formatRoundedNum(guess.wnt));
+    wntItem->setTextAlignment(Qt::AlignCenter);
+    ui->letterSuggestionsTable->setItem(i, 3, wntItem);
+
+    applyProbabilityRowColors(ui->letterSuggestionsTable, i, 4,
+                              guess.probability);
   }
 
   // Evenly space columns

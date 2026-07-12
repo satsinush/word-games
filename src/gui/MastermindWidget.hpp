@@ -108,8 +108,9 @@ private:
   void setUIEnabled(bool enabled) override;
   void updateConfigInfo() override;
   void rebuildFeedbackList();
+  bool submitPattern();
   void solveMastermind();
-  // Populate both result tables (All Results and Possible Results)
+  // Populate both result tables (Suggested Guesses and Possible Patterns)
   void populateResults(int maxRows = 1000);
 
   // Cached results for table click handling

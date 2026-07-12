@@ -85,7 +85,7 @@
    <item>
     <widget class="QPushButton" name="submitBtn">
      <property name="text">
-      <string>Add Word</string>
+      <string>Add &amp; Solve</string>
      </property>
     </widget>
    </item>
@@ -103,7 +103,7 @@
      </property>
      <widget class="QWidget" name="allResultsTab">
       <attribute name="title">
-       <string>All Suggestions</string>
+       <string>Suggested Guesses</string>
       </attribute>
       <layout class="QVBoxLayout" name="allResultsTabLayout">
        <item>
@@ -154,7 +154,7 @@
      </widget>
      <widget class="QWidget" name="probableWordsTab">
       <attribute name="title">
-       <string>Possible Solutions</string>
+       <string>Possible Words</string>
       </attribute>
       <layout class="QVBoxLayout" name="probableWordsTabLayout">
        <item>

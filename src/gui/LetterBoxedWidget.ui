@@ -159,6 +159,16 @@
        <string>Words</string>
       </property>
      </column>
+     <column>
+      <property name="text">
+       <string>Letters</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
+       <string>Unique</string>
+      </property>
+     </column>
     </widget>
    </item>
   </layout>

@@ -192,12 +192,14 @@ LetterBoxedWidget::LetterBoxedWidget(QWidget *parent)
   // Set initial state
   gameInitialized = true;
 
-  // Default to preset 2 (Fast)
+  // Default to frontend preset 1 (Default)
+  currentPreset = 1;
   config.maxDepth = 2;
-  config.minWordLength = 4;
-  config.minUniqueLetters = 3;
+  config.minWordLength = 3;
+  config.minUniqueLetters = 2;
   config.pruneRedundantPaths = true;
-  config.pruneDominatedClasses = true;
+  config.pruneDominatedClasses = false;
+  config.excludeUncommonWords = true;
 
   // Create the letter box visualization in the container from UI
   QWidget *letterBoxContainer = ui->letterBoxContainer;
@@ -217,8 +219,8 @@ void LetterBoxedWidget::newGame() { onNewGame(); }
 
 bool LetterBoxedWidget::showConfigDialog() {
   QDialog dialog(this);
-  dialog.setWindowTitle("Solver Configuration");
-  dialog.setMinimumWidth(300);
+  dialog.setWindowTitle("Letter Boxed Settings");
+  dialog.setMinimumWidth(320);
 
   QVBoxLayout *mainLayout = new QVBoxLayout(&dialog);
 
@@ -283,6 +285,11 @@ bool LetterBoxedWidget::showConfigDialog() {
   pruneClassesCheck->setChecked(config.pruneDominatedClasses);
   configLayout->addRow(pruneClassesCheck);
 
+  QCheckBox *excludeUncommonCheck =
+      new QCheckBox("Exclude Uncommon Words", &dialog);
+  excludeUncommonCheck->setChecked(config.excludeUncommonWords);
+  configLayout->addRow(excludeUncommonCheck);
+
   mainLayout->addWidget(configWidget);
 
   // Function to update config display and enable/disable based on preset
@@ -293,6 +300,7 @@ bool LetterBoxedWidget::showConfigDialog() {
     minUniqueLettersSpin->setEnabled(isCustom);
     prunePathsCheck->setEnabled(isCustom);
     pruneClassesCheck->setEnabled(isCustom);
+    // excludeUncommon always editable (matches frontend)
 
     if (presetId == 1) {
       // Default
@@ -313,7 +321,7 @@ bool LetterBoxedWidget::showConfigDialog() {
       maxDepthSpin->setValue(3);
       minWordLengthSpin->setValue(3);
       minUniqueLettersSpin->setValue(2);
-      prunePathsCheck->setChecked(true);
+      prunePathsCheck->setChecked(false);
       pruneClassesCheck->setChecked(false);
     }
   };
@@ -341,6 +349,7 @@ bool LetterBoxedWidget::showConfigDialog() {
     config.minUniqueLetters = minUniqueLettersSpin->value();
     config.pruneRedundantPaths = prunePathsCheck->isChecked();
     config.pruneDominatedClasses = pruneClassesCheck->isChecked();
+    config.excludeUncommonWords = excludeUncommonCheck->isChecked();
 
     return true;
   }
@@ -370,13 +379,14 @@ void LetterBoxedWidget::setUIEnabled(bool enabled) {
 void LetterBoxedWidget::updateConfigInfo() {
   QString info;
   info = QString("<span style='color:#666; font-size:11pt;'>Max depth: %1 | "
-                 "Prune paths: %2 | Prune classes: %3 | Min unique letters: %4 "
-                 "| Min word length: %5</span>")
+                 "Prune paths: %2 | Prune classes: %3 | Min unique: %4 | "
+                 "Min length: %5 | %6</span>")
              .arg(config.maxDepth)
              .arg(config.pruneRedundantPaths ? "Yes" : "No")
              .arg(config.pruneDominatedClasses ? "Yes" : "No")
              .arg(config.minUniqueLetters)
-             .arg(config.minWordLength);
+             .arg(config.minWordLength)
+             .arg(config.excludeUncommonWords ? "Common words" : "All words");
   configInfoLabel->setText(info);
 }
 
@@ -407,42 +417,47 @@ void LetterBoxedWidget::populateResults(int maxRows) {
     return;
   }
 
-  // Show top maxRows solutions
+  // Match frontend: Solution | Words | Letters | Unique
+  if (resultsTable->columnCount() < 4) {
+    resultsTable->setColumnCount(4);
+    resultsTable->setHorizontalHeaderLabels(
+        {QStringLiteral("Solution"), QStringLiteral("Words"),
+         QStringLiteral("Letters"), QStringLiteral("Unique")});
+  }
+
   int limit = std::min(maxRows, static_cast<int>(solutions.size()));
   resultsTable->setRowCount(limit);
 
   for (int i = 0; i < limit; ++i) {
     const auto &solution = solutions[i];
+    QString lettersOnly = text;
+    lettersOnly.remove(QChar(' '));
 
-    // Solution text column
-    QTableWidgetItem *solutionItem =
-        new QTableWidgetItem(QString::fromStdString(solution.text).toUpper());
+    QTableWidgetItem *solutionItem = new QTableWidgetItem(text);
     QFont monoFont("Consolas", 10);
     monoFont.setBold(true);
     solutionItem->setFont(monoFont);
-    solutionItem->setTextAlignment(Qt::AlignCenter);
     resultsTable->setItem(i, 0, solutionItem);
 
-    // Word count column
-    QTableWidgetItem *countItem =
+    QTableWidgetItem *wordsItem =
         new QTableWidgetItem(QString::number(solution.wordCount));
-    countItem->setTextAlignment(Qt::AlignCenter);
-    resultsTable->setItem(i, 1, countItem);
+    wordsItem->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
+    resultsTable->setItem(i, 1, wordsItem);
 
-    // Color code by word count
-    QColor bgColor;
-    if (solution.wordCount <= 2) {
-      bgColor = QColor(106, 170, 100); // Green for 2-word or fewer solutions
-    } else if (solution.wordCount == 3) {
-      bgColor = QColor(201, 180, 88); // Yellow for 3-word solutions
-    } else {
-      bgColor = QColor(120, 124, 126); // Grey for 4+ words
-    }
+    QTableWidgetItem *lettersItem =
+        new QTableWidgetItem(QString::number(lettersOnly.size()));
+    lettersItem->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
+    resultsTable->setItem(i, 2, lettersItem);
 
-    for (int col = 0; col < 2; ++col) {
-      resultsTable->item(i, col)->setBackground(bgColor);
-      resultsTable->item(i, col)->setForeground(Qt::white);
+    std::set<QChar> unique;
+    for (QChar c : lettersOnly.toLower()) {
+      if (c.isLetter())
+        unique.insert(c);
     }
+    QTableWidgetItem *uniqueItem =
+        new QTableWidgetItem(QString::number(static_cast<int>(unique.size())));
+    uniqueItem->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
+    resultsTable->setItem(i, 3, uniqueItem);
   }
 }
 

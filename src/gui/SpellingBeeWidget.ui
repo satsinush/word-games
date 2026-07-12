@@ -191,6 +191,11 @@
      </column>
      <column>
       <property name="text">
+       <string>Length</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
        <string>Unique Letters</string>
       </property>
      </column>

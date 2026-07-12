@@ -121,7 +121,7 @@ private:
   void setUIEnabled(bool enabled) override;
   void updateConfigInfo() override;
   void setupCurrentPattern();
-  void submitCurrentPattern();
+  bool submitCurrentPattern();
   void submitCurrentSolution();
   void rebuildFeedbackHistory();
   void rebuildSolutionHistory();

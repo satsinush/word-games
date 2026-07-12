@@ -16,6 +16,7 @@
 #include <QSizePolicy>
 #include <QWidget>
 #include <algorithm>
+#include <cctype>
 #include <cmath>
 #include <random>
 #include <set>
@@ -69,10 +70,11 @@ SpellingBeeWidget::SpellingBeeWidget(QWidget *parent)
   // Remove input length limit
   ui->inputField->setMaxLength(100);
 
-  // Initialize config
+  // Initialize config (defaults match frontend)
   config.validLettersMap.fill(false);
   config.mustIncludeFirstLetter = true;
   config.reuseLetters = true;
+  config.excludeUncommonWords = true;
 
   // Store reference to config info label
   configInfoLabel = ui->configInfoLabel;
@@ -120,7 +122,7 @@ void SpellingBeeWidget::newGame() { onNewGame(); }
 bool SpellingBeeWidget::showConfigDialog() {
   // Show configuration dialog
   QDialog dialog(this);
-  dialog.setWindowTitle("Spelling Bee Solver Configuration");
+  dialog.setWindowTitle("Spelling Bee Settings");
   dialog.setMinimumWidth(300);
 
   QVBoxLayout *layout = new QVBoxLayout(&dialog);
@@ -131,15 +133,15 @@ bool SpellingBeeWidget::showConfigDialog() {
   excludeCheckbox->setChecked(config.excludeUncommonWords);
   formLayout->addRow("Exclude Uncommon Words:", excludeCheckbox);
 
-  // Must Include First Letter
+  // Must Include First Letter (center letter on frontend)
   QCheckBox *mustIncludeFirstCheckbox = new QCheckBox(&dialog);
   mustIncludeFirstCheckbox->setChecked(config.mustIncludeFirstLetter);
-  formLayout->addRow("Must Include First Letter:", mustIncludeFirstCheckbox);
+  formLayout->addRow("Must Include Center Letter:", mustIncludeFirstCheckbox);
 
   // Reuse Letters
   QCheckBox *reuseLettersCheckbox = new QCheckBox(&dialog);
   reuseLettersCheckbox->setChecked(config.reuseLetters);
-  formLayout->addRow("Allow Reuse of Letters:", reuseLettersCheckbox);
+  formLayout->addRow("Allow Letter Reuse:", reuseLettersCheckbox);
 
   layout->addLayout(formLayout);
 
@@ -246,40 +248,54 @@ void SpellingBeeWidget::populateResults(int maxRows) {
   if (solutions.empty()) {
     return;
   }
+
+  // Match frontend: Word | Length | Unique Letters
+  if (resultsTable->columnCount() < 3) {
+    resultsTable->setColumnCount(3);
+    resultsTable->setHorizontalHeaderLabels(
+        {QStringLiteral("Word"), QStringLiteral("Length"),
+         QStringLiteral("Unique Letters")});
+  }
+
   int limit = std::min(maxRows, static_cast<int>(solutions.size()));
   resultsTable->setRowCount(limit);
+
+  const int puzzleUnique = static_cast<int>([&]() {
+    std::set<char> uniq;
+    for (char c : config.allLetters)
+      uniq.insert(static_cast<char>(std::tolower(static_cast<unsigned char>(c))));
+    return uniq.size();
+  }());
 
   for (int i = 0; i < limit; ++i) {
     const auto &word = solutions[i];
 
-    // Word column
     QTableWidgetItem *wordItem =
         new QTableWidgetItem(QString::fromStdString(word.wordString).toUpper());
     QFont monoFont("Consolas", 10);
     monoFont.setBold(true);
     wordItem->setFont(monoFont);
-    wordItem->setTextAlignment(Qt::AlignCenter);
     resultsTable->setItem(i, 0, wordItem);
 
-    // Unique Letters column
+    QTableWidgetItem *lengthItem =
+        new QTableWidgetItem(QString::number(
+            static_cast<int>(word.wordString.size())));
+    lengthItem->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
+    resultsTable->setItem(i, 1, lengthItem);
+
     QTableWidgetItem *lettersItem =
         new QTableWidgetItem(QString::number(word.uniqueLetters));
-    lettersItem->setTextAlignment(Qt::AlignCenter);
-    resultsTable->setItem(i, 1, lettersItem);
+    lettersItem->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
+    resultsTable->setItem(i, 2, lettersItem);
 
-    // Color code by unique letters
-    QColor bgColor;
-    if (word.uniqueLetters == 7) {
-      bgColor = QColor(106, 170, 100); // Green
-    } else if (word.uniqueLetters >= 5) {
-      bgColor = QColor(201, 180, 88); // Yellow
-    } else {
-      bgColor = QColor(120, 124, 126); // Grey
-    }
-
-    for (int col = 0; col < 2; ++col) {
-      resultsTable->item(i, col)->setBackground(bgColor);
-      resultsTable->item(i, col)->setForeground(Qt::white);
+    // Pangrams only (match frontend yellow highlight)
+    const bool isPangram =
+        puzzleUnique > 0 && word.uniqueLetters == puzzleUnique;
+    if (isPangram) {
+      const QColor pangramBg(255, 235, 59, 38); // ~15% yellow
+      for (int col = 0; col < 3; ++col) {
+        resultsTable->item(i, col)->setBackground(pangramBg);
+      }
     }
   }
 }

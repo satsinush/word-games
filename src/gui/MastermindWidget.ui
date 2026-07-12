@@ -82,7 +82,7 @@
    <item>
     <widget class="QPushButton" name="submitBtn">
      <property name="text">
-      <string>Add Pattern</string>
+      <string>Add &amp; Solve</string>
      </property>
     </widget>
    </item>
@@ -123,7 +123,7 @@
      </property>
      <widget class="QWidget" name="allTab">
       <attribute name="title">
-       <string>All Suggestions</string>
+       <string>Suggested Guesses</string>
       </attribute>
       <layout class="QVBoxLayout" name="allTabLayout">
        <item>
@@ -145,12 +145,12 @@
          </attribute>
          <column>
           <property name="text">
-           <string>Rank</string>
+           <string>Pattern</string>
           </property>
          </column>
          <column>
           <property name="text">
-           <string>Pattern</string>
+           <string>Probability</string>
           </property>
          </column>
          <column>
@@ -160,7 +160,7 @@
          </column>
          <column>
           <property name="text">
-           <string>Probability</string>
+           <string>WNT</string>
           </property>
          </column>
         </widget>
@@ -169,7 +169,7 @@
      </widget>
      <widget class="QWidget" name="possibleTab">
       <attribute name="title">
-       <string>Possible Answers</string>
+       <string>Possible Patterns</string>
       </attribute>
       <layout class="QVBoxLayout" name="possibleTabLayout">
        <item>
@@ -191,12 +191,12 @@
          </attribute>
          <column>
           <property name="text">
-           <string>Rank</string>
+           <string>Pattern</string>
           </property>
          </column>
          <column>
           <property name="text">
-           <string>Pattern</string>
+           <string>Probability</string>
           </property>
          </column>
          <column>
@@ -206,7 +206,7 @@
          </column>
          <column>
           <property name="text">
-           <string>Probability</string>
+           <string>WNT</string>
           </property>
          </column>
         </widget>

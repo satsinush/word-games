@@ -131,22 +131,22 @@
          </attribute>
          <column>
           <property name="text">
-           <string>Rank</string>
-          </property>
-         </column>
-         <column>
-          <property name="text">
            <string>Letter</string>
           </property>
          </column>
          <column>
           <property name="text">
-           <string>ENT Score</string>
+           <string>Probability</string>
           </property>
          </column>
          <column>
           <property name="text">
-           <string>In Word %</string>
+           <string>ENT</string>
+          </property>
+         </column>
+         <column>
+          <property name="text">
+           <string>WNT</string>
           </property>
          </column>
         </widget>
@@ -155,7 +155,7 @@
      </widget>
      <widget class="QWidget" name="possibleWordsTab">
       <attribute name="title">
-       <string>Possible Phrases</string>
+       <string>Possible Words</string>
       </attribute>
       <layout class="QVBoxLayout" name="possibleWordsTabLayout">
        <item>
