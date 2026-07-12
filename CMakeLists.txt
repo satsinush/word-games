@@ -126,7 +126,7 @@ endif()
 # ===================================================================
 if(BUILD_GUI)
     message(STATUS "GUI build enabled.")
-    find_package(Qt6 COMPONENTS Widgets REQUIRED)
+    find_package(Qt6 COMPONENTS Widgets Svg REQUIRED)
 
     file(GLOB_RECURSE GUI_SRCS CONFIGURE_DEPENDS
         "${CMAKE_SOURCE_DIR}/src/gui/*.cpp"
@@ -136,7 +136,7 @@ if(BUILD_GUI)
     add_library(p++-gui STATIC ${GUI_SRCS})
     target_include_directories(p++-gui PUBLIC ${CMAKE_SOURCE_DIR}/src)
     set_target_properties(p++-gui PROPERTIES AUTOMOC ON AUTOUIC ON AUTORCC ON)
-    target_link_libraries(p++-gui PUBLIC Qt6::Widgets)
+    target_link_libraries(p++-gui PUBLIC Qt6::Widgets Qt6::Svg)
     target_compile_definitions(p++-gui PUBLIC WITH_GUI)
 endif()
 
