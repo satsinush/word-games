@@ -54,7 +54,7 @@ void CharacterSlot::setCharacter(int charId) {
       return static_cast<char>(std::tolower(c));
     });
     QString path = QString::fromStdString(
-        Utils::getResourceFile("dungleon/" + name + ".png"));
+        Utils::getResourceFile("dungleon_characters/" + name + ".png"));
     QPixmap icon(path);
     if (!icon.isNull()) {
       // FIX: Get/create a child label for the icon
@@ -117,7 +117,7 @@ void CharacterSlot::setColor(int color) {
 
         // Load pixmap
         QPixmap plusIcon(QString::fromStdString(
-            Utils::getResourceFile("dungleon/plus.png")));
+            Utils::getResourceFile("dungleon_characters/plus.png")));
         if (!plusIcon.isNull()) {
           badge->setPixmap(plusIcon.scaled(14, 14, Qt::KeepAspectRatio,
                                            Qt::SmoothTransformation));
@@ -394,7 +394,7 @@ DungleonWidget::DungleonWidget(QWidget *parent)
       return static_cast<char>(std::tolower(c));
     });
     QString path = QString::fromStdString(
-        Utils::getResourceFile("dungleon/" + name + ".png"));
+        Utils::getResourceFile("dungleon_characters/" + name + ".png"));
     QPixmap icon(path);
     if (!icon.isNull()) {
       btn->setIcon(QIcon(icon));
@@ -979,7 +979,7 @@ void DungleonWidget::populateResults(int maxRows) {
                        return static_cast<char>(std::tolower(c));
                      });
       QString iconPath = QString::fromStdString(
-          Utils::getResourceFile("dungleon/" + name + ".png"));
+          Utils::getResourceFile("dungleon_characters/" + name + ".png"));
       QPixmap icon(iconPath);
       if (!icon.isNull()) {
         charLabel->setPixmap(

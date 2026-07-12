@@ -178,4 +178,4 @@ All third-party dependencies are automatically fetched during the CMake build pr
 
 ### Game Assets
 
-  * **Dungleon Images**: The character and item images in `resources/dungleon/` are sourced from the official [Dungleon website](https://www.dungleon.com/) and are used in this puzzle solver implementation.
+  * **Dungleon Images**: The character and item images in `resources/dungleon_characters/` are sourced from the official [Dungleon website](https://www.dungleon.com/) and are used in this puzzle solver implementation.

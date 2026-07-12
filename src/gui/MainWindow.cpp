@@ -69,12 +69,12 @@ MainWindow::MainWindow(QWidget *parent)
   sidebarButtonGroup->addButton(ui->btnHangman, 5);
   sidebarButtonGroup->setExclusive(true);
 
-  applySidebarIcon(ui->btnWordle, "wordle-icon.svg");
-  applySidebarIcon(ui->btnSpellingBee, "spelling-bee-icon.svg");
-  applySidebarIcon(ui->btnLetterBoxed, "letter-boxed-icon.svg");
-  applySidebarIcon(ui->btnMastermind, "mastermind-icon.svg");
-  applySidebarIcon(ui->btnDungleon, "dungleon-icon.png", /*pixelated=*/true);
-  applySidebarIcon(ui->btnHangman, "hangman-icon.svg");
+  applySidebarIcon(ui->btnWordle, "wordle_icon.svg");
+  applySidebarIcon(ui->btnSpellingBee, "spelling_bee_icon.svg");
+  applySidebarIcon(ui->btnLetterBoxed, "letter_boxed_icon.svg");
+  applySidebarIcon(ui->btnMastermind, "mastermind_icon.svg");
+  applySidebarIcon(ui->btnDungleon, "dungleon_icon.png", /*pixelated=*/true);
+  applySidebarIcon(ui->btnHangman, "hangman_icon.svg");
 
   // Create and add game widgets to the stacked widget
   wordleWidget = new WordleWidget(this);
