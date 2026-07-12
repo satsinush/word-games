@@ -88,8 +88,8 @@ bool matchesPattern(const Utils::Word &word, const WordPattern &pattern, const s
     revealedLetters.insert(letter);
   }
 
-  // Crucial Fix: If a letter is revealed locally or globally,
-  // it cannot hide in an unrevealed ('_') position in this word slot.
+  // If a letter is revealed locally or globally, it cannot hide in an
+  // unrevealed (non-letter) position in this word slot.
   for (size_t i = 0; i < word.wordString.length(); ++i) {
     char c = static_cast<char>(std::tolower(word.wordString[i]));
     if (revealedLetters.count(c) > 0) {
@@ -473,7 +473,7 @@ protected:
     size_t unrevealedCount = 0;
     for (const auto &pattern : this->config.wordPatterns) {
       for (char c : pattern.pattern) {
-        if (c == '_') {
+        if (isUnknownChar(c)) {
           unrevealedCount++;
         }
       }

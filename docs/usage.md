@@ -79,8 +79,8 @@ The program can be launched in three ways:
       * **Search Depth:** `0` (Fast), `1` (Balanced), `2+` (High Accuracy).
       * **Exclude Uncommon:** Filter non-Scrabble words from suggestions.
 2.  **Playing:**
-      * Enter the word pattern using `?` for unknown letters and actual letters for revealed positions.
-      * For multi-word phrases, separate patterns with spaces (e.g., `?A?? ??? ?????`).
+      * Enter the word pattern using `_` for unknown letters and actual letters for revealed positions.
+      * For multi-word phrases, separate patterns with spaces (e.g., `_A__ ___ _____`).
       * Add guessed letters and mark whether they appear in the word (✓) or not (✗).
       * Click **Solve** to get the best letter suggestions.
 3.  **Results Table:**
@@ -233,11 +233,11 @@ Generates entropy-based letter suggestions for Hangman puzzles.
 **Options:**
 
   * `--input <string>`: Combined pattern and strikes in format `"PATTERN;STRIKES"`.
-      * **Format:** `"?A?? ???;xyz"` where pattern is before `;` and strikes (letters NOT in phrase) are after.
-      * **Example:** `"?A?? ???;etxzq"` (two words with 'A' revealed, and letters e, t, x, z, q are not in the phrase).
-  * `--pattern <string>`: Word pattern(s) using `?` for unknown letters and actual letters for revealed positions (alternative to `--input`).
-      * **Single word:** `"?A???"` (5-letter word with 'A' in position 2).
-      * **Multi-word phrase:** `"???? ??? ?????"` (three words of lengths 4, 3, and 5).
+      * **Format:** `"_A__ ___;xyz"` where pattern is before `;` and strikes (letters NOT in phrase) are after.
+      * **Example:** `"_A__ ___;etxzq"` (two words with 'A' revealed, and letters e, t, x, z, q are not in the phrase).
+  * `--pattern <string>`: Word pattern(s) using `_` for unknown letters and actual letters for revealed positions (alternative to `--input`).
+      * **Single word:** `"_A___"` (5-letter word with 'A' in position 2).
+      * **Multi-word phrase:** `"____ ___ _____"` (three words of lengths 4, 3, and 5).
   * `--strikes <string>`: Letters that are NOT in the word/phrase (alternative to `--input`).
       * **Example:** `"etxzq"` (letters e, t, x, z, q have been guessed and are not in the word).
   * `--max-depth <0-2>`: Search depth for entropy calculation. (Default: `0`).
@@ -286,17 +286,26 @@ Reads and displays results from a generated file.
 
 ## Benchmarking
 
-**Runtime Benchmark:**
+Benchmarks are a separate `p++-benchmarks` binary (Google Benchmark), built when `BUILD_BENCHMARKS` is enabled. Debug presets such as `linux-debug`, `mingw-debug`, and `msvc-debug` turn this on by default.
 
 ```bash
-./p++ --benchmark runtime <mode> [--iterations <n>] [--verbose]
+# Configure and build (example: linux-debug)
+cmake --preset linux-debug
+cmake --build --preset linux-debug
+
+# Run all solver benchmarks
+./build/linux-debug/p++-benchmarks
+
+# Report times in milliseconds
+./build/linux-debug/p++-benchmarks --benchmark_time_unit=ms
+
+# Run a specific benchmark by name filter
+./build/linux-debug/p++-benchmarks --benchmark_filter=BM_Wordle
 ```
 
-**Performance Benchmark (Wordle only):**
+On Windows MinGW builds, use `./build/mingw-debug/p++-benchmarks.exe` instead.
 
-```bash
-./p++ --benchmark performance <mode> [--verbose]
-```
+Covered solvers: Wordle, Spelling Bee, Letter Boxed, Mastermind, Dungleon, and Hangman.
 
 -----
 
@@ -329,7 +338,7 @@ mastermind --guesses "RGBC 1 2;MYRC 1 2" --pegs 4 --colors "RGBCMY" --allow-dupl
 **Hangman:**
 
 ```bash
-hangman --input "?A??? ???;etz" --max-depth 1 --exclude-uncommon-words true -o results/hangman.txt
+hangman --input "_A___ ___;etz" --max-depth 1 --exclude-uncommon-words true -o results/hangman.txt
 ```
 
 **Dungleon:**

@@ -289,15 +289,7 @@ void HangmanWidget::onPatternChanged() {
     return; // Silently ignore invalid patterns
   }
 
-  // Validate patterns (only _ and letters allowed)
-  for (const auto &pattern : newPatterns) {
-    for (char c : pattern.pattern) {
-      if (c != '_' && !std::isalpha(static_cast<unsigned char>(c))) {
-        return; // Silently ignore invalid characters
-      }
-    }
-  }
-
+  // Letters are revealed; any non-letter is treated as unknown
   config.wordPatterns = newPatterns;
   rebuildFeedbackFromInputs();
   updateConfigInfo();
@@ -418,7 +410,7 @@ void HangmanWidget::populateResults(int maxRows) {
       0,
       QString("Letter Suggestions (%1)").arg(lastResult.sortedGuesses.size()));
   ui->resultsTabWidget->setTabText(
-      1, QString("Possible Words (%1)").arg(lastResult.totalPossibleWords));
+      1, QString("Possible Words (%1)").arg(lastResult.possibleWords.size()));
 }
 
 void HangmanWidget::solveHangman() {
@@ -474,7 +466,7 @@ void HangmanWidget::onSolverFinished() {
 
   setUIEnabled(true);
 
-  if (lastResult.totalPossibleWords == 0) {
+  if (lastResult.possibleWords.empty()) {
     QMessageBox::information(this, "No Matches",
                              "No words match the given constraints.");
     return;

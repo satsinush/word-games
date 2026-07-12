@@ -1,5 +1,6 @@
 #pragma once
 #include <bitset>
+#include <cctype>
 #include <cmath>
 #include <string>
 #include <vector>
@@ -13,6 +14,12 @@ namespace Hangman {
 
 struct Feedback; // forward declaration so Config can reference Feedback
 
+// True for unknown blanks. Letters are revealed; any non-letter (e.g. '_') is
+// unknown. Prefer '_' in UI/docs; other non-letters are accepted the same way.
+inline bool isUnknownChar(char c) {
+  return !std::isalpha(static_cast<unsigned char>(c));
+}
+
 // Represents a word pattern like "_A__" where _ is unknown, letters are
 // revealed
 struct WordPattern {
@@ -24,7 +31,7 @@ struct WordPattern {
     std::vector<std::pair<size_t, char>> revealed;
     for (size_t i = 0; i < pattern.length(); ++i) {
       char c = pattern[i];
-      if (c != '_' && std::isalpha(static_cast<unsigned char>(c))) {
+      if (!isUnknownChar(c)) {
         revealed.emplace_back(i, static_cast<char>(std::tolower(c)));
       }
     }

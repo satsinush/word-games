@@ -85,7 +85,7 @@
    <item>
     <widget class="QLabel" name="instructionLabel">
      <property name="text">
-      <string>Enter pattern (use ? for unknown) and letters not in the word</string>
+      <string>Enter pattern (use _ for unknown) and letters not in the word</string>
      </property>
      <property name="alignment">
       <set>Qt::AlignCenter</set>

@@ -831,7 +831,7 @@ void DungleonWidget::onTableRowClicked(int row, int column) {
   Dungleon::Feedback fb;
   for (int i = 0; i < 5; ++i) {
     fb.pattern.characters[i] = pattern.characters[i];
-    fb.setColor(i, 0);
+    fb.setColor(i, Dungleon::Color::Red);
   }
   fb.pattern.computeCharacterCount();
 

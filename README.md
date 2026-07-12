@@ -107,7 +107,7 @@ If using the CLI, run the executable directly:
 ./p++ mastermind --guesses "RGBC 1 2" --pegs 4 --colors "RGBCMY"
 
 # Hangman letter suggestions
-./p++ hangman --input "?A??? ???;etz"
+./p++ hangman --input "_A__ ___;etz"
 ```
 
 ## Running Tests
@@ -121,6 +121,29 @@ To run the unit tests, make sure you configure the build using a preset that has
 # Or run using CTest
 ctest --test-dir build/linux-debug
 ```
+
+## Running Benchmarks
+
+Benchmarks are built as a separate `p++-benchmarks` binary when `BUILD_BENCHMARKS` is enabled. Debug presets such as `linux-debug`, `mingw-debug`, and `msvc-debug` turn this on by default.
+
+```bash
+# Configure and build (example: linux-debug)
+cmake --preset linux-debug
+cmake --build --preset linux-debug
+
+# Run all solver benchmarks
+./build/linux-debug/p++-benchmarks
+
+# Report times in milliseconds
+./build/linux-debug/p++-benchmarks --benchmark_time_unit=ms
+
+# Run a specific benchmark by name filter
+./build/linux-debug/p++-benchmarks --benchmark_filter=BM_Wordle
+```
+
+On Windows MinGW builds, use `./build/mingw-debug/p++-benchmarks.exe` instead.
+
+Covered solvers: Wordle, Spelling Bee, Letter Boxed, Mastermind, Dungleon, and Hangman.
 
 ## Complete Documentation
 

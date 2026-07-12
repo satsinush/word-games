@@ -127,7 +127,8 @@ Dungleon:
 Hangman:
   %s hangman [OPTIONS]
     --input <pattern;strikes>  Combined input. Format: "_A__ ___;xyz"
-                                 Pattern uses '_' for unknown, letters for revealed
+                                 Pattern uses '_' for unknown (any non-letter
+                                 also works), letters for revealed
                                  Strikes are letters NOT in the phrase
     --pattern <pattern>        Word pattern(s). Format: "_A__ ___" (alternative to --input)
     --strikes <letters>        Letters NOT in phrase. Format: "xyz" (alternative to --input)

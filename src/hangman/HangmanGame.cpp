@@ -207,7 +207,7 @@ void HangmanGame::runCLI() {
   std::cout << "\n=== HANGMAN SOLVER ===\n";
   std::cout << "Format: PATTERN;STRIKES (e.g., '_A__ ___; xyz')\n";
   std::cout << "  - PATTERN: Use '_' for unknown letters, actual letters for "
-               "revealed positions\n";
+               "revealed (any non-letter is also treated as unknown)\n";
   std::cout << "  - STRIKES: Letters guessed that are NOT in the phrase\n";
   std::cout << "  - Separate multiple words with spaces\n";
   std::cout << "Commands: 'quit' to exit\n\n";
@@ -243,7 +243,8 @@ void HangmanGame::runCLI() {
       // Parse pattern
       config.wordPatterns = Hangman::parsePatternString(patternStr);
       if (config.wordPatterns.empty()) {
-        std::cout << "Invalid pattern. Use '_' for unknown letters.\n";
+        std::cout << "Invalid pattern. Use '_' for unknown letters "
+                     "(any non-letter is also accepted).\n";
         continue;
       }
 
