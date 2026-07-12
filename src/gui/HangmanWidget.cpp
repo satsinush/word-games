@@ -28,6 +28,7 @@ HangmanWidget::HangmanWidget(QWidget *parent)
 
   // Initialize config
   config.maxDepth = 1;
+  config.autoDepth = true;
   config.excludeUncommonWords = true;
   config.wordPatterns = {{"____"}}; // Default: single 4-letter word
 
@@ -188,13 +189,24 @@ bool HangmanWidget::showConfigDialog() {
 
   QFormLayout *formLayout = new QFormLayout(&dialog);
 
+  // Auto depth
+  QCheckBox *autoDepthCheckBox = new QCheckBox(&dialog);
+  autoDepthCheckBox->setChecked(config.autoDepth);
+  autoDepthCheckBox->setToolTip(
+      "Dynamically choose search depth based on available time.");
+  formLayout->addRow("Auto Depth (Recommended):", autoDepthCheckBox);
+
   // Max depth
   QSpinBox *depthSpinBox = new QSpinBox(&dialog);
   depthSpinBox->setRange(0, 2);
   depthSpinBox->setValue(config.maxDepth);
+  depthSpinBox->setEnabled(!config.autoDepth);
   depthSpinBox->setToolTip(
       "Search depth for ENT calculation (0-2). Higher = slower but smarter.");
-  formLayout->addRow("Search Depth:", depthSpinBox);
+  formLayout->addRow("Manual Search Depth:", depthSpinBox);
+
+  connect(autoDepthCheckBox, &QCheckBox::toggled, depthSpinBox,
+          [depthSpinBox](bool checked) { depthSpinBox->setEnabled(!checked); });
 
   // Exclude uncommon words
   QCheckBox *excludeUncommonCheckBox = new QCheckBox(&dialog);
@@ -212,6 +224,7 @@ bool HangmanWidget::showConfigDialog() {
   connect(buttonBox, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
 
   if (dialog.exec() == QDialog::Accepted) {
+    config.autoDepth = autoDepthCheckBox->isChecked();
     config.maxDepth = static_cast<uint8_t>(depthSpinBox->value());
     config.excludeUncommonWords = excludeUncommonCheckBox->isChecked();
     return true;
@@ -252,8 +265,10 @@ void HangmanWidget::setUIEnabled(bool enabled) {
 void HangmanWidget::updateConfigInfo() {
   QString patternStr =
       QString::fromStdString(Hangman::patternsToString(config.wordPatterns));
+  QString depthStr =
+      config.autoDepth ? QString("auto") : QString::number(config.maxDepth);
   QString info =
-      QString("Pattern: %1 | Depth: %2").arg(patternStr).arg(config.maxDepth);
+      QString("Pattern: %1 | Depth: %2").arg(patternStr).arg(depthStr);
   ui->configInfoLabel->setText(info);
 }
 

@@ -98,7 +98,8 @@ void MastermindGame::printResults(const Mastermind::Result &result,
   }
 
   std::cout << "Possible patterns remaining: " << result.totalPossiblePatterns
-            << "\n\n";
+            << "\n";
+  std::cout << "Search depth used: " << result.searchDepth << "\n\n";
 
   if (!result.sortedGuesses.empty()) {
     std::cout << "=== Best guesses ===\n";

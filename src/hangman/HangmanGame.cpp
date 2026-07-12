@@ -24,8 +24,12 @@ Hangman::Config HangmanGame::getConfigFromUser() {
     config.wordPatterns = {{"____"}};
   }
 
-  config.maxDepth = static_cast<uint8_t>(Utils::Input::promptInt(
-      "Search depth for ENT calculation (0-2)", 1, 0, 2));
+  config.autoDepth = Utils::Input::promptBool(
+      "Use auto-depth calculation (Recommended)?", true);
+  if (!config.autoDepth) {
+    config.maxDepth = static_cast<uint8_t>(Utils::Input::promptInt(
+        "Search depth for ENT calculation (0-2)", 1, 0, 2));
+  }
   config.excludeUncommonWords = Utils::Input::promptBool(
       "Exclude uncommon words from suggestions?", true);
   config.maxGuesses =
@@ -70,6 +74,7 @@ HangmanGame::getConfigFromArgs(const std::map<std::string, std::string> &args) {
 
   config.maxDepth =
       static_cast<uint8_t>(Utils::Input::getArgValue(args, "max-depth", 0));
+  config.autoDepth = Utils::Input::getArgValue(args, "auto-depth", false);
   config.excludeUncommonWords =
       Utils::Input::getArgValue(args, "exclude-uncommon-words", false);
   config.maxGuesses = Utils::Input::getArgValue(args, "max-guesses", 6);
@@ -98,10 +103,10 @@ void HangmanGame::printResults(const Hangman::Result &result) {
     return;
   }
 
-  std::cout << "Possible patterns (phrases) remaining: " << result.totalPossiblePatterns
-            << "\n";
-  std::cout << "Possible unique words: " << result.possibleWords.size()
-            << "\n";
+  std::cout << "Possible patterns (phrases) remaining: "
+            << result.totalPossiblePatterns << "\n";
+  std::cout << "Possible unique words: " << result.possibleWords.size() << "\n";
+  std::cout << "Search depth used: " << result.searchDepth << "\n";
 
   if (!result.sortedGuesses.empty()) {
     std::cout << "=== Best letter guesses ===\n";
@@ -146,7 +151,8 @@ void HangmanGame::printResults(const Hangman::Result &result) {
         std::cout << ", ";
     }
     if (result.totalPossiblePatterns > 20) {
-      std::cout << " ... and " << (result.totalPossiblePatterns - 20) << " more";
+      std::cout << " ... and " << (result.totalPossiblePatterns - 20)
+                << " more";
     }
     std::cout << "\n";
   }
@@ -185,6 +191,18 @@ void HangmanGame::saveResults(const Hangman::Result &result,
 
 void HangmanGame::runCLI() {
   Hangman::Config config;
+
+  std::cout << "\n=== HANGMAN SOLVER SETUP ===\n";
+  config.autoDepth = Utils::Input::promptBool(
+      "Use auto-depth calculation (Recommended)?", true);
+  if (!config.autoDepth) {
+    config.maxDepth = static_cast<uint8_t>(Utils::Input::promptInt(
+        "Search depth for ENT calculation (0-2)", 1, 0, 2));
+  }
+  config.excludeUncommonWords = Utils::Input::promptBool(
+      "Exclude uncommon words from suggestions?", true);
+  config.maxGuesses =
+      Utils::Input::promptInt("Maximum number of strikes allowed", 6, 1, 100);
 
   std::cout << "\n=== HANGMAN SOLVER ===\n";
   std::cout << "Format: PATTERN;STRIKES (e.g., '_A__ ___; xyz')\n";

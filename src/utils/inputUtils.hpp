@@ -35,7 +35,9 @@ promptString(const std::string &prompt, const std::string &defaultValue = "",
 std::string promptLetters(const std::string &prompt, const size_t expectedCount,
                           const bool allowDuplicates = true);
 
-// Read a line of input with arrow keys and backspace editing handled gracefully
+// Read a line with basic editing: left/right cursor, up/down history,
+// backspace/delete, home/end. Arrow-key escape sequences are consumed so they
+// never appear as literal ^[[A text in the input.
 std::string readLine();
 
 // Parse command line arguments into flags and positional arguments

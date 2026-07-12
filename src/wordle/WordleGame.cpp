@@ -85,7 +85,8 @@ void WordleGame::printResults(const Wordle::Result &result) {
   }
 
   std::cout << "Possible words remaining: " << result.totalPossibleWords
-            << "\n\n";
+            << "\n";
+  std::cout << "Search depth used: " << result.searchDepth << "\n\n";
 
   if (!result.sortedGuesses.empty()) {
     std::cout << "=== Best guesses ===\n";
@@ -217,15 +218,7 @@ void WordleGame::runCLI() {
       }
 
       std::cout << "Enter guess (or command): ";
-      std::string input;
-      std::getline(std::cin, input);
-
-      // Check for EOF
-      if (std::cin.eof()) {
-        std::cin.clear();
-        std::cout << "\n";
-        throw Utils::Input::UserCancelledException();
-      }
+      std::string input = Utils::Input::readLine();
 
       input = Utils::trimToLower(input);
 

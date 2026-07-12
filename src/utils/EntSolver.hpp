@@ -5,7 +5,6 @@
 #include <chrono>
 #include <cmath>
 #include <cstdint>
-#include <iostream>
 #include <limits>
 #include <unordered_map>
 #include <unordered_set>
@@ -217,8 +216,8 @@ public:
 
         SearchMetrics metrics = calculateMetrics(guessInput, filteredCandidates,
                                                  allGuesses, activeDepth, R);
-        CalculatedGuessType guess =
-            createGuess(guessInput, metrics.ent, metrics.wnt, metrics.probability);
+        CalculatedGuessType guess = createGuess(
+            guessInput, metrics.ent, metrics.wnt, metrics.probability);
         guesses.push_back(guess);
       }
     }
@@ -305,8 +304,7 @@ private:
 #endif
 
     if (candidates.size() <= 1) {
-      return {0.0, 0.0,
-              calculateGuessProbability(guessInput, candidates)};
+      return {0.0, 0.0, calculateGuessProbability(guessInput, candidates)};
     }
 
     double totalScore = candidates.totalScore();
@@ -333,11 +331,8 @@ private:
           return this->generateFeedback(c, g);
         });
 
-    SearchMetrics result = {
-      1.0 + expectedRemainingTurns, 
-      1.0 + maxSubWnt, 
-      calculateGuessProbability(guessInput, candidates)
-    };
+    SearchMetrics result = {1.0 + expectedRemainingTurns, 1.0 + maxSubWnt,
+                            calculateGuessProbability(guessInput, candidates)};
     return result;
   }
 
@@ -380,8 +375,7 @@ private:
         guessIdx = (guessIdx + 1) % numGuesses;
       }
 
-      FeedbackType fb =
-          this->generateFeedback(*candIt, allGuesses[guessIdx]);
+      FeedbackType fb = this->generateFeedback(*candIt, allGuesses[guessIdx]);
       sink = sink + 1;
       (void)fb;
 
@@ -457,13 +451,6 @@ private:
         break;
       }
     }
-
-    // TEMP DEBUG: verify auto-depth calibration
-    std::cerr << "[auto-depth] G=" << numGuesses << " C=" << numCandidates
-              << " opsPerMs=" << opsPerMs << " threshold=" << threshold
-              << " estimatedOps=" << totalOps << " depth=" << resultDepth
-              << " (~" << (opsPerMs > 0.0 ? totalOps / opsPerMs : 0.0)
-              << " ms)\n";
 
     return resultDepth;
   }

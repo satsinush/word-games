@@ -263,15 +263,7 @@ void LetterBoxedGame::runCLI() {
         try {
           std::cout << "\nCommands: 's' (solve again), 'a' (show all)\n";
           std::cout << "Enter command: ";
-          std::string input;
-          std::getline(std::cin, input);
-
-          // Check for EOF
-          if (std::cin.eof()) {
-            std::cin.clear();
-            std::cout << "\n";
-            throw Utils::Input::UserCancelledException();
-          }
+          std::string input = Utils::Input::readLine();
 
           input = Utils::trimToLower(input);
 

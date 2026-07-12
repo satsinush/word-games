@@ -136,7 +136,8 @@ void DungleonGame::printResults(const Dungleon::Result &result) {
   }
 
   std::cout << "Possible patterns remaining: " << result.totalPossiblePatterns
-            << "\n\n";
+            << "\n";
+  std::cout << "Search depth used: " << result.searchDepth << "\n\n";
 
   if (!result.sortedGuesses.empty()) {
     std::cout << "=== Best guesses ===\n";
@@ -264,13 +265,7 @@ void DungleonGame::runCLI() {
       }
 
       std::cout << "Enter guess (or command): ";
-      std::string input;
-      std::getline(std::cin, input);
-
-      if (std::cin.eof()) {
-        std::cin.clear();
-        throw Utils::Input::UserCancelledException();
-      }
+      std::string input = Utils::Input::readLine();
 
       input = Utils::trimToLower(input);
       if (input.empty())

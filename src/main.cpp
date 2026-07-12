@@ -132,6 +132,7 @@ Hangman:
     --pattern <pattern>        Word pattern(s). Format: "_A__ ___" (alternative to --input)
     --strikes <letters>        Letters NOT in phrase. Format: "xyz" (alternative to --input)
     --max-depth <0-2>          Search depth for entropy (default: 0, range: 0-2)
+    --auto-depth               Dynamically calculate optimal depth (ignores max-depth)
     --exclude-uncommon-words   Exclude uncommon words (1/true/yes or 0/false/no, default: 0)
     -o, --output <file>        Output file with letter rankings and possible words
                                  (default: results/hangman.txt)
@@ -157,10 +158,10 @@ Examples:
   %s read results/wordle.txt --start 0 --end 10
 )";
 
-  printf(usage_message, programName, version_str, programName, programName, programName,
+  printf(usage_message, programName, version_str, programName, programName,
          programName, programName, programName, programName, programName,
          programName, programName, programName, programName, programName,
-         programName, programName);
+         programName, programName, programName);
 }
 
 void runReadMode(const std::map<std::string, std::string> &args,
@@ -239,10 +240,9 @@ void runInteractiveMode() {
     std::cout << "Enter choice: ";
 
     std::string input;
-    std::getline(std::cin, input);
-
-    // Check for EOF
-    if (std::cin.eof()) {
+    try {
+      input = Utils::Input::readLine();
+    } catch (const Utils::Input::UserCancelledException &) {
       return;
     }
 
