@@ -2,11 +2,17 @@
 
 #include <algorithm>
 #include <cctype>
+#include <cmath>
+#include <cstddef>
 #include <iostream>
+#include <iterator>
+#include <limits>
+#include <map>
 #include <sstream>
 #include <stdexcept>
 #include <unordered_map>
 #include <unordered_set>
+#include <vector>
 
 #ifdef TRACY_ENABLE
 #include <tracy/Tracy.hpp>
@@ -163,6 +169,98 @@ public:
   size_t size() const { return cachedSize; }
   bool empty() const { return cachedSize == 0; }
   double totalScore() const { return cachedTotalScore; }
+
+  // Lazy cartesian-product iterator over PhraseSolution values.
+  class iterator {
+  public:
+    using iterator_category = std::forward_iterator_tag;
+    using value_type = PhraseSolution;
+    using difference_type = std::ptrdiff_t;
+    using pointer = const PhraseSolution *;
+    using reference = PhraseSolution;
+
+    iterator() = default;
+
+    PhraseSolution operator*() const {
+      PhraseSolution phrase;
+      if (!slots_ || atEnd_) {
+        return phrase;
+      }
+      phrase.words.reserve(slots_->size());
+      double scoreSum = 0.0;
+      double minScore = std::numeric_limits<double>::infinity();
+      for (size_t i = 0; i < slots_->size(); ++i) {
+        const Utils::Word &w = (*slots_)[i][indices_[i]];
+        phrase.words.push_back(w);
+        scoreSum += w.score;
+        if (w.score < minScore) {
+          minScore = w.score;
+        }
+      }
+      phrase.score = scoreSum;
+      phrase.minScore =
+          std::isfinite(minScore) ? minScore : 0.0;
+      return phrase;
+    }
+
+    iterator &operator++() {
+      if (atEnd_ || !slots_) {
+        return *this;
+      }
+      for (int i = static_cast<int>(indices_.size()) - 1; i >= 0; --i) {
+        if (++indices_[static_cast<size_t>(i)] <
+            (*slots_)[static_cast<size_t>(i)].size()) {
+          return *this;
+        }
+        indices_[static_cast<size_t>(i)] = 0;
+      }
+      atEnd_ = true;
+      return *this;
+    }
+
+    iterator operator++(int) {
+      iterator tmp = *this;
+      ++(*this);
+      return tmp;
+    }
+
+    bool operator==(const iterator &other) const {
+      if (atEnd_ || other.atEnd_) {
+        return atEnd_ == other.atEnd_;
+      }
+      return slots_ == other.slots_ && indices_ == other.indices_;
+    }
+
+    bool operator!=(const iterator &other) const { return !(*this == other); }
+
+  private:
+    friend class HangmanCandidateSet;
+
+    iterator(const Container *slots, bool isBegin)
+        : slots_(slots), atEnd_(!isBegin) {
+      if (!slots_ || slots_->empty()) {
+        atEnd_ = true;
+        return;
+      }
+      for (const auto &slot : *slots_) {
+        if (slot.empty()) {
+          atEnd_ = true;
+          return;
+        }
+      }
+      if (isBegin) {
+        indices_.assign(slots_->size(), 0);
+        atEnd_ = false;
+      }
+    }
+
+    const Container *slots_ = nullptr;
+    std::vector<size_t> indices_;
+    bool atEnd_ = true;
+  };
+
+  iterator begin() const { return iterator(&wordsPerSlot_, true); }
+  iterator end() const { return iterator(&wordsPerSlot_, false); }
 
   template <typename Predicate> HangmanCandidateSet filter(Predicate) const {
     return *this;

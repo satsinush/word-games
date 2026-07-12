@@ -2,8 +2,10 @@
 
 #include <algorithm>
 #include <atomic>
+#include <chrono>
 #include <cmath>
 #include <cstdint>
+#include <iostream>
 #include <limits>
 #include <unordered_map>
 #include <unordered_set>
@@ -186,8 +188,7 @@ public:
 
     activeDepth = config.maxDepth;
     if (config.autoDepth) {
-      activeDepth =
-          calculateOptimalDepth(allGuesses.size(), filteredCandidates.size());
+      activeDepth = calculateOptimalDepth(allGuesses, filteredCandidates);
     }
 
     uint32_t R = (config.maxGuesses > config.feedbackHistory.size())
@@ -350,12 +351,73 @@ private:
     return std::max(1.5, std::pow(kMax, alpha));
   }
 
-  int calculateOptimalDepth(size_t numGuesses, size_t numCandidates) const {
-    if (numCandidates <= 1) {
+  /// Microbenchmark generateFeedback for ~100ms; returns estimated ops/ms.
+  /// Returns 0.0 if calibration cannot run.
+  double measureOpsPerMs(const std::vector<GuessType> &allGuesses,
+                         const CandidateSetType &candidates) const {
+    if (allGuesses.empty() || candidates.empty()) {
+      return 0.0;
+    }
+
+    constexpr auto kCalibrateDuration = std::chrono::milliseconds(100);
+    const size_t numGuesses = allGuesses.size();
+
+    const auto start = std::chrono::steady_clock::now();
+    const auto deadline = start + kCalibrateDuration;
+
+    size_t opCount = 0;
+    size_t guessIdx = 0;
+    auto candIt = candidates.begin();
+    const auto candBegin = candidates.begin();
+    const auto candEnd = candidates.end();
+
+    // Virtual generateFeedback cannot be elided; sink keeps the result live.
+    volatile size_t sink = 0;
+
+    while (std::chrono::steady_clock::now() < deadline) {
+      if (candIt == candEnd) {
+        candIt = candBegin;
+        guessIdx = (guessIdx + 1) % numGuesses;
+      }
+
+      FeedbackType fb =
+          this->generateFeedback(*candIt, allGuesses[guessIdx]);
+      sink = sink + 1;
+      (void)fb;
+
+      ++candIt;
+      ++opCount;
+    }
+
+    (void)sink;
+
+    const auto end = std::chrono::steady_clock::now();
+    const double elapsedMs =
+        std::chrono::duration<double, std::milli>(end - start).count();
+    if (elapsedMs <= 0.0 || opCount == 0) {
+      return 0.0;
+    }
+
+    return static_cast<double>(opCount) / elapsedMs;
+  }
+
+  int calculateOptimalDepth(const std::vector<GuessType> &allGuesses,
+                            const CandidateSetType &candidates) const {
+    const size_t numCandidates = candidates.size();
+    const size_t numGuesses = allGuesses.size();
+
+    if (numCandidates <= 1 || numGuesses == 0 || candidates.empty()) {
       return 0;
     }
 
-    const double threshold = 3e7; // 30 million operations
+    constexpr double kBudgetMs = 1000.0;
+
+    const double opsPerMs = measureOpsPerMs(allGuesses, candidates);
+    if (opsPerMs <= 0.0) {
+      return 0;
+    }
+
+    const double threshold = opsPerMs * kBudgetMs;
     const int maxDepth = 3;
 
     // Get the branching factor B from worstCaseExpectedTurns
@@ -378,6 +440,7 @@ private:
 
       if (totalOps > threshold) {
         resultDepth = d - 1;
+        totalOps -= levelOps; // report ops for the chosen depth only
         break;
       }
 
@@ -394,6 +457,13 @@ private:
         break;
       }
     }
+
+    // TEMP DEBUG: verify auto-depth calibration
+    std::cerr << "[auto-depth] G=" << numGuesses << " C=" << numCandidates
+              << " opsPerMs=" << opsPerMs << " threshold=" << threshold
+              << " estimatedOps=" << totalOps << " depth=" << resultDepth
+              << " (~" << (opsPerMs > 0.0 ? totalOps / opsPerMs : 0.0)
+              << " ms)\n";
 
     return resultDepth;
   }
