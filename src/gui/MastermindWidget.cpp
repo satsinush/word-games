@@ -11,36 +11,100 @@
 #include <QHeaderView>
 #include <QLineEdit>
 #include <QMessageBox>
+#include <QSizePolicy>
 #include <QSpinBox>
-#include <QToolButton>
 #include <QVBoxLayout>
 #include <algorithm>
+#include <functional>
 #include <sstream>
 
 namespace {
-QToolButton *makeStepButton(const QString &text, QWidget *parent) {
-  auto *btn = new QToolButton(parent);
-  btn->setText(text);
-  btn->setFixedSize(24, 24);
-  btn->setAutoRaise(false);
+QPushButton *makeStepButton(const QString &text, QWidget *parent) {
+  auto *btn = new QPushButton(text, parent);
+  btn->setFixedSize(34, 34);
+  btn->setCursor(Qt::PointingHandCursor);
+  btn->setFocusPolicy(Qt::NoFocus);
   btn->setStyleSheet(
-      "QToolButton { border: 1px solid #bbb; border-radius: 3px; "
-      "background: #f5f5f5; font-weight: bold; }"
-      "QToolButton:hover { background: #e8e8e8; }"
-      "QToolButton:pressed { background: #ddd; }");
+      "QPushButton {"
+      "  background-color: #ffffff;"
+      "  color: #111111;"
+      "  border: 2px solid #333333;"
+      "  border-radius: 6px;"
+      "  font-size: 18px;"
+      "  font-weight: bold;"
+      "  padding: 0;"
+      "}"
+      "QPushButton:hover { background-color: #e3f2fd; border-color: #1565c0; }"
+      "QPushButton:pressed { background-color: #bbdefb; }");
   return btn;
+}
+
+QLabel *makePegDot(bool black, QWidget *parent) {
+  auto *dot = new QLabel(parent);
+  dot->setFixedSize(18, 18);
+  dot->setToolTip(black ? QStringLiteral("Correct position (black)")
+                        : QStringLiteral("Correct color (white)"));
+  if (black) {
+    dot->setStyleSheet(
+        "QLabel { background-color: #111111; border: 2px solid #000000; "
+        "border-radius: 9px; }");
+  } else {
+    dot->setStyleSheet(
+        "QLabel { background-color: #ffffff; border: 2px solid #111111; "
+        "border-radius: 9px; }");
+  }
+  return dot;
 }
 
 QLabel *makeCountLabel(QWidget *parent) {
   auto *label = new QLabel(QStringLiteral("0"), parent);
   QFont font = label->font();
   font.setBold(true);
-  font.setPointSize(font.pointSize() + 1);
+  font.setPointSize(14);
   label->setFont(font);
-  label->setMinimumWidth(18);
+  label->setFixedWidth(36);
+  label->setMinimumHeight(34);
   label->setAlignment(Qt::AlignCenter);
-  label->setStyleSheet("QLabel { color: #111; background: transparent; }");
+  label->setStyleSheet(
+      "QLabel {"
+      "  color: #111111;"
+      "  background-color: #ffffff;"
+      "  border: 2px solid #333333;"
+      "  border-radius: 6px;"
+      "  padding: 2px 4px;"
+      "}");
   return label;
+}
+
+QWidget *makeFeedbackControl(bool blackPegs, QLabel **valueOut,
+                             QWidget *parent, const std::function<void(int)> &onStep) {
+  auto *wrap = new QWidget(parent);
+  wrap->setObjectName(QStringLiteral("feedbackCtrl"));
+  auto *row = new QHBoxLayout(wrap);
+  row->setContentsMargins(8, 4, 8, 4);
+  row->setSpacing(6);
+
+  row->addWidget(makePegDot(blackPegs, wrap));
+
+  auto *minus = makeStepButton(QStringLiteral("-"), wrap);
+  auto *value = makeCountLabel(wrap);
+  auto *plus = makeStepButton(QStringLiteral("+"), wrap);
+  *valueOut = value;
+
+  QObject::connect(minus, &QPushButton::clicked, wrap, [onStep]() { onStep(-1); });
+  QObject::connect(plus, &QPushButton::clicked, wrap, [onStep]() { onStep(1); });
+
+  row->addWidget(minus);
+  row->addWidget(value);
+  row->addWidget(plus);
+
+  wrap->setStyleSheet(
+      "#feedbackCtrl {"
+      "  background-color: #eceff1;"
+      "  border: 1px solid #90a4ae;"
+      "  border-radius: 8px;"
+      "}");
+  return wrap;
 }
 } // namespace
 
@@ -49,63 +113,56 @@ FeedbackRow::FeedbackRow(int index, const QString &pattern, int colors,
     : QWidget(parent), rowIndex(index), correctColors(colors),
       correctPositions(positions), maxPegs(maxPegs) {
   auto *layout = new QHBoxLayout(this);
-  layout->setContentsMargins(8, 4, 8, 4);
-  layout->setSpacing(8);
+  layout->setContentsMargins(10, 8, 10, 8);
+  layout->setSpacing(12);
 
   patternLabel = new QLabel(pattern, this);
-  QFont monoFont(QStringLiteral("Consolas"), 11);
+  QFont monoFont(QStringLiteral("Consolas"), 14);
   monoFont.setBold(true);
   patternLabel->setFont(monoFont);
-  patternLabel->setMinimumWidth(80);
-  patternLabel->setStyleSheet("QLabel { color: #111; background: transparent; }");
+  patternLabel->setMinimumWidth(90);
+  patternLabel->setStyleSheet(
+      "QLabel { color: #111111; background: transparent; letter-spacing: 2px; }");
 
-  // Black pegs = correct position (matches frontend ⚫)
-  auto *positionsMinus = makeStepButton(QStringLiteral("-"), this);
-  positionsValueLabel = makeCountLabel(this);
-  auto *positionsPlus = makeStepButton(QStringLiteral("+"), this);
-  auto *positionsCaption = new QLabel(QStringLiteral("Pos"), this);
-  positionsCaption->setStyleSheet(
-      "QLabel { color: #444; background: transparent; }");
+  auto *positionsCtrl = makeFeedbackControl(
+      true, &positionsValueLabel, this,
+      [this](int delta) { adjustPositions(delta); });
+  auto *colorsCtrl = makeFeedbackControl(
+      false, &colorsValueLabel, this,
+      [this](int delta) { adjustColors(delta); });
 
-  // White pegs = correct color, wrong position (matches frontend ⚪)
-  auto *colorsMinus = makeStepButton(QStringLiteral("-"), this);
-  colorsValueLabel = makeCountLabel(this);
-  auto *colorsPlus = makeStepButton(QStringLiteral("+"), this);
-  auto *colorsCaption = new QLabel(QStringLiteral("Color"), this);
-  colorsCaption->setStyleSheet(
-      "QLabel { color: #444; background: transparent; }");
-
-  connect(positionsMinus, &QToolButton::clicked, this,
-          [this]() { adjustPositions(-1); });
-  connect(positionsPlus, &QToolButton::clicked, this,
-          [this]() { adjustPositions(1); });
-  connect(colorsMinus, &QToolButton::clicked, this,
-          [this]() { adjustColors(-1); });
-  connect(colorsPlus, &QToolButton::clicked, this,
-          [this]() { adjustColors(1); });
-
-  deleteButton = new QPushButton(QStringLiteral("Delete"), this);
-  deleteButton->setMaximumWidth(70);
+  deleteButton = new QPushButton(QStringLiteral("✕"), this);
+  deleteButton->setFixedSize(34, 34);
+  deleteButton->setToolTip(QStringLiteral("Remove guess"));
+  deleteButton->setCursor(Qt::PointingHandCursor);
+  deleteButton->setStyleSheet(
+      "QPushButton {"
+      "  background-color: #ffebee;"
+      "  color: #b71c1c;"
+      "  border: 2px solid #c62828;"
+      "  border-radius: 6px;"
+      "  font-size: 14px;"
+      "  font-weight: bold;"
+      "}"
+      "QPushButton:hover { background-color: #ffcdd2; }");
   connect(deleteButton, &QPushButton::clicked, this,
           [this]() { emit deleteRequested(rowIndex); });
 
-  layout->addWidget(patternLabel);
+  layout->addWidget(patternLabel, 0, Qt::AlignVCenter);
   layout->addStretch(1);
-  layout->addWidget(positionsCaption);
-  layout->addWidget(positionsMinus);
-  layout->addWidget(positionsValueLabel);
-  layout->addWidget(positionsPlus);
-  layout->addSpacing(10);
-  layout->addWidget(colorsCaption);
-  layout->addWidget(colorsMinus);
-  layout->addWidget(colorsValueLabel);
-  layout->addWidget(colorsPlus);
-  layout->addSpacing(8);
-  layout->addWidget(deleteButton);
+  layout->addWidget(positionsCtrl, 0, Qt::AlignVCenter);
+  layout->addWidget(colorsCtrl, 0, Qt::AlignVCenter);
+  layout->addWidget(deleteButton, 0, Qt::AlignVCenter);
 
-  setMinimumHeight(36);
-  setStyleSheet("FeedbackRow { background: #fafafa; border-bottom: 1px solid "
-                "#e0e0e0; }");
+  setMinimumHeight(52);
+  setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+  setObjectName(QStringLiteral("FeedbackRow"));
+  setStyleSheet(
+      "#FeedbackRow {"
+      "  background-color: #ffffff;"
+      "  border: 1px solid #cfcfcf;"
+      "  border-radius: 8px;"
+      "}");
   refreshValueLabels();
 }
 
@@ -159,10 +216,15 @@ MastermindWidget::MastermindWidget(QWidget *parent)
   feedbackListContainer = new QWidget();
   feedbackListLayout = new QVBoxLayout(feedbackListContainer);
   feedbackListLayout->setAlignment(Qt::AlignTop);
-  feedbackListLayout->setContentsMargins(0, 0, 0, 0);
-  feedbackListLayout->setSpacing(0);
+  feedbackListLayout->setContentsMargins(4, 4, 4, 4);
+  feedbackListLayout->setSpacing(6);
   feedbackListScrollArea->setWidget(feedbackListContainer);
   feedbackListScrollArea->setWidgetResizable(true);
+  feedbackListScrollArea->setMinimumHeight(140);
+  feedbackListScrollArea->setMaximumHeight(260);
+  feedbackListScrollArea->setStyleSheet(
+      "QScrollArea { background-color: #fafafa; border: 1px solid #ddd; "
+      "border-radius: 4px; }");
 
   // Get result tables from UI and configure them
   allResultsTable = ui->allResultsTable;

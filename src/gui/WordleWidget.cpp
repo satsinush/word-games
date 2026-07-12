@@ -467,17 +467,23 @@ void WordleWidget::onTableRowClicked(int row, int column) {
   if (!table)
     return;
 
-  // Get the word from column 1 (Word column)
-  QTableWidgetItem *wordItem = table->item(row, 1);
-  if (!wordItem)
-    return;
+  // Prefer cached results (avoids picking Probability/ENT/WNT cells)
+  QString word;
+  if (table == allResultsTable && row >= 0 &&
+      row < static_cast<int>(lastAllResults.size())) {
+    word = QString::fromStdString(lastAllResults[row].word.wordString);
+  } else if (table == probableWordsTable && row >= 0 &&
+             row < static_cast<int>(lastProbableResults.size())) {
+    word = QString::fromStdString(lastProbableResults[row].word.wordString);
+  } else {
+    QTableWidgetItem *wordItem = table->item(row, 0); // Word column
+    if (!wordItem)
+      return;
+    word = wordItem->text();
+  }
 
-  QString word = wordItem->text().toLower(); // Convert back to lowercase
-
-  // Set the word in the input field
+  word = word.toLower();
   ui->inputField->setText(word);
-
-  // Auto-submit the word
   submitCurrentGuess();
 }
 
