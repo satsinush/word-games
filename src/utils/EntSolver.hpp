@@ -367,11 +367,11 @@ private:
     double totalOps = 0.0;
     int resultDepth = maxDepth;
 
-    // Operations at level d grow by the number of guesses G tested at each
-    // node, and shrink by the branching factor B (base) of candidate subsets.
-    // Net scale factor per level = G / B
+    // Operations at level d grow by G (numGuesses) for each step of depth.
+    // At level 1: G * C
+    // At level 2: G^2 * C
+    // At level 3: G^3 * C
     double levelOps = static_cast<double>(numGuesses) * activeCandidates;
-    double scaleFactor = static_cast<double>(numGuesses) / base;
 
     for (int d = 1; d <= maxDepth; ++d) {
       totalOps += levelOps;
@@ -381,9 +381,10 @@ private:
         break;
       }
 
-      levelOps *= scaleFactor;
+      // Next level executes G times more operations
+      levelOps *= static_cast<double>(numGuesses);
 
-      // Shrink average candidate subset size for the next level
+      // Shrink average candidate subset size for the next level's base check
       activeCandidates /= base;
 
       // If average candidates per subproblem falls below 1, further depth is
