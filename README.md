@@ -147,17 +147,7 @@ Covered solvers: Wordle, Spelling Bee, Letter Boxed, Mastermind, Dungleon, and H
 
 ## Complete Documentation
 
-For comprehensive usage instructions, all command-line options, game modes, and detailed examples, see:
-
-**📖 [Complete Usage Guide](./docs/usage.md)**
-
-The usage guide covers:
-
-  * All supported game modes and solvers
-  * Complete command-line reference
-  * Advanced configuration options
-  * Benchmarking and performance tools
-  * Boolean value formats and examples
+For GUI walkthroughs, full CLI options, and examples, see **[docs/usage.md](./docs/usage.md)**.
 
 -----
 
