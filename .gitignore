@@ -12,3 +12,5 @@ gmon.out
 profile_results.txt
 .env
 third_party/
+
+_CPack_Packages
