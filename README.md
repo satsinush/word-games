@@ -145,6 +145,16 @@ On Windows MinGW builds, use `./build/mingw-debug/p++-benchmarks.exe` instead.
 
 Covered solvers: Wordle, Spelling Bee, Letter Boxed, Mastermind, Dungleon, and Hangman.
 
+## Git Hooks (Pre-push Validation)
+
+This repository includes a pre-push hook script in `.githooks/pre-push` that runs `clang-format` formatting checks and `ctest` unit tests.
+
+To enable the git hook locally, run:
+
+```bash
+git config core.hooksPath .githooks
+```
+
 ## Complete Documentation
 
 For GUI walkthroughs, full CLI options, and examples, see **[docs/usage.md](./docs/usage.md)**.

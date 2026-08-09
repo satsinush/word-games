@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+# Pre-push git hook for word_games repository.
+
+set -e
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$SCRIPT_DIR"
+
+echo "🧩 Running pre-push checks for word_games..."
+
+# 1. Format check with clang-format (if available)
+if command -v clang-format >/dev/null 2>&1; then
+    echo "  → Checking C++ formatting with clang-format..."
+    find src tests benchmarks -name '*.cpp' -o -name '*.h' -o -name '*.hpp' | xargs clang-format --dry-run --Werror 2>/dev/null || {
+        echo "  ⚠️ Formatting warnings found (run clang-format -i)"
+    }
+fi
+
+# 2. Run unit tests if build directory exists
+if [ -f "build/linux-debug/CTestTestfile.cmake" ]; then
+    echo "  → Running CTest unit tests (linux-debug)..."
+    ctest --test-dir build/linux-debug --output-on-failure
+elif [ -f "build/mingw-debug/CTestTestfile.cmake" ]; then
+    echo "  → Running CTest unit tests (mingw-debug)..."
+    ctest --test-dir build/mingw-debug --output-on-failure
+else
+    echo "  → Skipping CTest (no debug build dir with tests found)"
+fi
+
+echo "✅ word_games pre-push checks completed!"

@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+# Pre-commit hook for word_games repository to sync VERSION -> CMakeLists.txt.
+
+set -e
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$SCRIPT_DIR"
+
+if [ -x "scripts/sync-version.sh" ]; then
+    ./scripts/sync-version.sh
+fi
