@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.16)
 project(p++ LANGUAGES CXX)
 
 # Define project version
-set(p++_VERSION "3.0.0")
+set(p++_VERSION "3.0.1")
 
 # ===================================================================
 # 1. PROJECT-WIDE SETTINGS
