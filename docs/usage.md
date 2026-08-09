@@ -1,6 +1,6 @@
 # Puzzle++ Usage Guide
 
-Puzzle++ (`p++`) solves Wordle, Spelling Bee, Letter Boxed, Mastermind, Hangman, and Dungleon. It ships as a Qt GUI and a CLI. In this homelab, the dashboard Word Games UI calls the same CLI binary (built as `word_games` in the API container).
+Puzzle++ (`p++`) solves Wordle, Spelling Bee, Letter Boxed, Mastermind, Hangman, and Dungleon. It ships as a Qt GUI and a CLI. In this homelab, the dashboard Word Games UI calls the `p++` CLI binary (compiled inside the API container).
 
 ## Launching
 

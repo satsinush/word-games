@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Pre-commit hook for word_games repository to sync VERSION -> CMakeLists.txt.
+# Pre-commit hook for puzzle-plus-plus repository to sync VERSION -> CMakeLists.txt.
 
 set -e
 

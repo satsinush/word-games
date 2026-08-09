@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Syncs version string from word_games/VERSION file to CMakeLists.txt.
+# Syncs version string from puzzle-plus-plus/VERSION file to CMakeLists.txt.
 
 set -e
 
