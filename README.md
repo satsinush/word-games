@@ -79,7 +79,7 @@ cmake --build --preset mingw-release
 
 #### Option C: Building Windows Installer (NSIS)
 
-To build a standalone Windows `.exe` installer (containing `p++.exe`, Qt 6 DLLs deployed via `windeployqt`, and resources):
+To build a standalone Windows `.exe` installer (bundling `p++.exe`, Qt 6 runtime DLLs, and resources into an NSIS setup executable):
 
 **Prerequisites**:
 1. **Qt 6**: Installed on your build environment (e.g. `C:\Qt\6.x.x\msvc2019_64` or MinGW).
@@ -89,13 +89,7 @@ To build a standalone Windows `.exe` installer (containing `p++.exe`, Qt 6 DLLs 
 # 1. Configure release build using the release preset
 cmake --preset mingw-release
 
-# 2. Build the application and run windeployqt
-cmake --build --preset mingw-release
-
-# 3. Build the NSIS installer package via CPack
-cpack --config build/mingw-release/CPackConfig.cmake
-
-# Or use the custom CMake target:
+# 2. Build application, run windeployqt, and generate NSIS installer package
 cmake --build --preset mingw-release --target package_release_installer
 ```
 
