@@ -272,6 +272,12 @@ set(CPACK_INNOSETUP_SETUP_PrivilegesRequired "lowest")
 set(CPACK_INNOSETUP_SETUP_DefaultDirName "{userappdata}/../Local/Programs/Puzzle++")
 set(CPACK_INNOSETUP_SETUP_CreateUninstallRegKey "yes")
 
+# Icon customization (Setup wizard icon + Uninstall Control Panel icon)
+if(EXISTS "${CMAKE_SOURCE_DIR}/resources/icon.ico")
+    set(CPACK_INNOSETUP_SETUP_SetupIconFile "${CMAKE_SOURCE_DIR}/resources/icon.ico")
+    set(CPACK_INNOSETUP_SETUP_UninstallDisplayIcon "{app}/resources/icon.ico")
+endif()
+
 # --- INCLUDE CPACK LAST ---
 include(CPack)
 
