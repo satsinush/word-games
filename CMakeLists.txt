@@ -265,17 +265,26 @@ if(EXISTS "${CMAKE_SOURCE_DIR}/LICENSE")
     set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_SOURCE_DIR}/LICENSE")
 endif()
 
+# --- Package Executables & Start Menu Shortcuts ---
+set(CPACK_PACKAGE_EXECUTABLES "p++" "Puzzle++")
+set(CPACK_CREATE_DESKTOP_LINKS "p++")
+
 # --- Inno Setup Settings (Non-Admin Per-User Install to %LOCALAPPDATA%\Programs) ---
 find_program(CPACK_INNOSETUP_EXECUTABLE ISCC HINTS "C:/Program Files (x86)/Inno Setup 6" "C:/Program Files/Inno Setup 6")
 set(CPACK_INNOSETUP_PROGRAM_NAME "Puzzle++")
 set(CPACK_INNOSETUP_SETUP_PrivilegesRequired "lowest")
 set(CPACK_INNOSETUP_SETUP_DefaultDirName "{userappdata}/../Local/Programs/Puzzle++")
 set(CPACK_INNOSETUP_SETUP_CreateUninstallRegKey "yes")
+set(CPACK_INNOSETUP_RUN_EXECUTABLES "p++")
+
+# Optional: Prompt user to create Desktop Shortcut & add p++.exe to PATH
+set(CPACK_INNOSETUP_CREATE_DESKTOP_KEYBOARD_SHORTCUT ON)
+set(CPACK_INNOSETUP_MODIFY_PATH ON)
 
 # Icon customization (Setup wizard icon + Uninstall Control Panel icon)
 if(EXISTS "${CMAKE_SOURCE_DIR}/resources/icon.ico")
     set(CPACK_INNOSETUP_SETUP_SetupIconFile "${CMAKE_SOURCE_DIR}/resources/icon.ico")
-    set(CPACK_INNOSETUP_SETUP_UninstallDisplayIcon "{app}/resources/icon.ico")
+    set(CPACK_INNOSETUP_SETUP_UninstallDisplayIcon "{app}/bin/p++.exe")
 endif()
 
 # --- INCLUDE CPACK LAST ---
