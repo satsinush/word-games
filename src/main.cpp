@@ -429,14 +429,8 @@ int main(int argc, char *argv[]) {
         freopen_s((FILE **)stderr, "CONOUT$", "w", stderr);
         freopen_s((FILE **)stdin, "CONIN$", "r", stdin);
         attachedToConsole = true;
-
-        // Print a newline to separate from the command that launched us
-        std::cout << std::endl;
       }
     }
-    // If both fail, we're likely launched from GUI (file explorer, etc.)
-    // In that case, we just won't have console output, which is fine for GUI
-    // apps
   }
 #endif
 
@@ -457,8 +451,12 @@ int main(int argc, char *argv[]) {
 #if defined(WITH_GUI) && defined(_WIN32)
   // Clean up console
   if (attachedToConsole) {
-    // Print a newline before returning control to parent console
-    std::cout << std::endl;
+    // Send a virtual VK_RETURN to parent console so cmd.exe refreshes prompt line automatically
+    HWND hwnd = GetConsoleWindow();
+    if (hwnd) {
+      PostMessage(hwnd, WM_KEYDOWN, VK_RETURN, 0);
+      PostMessage(hwnd, WM_KEYUP, VK_RETURN, 0);
+    }
     FreeConsole();
   } else if (allocatedConsole) {
     // For allocated console, wait for user before closing
