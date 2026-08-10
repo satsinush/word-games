@@ -294,8 +294,8 @@ set(CPACK_NSIS_REQUIRED_EXECUTION_LEVEL "user")
 set(CPACK_NSIS_PACKAGE_INSTALL_REGISTRY_KEY "Puzzle++")
 set(CPACK_NSIS_ENABLE_HIERARCHICAL_INSTALLATION OFF)
 
-# Inject NSIS initialization commands to set INSTDIR to %LOCALAPPDATA%\Programs\Puzzle++
-set(CPACK_NSIS_EXTRA_INITIAL_COMMANDS "
+# Set INSTDIR dynamically during pre-install execution right before directory page display
+set(CPACK_NSIS_EXTRA_PREINSTALL_COMMANDS "
   SetShellVarContext current
   StrCpy \$INSTDIR \"\$LOCALAPPDATA\\\\Programs\\\\Puzzle++\"
 ")
