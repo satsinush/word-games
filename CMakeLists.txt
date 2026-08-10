@@ -250,19 +250,8 @@ if(WIN32 AND BUILD_GUI)
     install(SCRIPT ${DEPLOYMENT_SCRIPT_FILE})
 endif()
 
-include(InstallRequiredSystemLibraries)
-
-# --- HELPER: Sanitize Paths for NSIS ---
-# This converts "C:/Path/With Spaces" -> "C:\\Path\\With Spaces"
-# This allows CPack to read the path safely without confusing it for an escape code (\U)
-macro(sanitize_path_for_nsis INPUT_PATH OUTPUT_VAR)
-    file(TO_CMAKE_PATH "${INPUT_PATH}" _temp_path)
-    string(REPLACE "/" "\\\\" _sanitized "${_temp_path}")
-    set(${OUTPUT_VAR} "${_sanitized}")
-endmacro()
-
 # --- DEFINE VARIABLES BEFORE INCLUDING CPACK ---
-set(CPACK_GENERATOR "INNOSETUP;NSIS;ZIP")
+set(CPACK_GENERATOR "INNOSETUP;ZIP")
 set(CPACK_PACKAGE_NAME "Puzzle++")
 set(CPACK_PACKAGE_FILE_NAME "PuzzlePlusPlus-${p++_VERSION}-win64")
 set(CPACK_PACKAGE_VENDOR "Puzzle++ Team")
@@ -282,26 +271,6 @@ set(CPACK_INNOSETUP_PROGRAM_NAME "Puzzle++")
 set(CPACK_INNOSETUP_SETUP_PrivilegesRequired "lowest")
 set(CPACK_INNOSETUP_SETUP_DefaultDirName "{userappdata}/../Local/Programs/Puzzle++")
 set(CPACK_INNOSETUP_SETUP_CreateUninstallRegKey "yes")
-
-# --- NSIS Fallback Settings ---
-set(CPACK_NSIS_DISPLAY_NAME "Puzzle++")
-set(CPACK_NSIS_PACKAGE_NAME "Puzzle++")
-set(CPACK_NSIS_MENU_LINKS "bin/p++.exe" "Puzzle++")
-set(CPACK_NSIS_INSTALLED_ICON_NAME "bin\\\\p++.exe")
-set(CPACK_NSIS_REQUIRED_EXECUTION_LEVEL "user")
-
-# --- 2. ICONS & BITMAPS ---
-# We sanitize these paths to ensure NSIS receives "C:\\Users\\..." 
-if(EXISTS "${CMAKE_SOURCE_DIR}/resources/icon.ico")
-    sanitize_path_for_nsis("${CMAKE_SOURCE_DIR}/resources/icon.ico" ICON_PATH)
-    set(CPACK_NSIS_MUI_ICON "${ICON_PATH}")
-    set(CPACK_NSIS_MUI_UNIICON "${ICON_PATH}")
-endif()
-
-if(EXISTS "${CMAKE_SOURCE_DIR}/resources/header.bmp")
-    sanitize_path_for_nsis("${CMAKE_SOURCE_DIR}/resources/header.bmp" BMP_PATH)
-    set(CPACK_PACKAGE_ICON "${BMP_PATH}")
-endif()
 
 # --- INCLUDE CPACK LAST ---
 include(CPack)

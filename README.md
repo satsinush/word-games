@@ -77,23 +77,23 @@ cmake --build --preset mingw-release
 ./build/mingw-release/p++
 ```
 
-#### Option C: Building Windows Installer (NSIS)
+#### Option C: Building Windows Installer (Inno Setup)
 
-To build a standalone Windows `.exe` installer (bundling `p++.exe`, Qt 6 runtime DLLs, and resources into an NSIS setup executable):
+To build a standalone Windows `.exe` installer (bundling `p++.exe`, Qt 6 runtime DLLs, and resources into an Inno Setup setup executable):
 
 **Prerequisites**:
 1. **Qt 6**: Installed on your build environment (e.g. `C:\Qt\6.x.x\msvc2019_64` or MinGW).
-2. **NSIS (Nullsoft Scriptable Install System)**: Installed and added to system `PATH`.
+2. **Inno Setup 6**: Installed and added to system `PATH` (or located at `C:\Program Files (x86)\Inno Setup 6`).
 
 ```powershell
 # 1. Configure release build using the release preset
 cmake --preset mingw-release
 
-# 2. Build application, run windeployqt, and generate NSIS installer package
+# 2. Build application, run windeployqt, and generate Inno Setup installer package
 cmake --build --preset mingw-release --target package_release_installer
 ```
 
-The output installer binary will be generated in `build/mingw-release/PuzzlePlusPlus-3.0.0-win64.exe`.
+The output installer binary will be generated in `build/mingw-release/PuzzlePlusPlus-3.0.0-win64.exe` (and portable archive `PuzzlePlusPlus-3.0.0-win64.zip`).
 
 -----
 
