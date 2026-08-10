@@ -291,17 +291,20 @@ set(CPACK_NSIS_INSTALLED_ICON_NAME "bin\\\\p++.exe")
 # --- Non-Admin (Per-User) Installation ---
 # Configure NSIS to run at user level without requesting admin/UAC elevation
 set(CPACK_NSIS_REQUIRED_EXECUTION_LEVEL "user")
-set(CPACK_NSIS_INSTALL_ROOT "$LOCALAPPDATA\\\\Programs")
-set(CPACK_NSIS_DEFAULT_INSTALL_DIRECTORY "$LOCALAPPDATA\\\\Programs\\\\Puzzle++")
 set(CPACK_NSIS_PACKAGE_INSTALL_REGISTRY_KEY "Puzzle++")
 set(CPACK_NSIS_ENABLE_HIERARCHICAL_INSTALLATION OFF)
+
+# Inject NSIS initialization commands to set INSTDIR to %LOCALAPPDATA%\Programs\Puzzle++
+set(CPACK_NSIS_EXTRA_INITIAL_COMMANDS "
+  SetShellVarContext current
+  StrCpy \$INSTDIR \"\$LOCALAPPDATA\\\\Programs\\\\Puzzle++\"
+")
 
 # Explicitly instruct NSIS compiler for Current User (HKCU) installation
 set(CPACK_NSIS_DEFINES "
   RequestExecutionLevel user
   !define MULTIUSER_EXECUTIONLEVEL User
   !define MULTIUSER_INSTALLMODE_DEFAULT_CURRENTUSER
-  !define MULTIUSER_INSTALLMODE_DEFAULT_REGISTRY_KEY \"Software\\\\Puzzle++\"
 ")
 
 # --- 2. ICONS & BITMAPS ---
