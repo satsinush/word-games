@@ -297,7 +297,7 @@ set(CPACK_NSIS_ENABLE_HIERARCHICAL_INSTALLATION OFF)
 # Set INSTDIR dynamically during pre-install execution right before directory page display
 set(CPACK_NSIS_EXTRA_PREINSTALL_COMMANDS "
   SetShellVarContext current
-  StrCpy \$INSTDIR \"\$LOCALAPPDATA\\\\Programs\\\\Puzzle++\"
+  StrCpy \$INSTDIR \\\"\$LOCALAPPDATA\\\\Programs\\\\Puzzle++\\\"
 ")
 
 # Explicitly instruct NSIS compiler for Current User (HKCU) installation
