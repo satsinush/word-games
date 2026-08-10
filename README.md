@@ -93,7 +93,7 @@ cmake --preset mingw-release
 cmake --build --preset mingw-release --target package_release_installer
 ```
 
-The output installer binary will be generated in `build/mingw-release/Puzzle++-3.0.0-win64.exe`.
+The output installer binary will be generated in `build/mingw-release/PuzzlePlusPlus-3.0.0-win64.exe`.
 
 -----
 
