@@ -279,10 +279,9 @@ endif()
 # --- Inno Setup Settings (Non-Admin Per-User Install to %LOCALAPPDATA%\Programs) ---
 find_program(CPACK_INNOSETUP_EXECUTABLE ISCC HINTS "C:/Program Files (x86)/Inno Setup 6" "C:/Program Files/Inno Setup 6")
 set(CPACK_INNOSETUP_PROGRAM_NAME "Puzzle++")
-set(CPACK_INNOSETUP_PRIVILEGES_REQUIRED "lowest")
-set(CPACK_INNOSETUP_DEFAULT_DIR_NAME "{userappdata}/../Local/Programs/Puzzle++")
-set(CPACK_INNOSETUP_CREATE_UNINSTALLER ON)
-set(CPACK_INNOSETUP_RUN_EXECUTABLES "bin/p++.exe")
+set(CPACK_INNOSETUP_SETUP_PrivilegesRequired "lowest")
+set(CPACK_INNOSETUP_SETUP_DefaultDirName "{userappdata}/../Local/Programs/Puzzle++")
+set(CPACK_INNOSETUP_SETUP_CreateUninstallRegKey "yes")
 
 # --- NSIS Fallback Settings ---
 set(CPACK_NSIS_DISPLAY_NAME "Puzzle++")
