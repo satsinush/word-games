@@ -57,8 +57,7 @@ cmake --preset mingw-core
 cmake --build --preset mingw-core
 
 # Run the application (Interactive Mode)
-cd build/mingw-core
-./p++
+./build/mingw-core/p++
 ```
 
 *Note: Since there is no GUI, running the executable directly enters interactive CLI mode.*
@@ -75,9 +74,26 @@ cmake --preset mingw-release
 cmake --build --preset mingw-release
 
 # Run the application
-cd build/mingw-release
-./p++
+./build/mingw-release/p++
 ```
+
+#### Option C: Building Windows Installer (Inno Setup)
+
+To build a standalone Windows `.exe` installer (bundling `p++.exe`, Qt 6 runtime DLLs, and resources into an Inno Setup setup executable):
+
+**Prerequisites**:
+1. **Qt 6**: Installed on your build environment (e.g. `C:\Qt\6.x.x\msvc2019_64` or MinGW).
+2. **Inno Setup 6**: Installed and added to system `PATH` (or located at `C:\Program Files (x86)\Inno Setup 6`).
+
+```powershell
+# 1. Configure release build using the release preset
+cmake --preset mingw-release
+
+# 2. Build application, run windeployqt, and generate Inno Setup installer package
+cmake --build --preset mingw-release --target package_release_installer
+```
+
+The output installer binary will be generated in `build/mingw-release/PuzzlePlusPlus-3.0.0-win64.exe` (and portable archive `PuzzlePlusPlus-3.0.0-win64.zip`).
 
 -----
 
@@ -102,29 +118,64 @@ If using the CLI, run the executable directly:
 # Solve Spelling Bee with custom letters
 ./p++ spellingbee --letters nyhacked --reuse-letters true
 
-# Get Wordle suggestions
-./p++ wordle --guesses "CRANE 01120" --max-depth 1
+# Get Wordle suggestions using auto-depth
+./p++ wordle --guesses "CRANE 01120" --auto-depth
 
 # Mastermind solver assistance
 ./p++ mastermind --guesses "RGBC 1 2" --pegs 4 --colors "RGBCMY"
 
 # Hangman letter suggestions
-./p++ hangman --input "?A??? ???;etz"
+./p++ hangman --input "_A__ ___;etz"
+```
+
+## Running Tests
+
+To run the unit tests, make sure you configure the build using a preset that has testing enabled (e.g. `linux-debug` or `mingw-debug`), build the project, and execute the test suite:
+
+```bash
+# Run the tests binary directly
+./build/linux-debug/p++-tests
+
+# Or run using CTest
+ctest --test-dir build/linux-debug
+```
+
+## Running Benchmarks
+
+Benchmarks are built as a separate `p++-benchmarks` binary when `BUILD_BENCHMARKS` is enabled. Debug presets such as `linux-debug`, `mingw-debug`, and `msvc-debug` turn this on by default.
+
+```bash
+# Configure and build (example: linux-debug)
+cmake --preset linux-debug
+cmake --build --preset linux-debug
+
+# Run all solver benchmarks
+./build/linux-debug/p++-benchmarks
+
+# Report times in milliseconds
+./build/linux-debug/p++-benchmarks --benchmark_time_unit=ms
+
+# Run a specific benchmark by name filter
+./build/linux-debug/p++-benchmarks --benchmark_filter=BM_Wordle
+```
+
+On Windows MinGW builds, use `./build/mingw-debug/p++-benchmarks.exe` instead.
+
+Covered solvers: Wordle, Spelling Bee, Letter Boxed, Mastermind, Dungleon, and Hangman.
+
+## Git Hooks (Pre-push Validation)
+
+This repository includes a pre-push hook script in `.githooks/pre-push` that runs `clang-format` formatting checks and `ctest` unit tests.
+
+To enable the git hook locally, run:
+
+```bash
+git config core.hooksPath .githooks
 ```
 
 ## Complete Documentation
 
-For comprehensive usage instructions, all command-line options, game modes, and detailed examples, see:
-
-**📖 [Complete Usage Guide](./docs/usage.md)**
-
-The usage guide covers:
-
-  * All supported game modes and solvers
-  * Complete command-line reference
-  * Advanced configuration options
-  * Benchmarking and performance tools
-  * Boolean value formats and examples
+For GUI walkthroughs, full CLI options, and examples, see **[docs/usage.md](./docs/usage.md)**.
 
 -----
 
@@ -145,4 +196,4 @@ All third-party dependencies are automatically fetched during the CMake build pr
 
 ### Game Assets
 
-  * **Dungleon Images**: The character and item images in `resources/dungleon/` are sourced from the official [Dungleon website](https://www.dungleon.com/) and are used in this puzzle solver implementation.
+  * **Dungleon Images**: The character and item images in `resources/dungleon_characters/` are sourced from the official [Dungleon website](https://www.dungleon.com/) and are used in this puzzle solver implementation.

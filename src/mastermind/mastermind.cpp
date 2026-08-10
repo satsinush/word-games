@@ -243,7 +243,8 @@ struct MastermindSolverTraits {
 };
 
 // Mastermind-specific ENT solver implementation
-class MastermindEntSolver : public Utils::AbstractEntSolverSameType<MastermindSolverTraits> {
+class MastermindEntSolver
+    : public Utils::AbstractEntSolverSameType<MastermindSolverTraits> {
 public:
   MastermindEntSolver(const Config &cfg)
       : Utils::AbstractEntSolverSameType<MastermindSolverTraits>(cfg) {}
@@ -259,10 +260,12 @@ protected:
     return Mastermind::generateFeedback(target, guess);
   }
 
-  PatternGuess createGuess(const Pattern &pattern, double ent, double probability) const override {
+  PatternGuess createGuess(const Pattern &pattern, double ent, double wnt,
+                           double probability) const override {
     PatternGuess guess;
     guess.pattern = pattern;
     guess.ent = ent;
+    guess.wnt = wnt;
     guess.probability = probability;
     return guess;
   }
@@ -272,12 +275,17 @@ protected:
     Result result;
     result.sortedGuesses = guesses;
     result.totalPossiblePatterns = totalPossible;
+    result.searchDepth = this->activeDepth;
     return result;
   }
 
-  double worstCaseExpectedTurns(size_t numCandidates) const override {
-    double base = std::max(2.0, static_cast<double>(config.numPegs));
-    return std::log(static_cast<double>(numCandidates)) / std::log(base);
+  double maxFeedbackGroups() const override {
+    // Valid (exact, misplaced) pairs where exact + misplaced <= numPegs
+    return static_cast<double>((config.numPegs + 1) * (config.numPegs + 2)) / 2.0;
+  }
+
+  double feedbackEfficiency() const override {
+    return 0.95; // Highly independent peg options
   }
 };
 
@@ -291,12 +299,13 @@ Result runMastermindSolver(const Config &config, std::atomic<bool> *cancel) {
   // Generate all possible patterns for the given configuration
   std::vector<Pattern> allPatterns = Mastermind::generateAllPatterns(config);
 
+  std::vector<Pattern> possiblePatterns = allPatterns;
+
   // Create CandidateSet from the filtered patterns
-  Utils::VectorCandidateSet<Mastermind::Pattern> initialCandidates(
-      allPatterns);
+  Utils::VectorCandidateSet<Mastermind::Pattern> initialCandidates(possiblePatterns);
 
   // Use the specialized Mastermind ENT solver - returns Result directly!
   MastermindEntSolver solver(config);
-  return solver.solve(allPatterns, initialCandidates, cancel);
+  return solver.solve(possiblePatterns, initialCandidates, cancel);
 }
 } // namespace Mastermind

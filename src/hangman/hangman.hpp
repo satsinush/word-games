@@ -1,5 +1,6 @@
 #pragma once
 #include <bitset>
+#include <cctype>
 #include <cmath>
 #include <string>
 #include <vector>
@@ -13,10 +14,16 @@ namespace Hangman {
 
 struct Feedback; // forward declaration so Config can reference Feedback
 
-// Represents a word pattern like "?A??" where ? is unknown, letters are
+// True for unknown blanks. Letters are revealed; any non-letter (e.g. '_') is
+// unknown. Prefer '_' in UI/docs; other non-letters are accepted the same way.
+inline bool isUnknownChar(char c) {
+  return !std::isalpha(static_cast<unsigned char>(c));
+}
+
+// Represents a word pattern like "_A__" where _ is unknown, letters are
 // revealed
 struct WordPattern {
-  std::string pattern; // The pattern string (e.g., "?A??")
+  std::string pattern; // The pattern string (e.g., "_A__")
   size_t length() const { return pattern.length(); }
 
   // Get revealed letters as a map of position -> letter
@@ -24,7 +31,7 @@ struct WordPattern {
     std::vector<std::pair<size_t, char>> revealed;
     for (size_t i = 0; i < pattern.length(); ++i) {
       char c = pattern[i];
-      if (c != '?' && std::isalpha(static_cast<unsigned char>(c))) {
+      if (!isUnknownChar(c)) {
         revealed.emplace_back(i, static_cast<char>(std::tolower(c)));
       }
     }
@@ -82,34 +89,39 @@ struct WordSlotSolution {
 };
 
 struct Config {
-  uint8_t maxDepth = 1; // How many moves ahead to calculate ENT
+  uint8_t maxDepth = 1;   // How many moves ahead to calculate ENT
+  bool autoDepth = false; // Dynamically choose optimal depth
   bool excludeUncommonWords = false;
+  uint32_t maxGuesses = 6; // Maximum allowed guesses / strikes
   std::vector<WordPattern> wordPatterns =
-      {}; // Patterns for each word (e.g., {"?A??", "?A?", "?????"})
+      {}; // Patterns for each word (e.g., {"_A__", "_A_", "_____"})
   std::vector<Feedback> feedbackHistory = {};
 };
 
 // Represents a letter guess and its feedback
 struct Feedback {
-  char letter;        // The guessed letter (lowercase)
-  bool isInWord;      // Whether the letter is in any word
-  size_t occurrences; // Total occurrences across all words (0 if not in phrase)
+  char letter;                  // The guessed letter (lowercase)
+  std::bitset<64> positions;    // Bitmask of positions where letter appears
 
   bool operator==(const Feedback &other) const {
-    return letter == other.letter && isInWord == other.isInWord;
+    return letter == other.letter && positions == other.positions;
   }
 
   bool operator<(const Feedback &other) const {
     if (letter != other.letter)
       return letter < other.letter;
-    return isInWord < other.isInWord;
+    return positions.to_ullong() < other.positions.to_ullong();
   }
+
+  bool isInWord() const { return positions.any(); }
+  size_t occurrences() const { return positions.count(); }
 };
 
 // Represents a single letter as a guess input
 struct LetterGuess {
   char letter;              // The letter (lowercase a-z)
   double ent = 0.0;         // Expected Number of Turns
+  double wnt = 0.0;         // Worst Number of Turns
   double probability = 0.0; // Probability this letter appears in the word
 
   bool operator<(const LetterGuess &other) const {
@@ -123,6 +135,10 @@ struct LetterGuess {
     if (std::abs(ent - other.ent) > tolerance)
       return ent < other.ent;
 
+    // Third tiebreaker: WNT (lower is better)
+    if (std::abs(wnt - other.wnt) > tolerance)
+      return wnt < other.wnt;
+
     // Final tiebreaker: sort by letter for consistency
     return letter < other.letter;
   }
@@ -130,19 +146,17 @@ struct LetterGuess {
 
 struct Result {
   std::vector<LetterGuess> sortedGuesses; // All available letters ranked
-  int totalPossibleWords = 0;             // Number of unique possible words
+  int totalPossiblePatterns = 0;          // Number of unique possible patterns (combinations)
   std::vector<Utils::Word>
       possibleWords; // Unique words matching any pattern position
+  int searchDepth = 0;
 };
 
-// Parse a pattern string like "?A?? ?A? ?????" into WordPatterns
+// Parse a pattern string like "_A__ _A_ _____" into WordPatterns
 std::vector<WordPattern> parsePatternString(const std::string &patternStr);
 
 // Convert patterns to a display string
 std::string patternsToString(const std::vector<WordPattern> &patterns);
-
-// Parse feedback string like "a 1" or "e 0" (letter and whether it's in word)
-Feedback parseFeedback(const std::string &input);
 
 // Parse strikes string - letters that are NOT in the word (e.g., "etxzq")
 std::vector<Feedback> parseStrikes(const std::string &strikes);
@@ -154,17 +168,13 @@ bool matchesFeedback(const PhraseSolution &phrase, const Feedback &fb);
 bool matchesWordFeedback(const Utils::Word &word, const Feedback &fb);
 
 // Check if a word matches a pattern (considering revealed letters)
-bool matchesPattern(const Utils::Word &word, const WordPattern &pattern);
+bool matchesPattern(const Utils::Word &word, const WordPattern &pattern, const std::unordered_set<char> &globalRevealed);
 
 // Generate feedback for a letter guess against a target phrase
 Feedback generateFeedback(const PhraseSolution &target, char letter);
 
 // Get all possible letters (a-z)
 std::vector<char> getAllLetters();
-
-// Filter already guessed letters from available guesses
-std::vector<char>
-getAvailableLetters(const std::vector<Feedback> &feedbackHistory);
 
 // Run the Hangman solver with ENT-based algorithm
 Result runHangmanSolver(const Config &config = Config{},
@@ -176,9 +186,8 @@ Result runHangmanSolver(const Config &config = Config{},
 namespace std {
 template <> struct hash<Hangman::Feedback> {
   size_t operator()(const Hangman::Feedback &fb) const noexcept {
-    // Simple hash combining letter and isInWord flag
     size_t h1 = std::hash<char>{}(fb.letter);
-    size_t h2 = std::hash<bool>{}(fb.isInWord);
+    size_t h2 = std::hash<unsigned long long>{}(fb.positions.to_ullong());
     return h1 ^ (h2 << 1);
   }
 };

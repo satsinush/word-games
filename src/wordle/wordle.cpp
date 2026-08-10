@@ -36,13 +36,8 @@ Feedback parseFeedback(const std::string &input) {
   for (size_t i = 0; i < word.size(); ++i) {
     if (colors[i] < '0' || colors[i] > '2')
       throw std::runtime_error("Invalid color digit");
-    int color = colors[i] - '0';
-    if (color == 0)
-      fb.setGrey(i);
-    else if (color == 1)
-      fb.setYellow(i);
-    else
-      fb.setGreen(i);
+    Color color = static_cast<Color>(colors[i] - '0');
+    fb.setColor(i, color);
   }
   return fb;
 }
@@ -195,10 +190,11 @@ protected:
     return Wordle::generateFeedback(target, guess.wordString);
   }
 
-  WordGuess createGuess(const Utils::Word &word, double ent, double probability) const override {
+  WordGuess createGuess(const Utils::Word &word, double ent, double wnt, double probability) const override {
     WordGuess guess;
     guess.word = word;
     guess.ent = ent;
+    guess.wnt = wnt;
     guess.probability = probability;
     return guess;
   }
@@ -208,12 +204,20 @@ protected:
     Result result;
     result.sortedGuesses = guesses;
     result.totalPossibleWords = totalPossible;
+    result.searchDepth = this->activeDepth;
     return result;
   }
 
-  double worstCaseExpectedTurns(size_t numCandidates) const override {
-    double base = std::max(2.0, static_cast<double>(config.wordLength));
-    return std::log(static_cast<double>(numCandidates)) / std::log(base);
+  double maxFeedbackGroups() const override {
+    // 3 states (green/yellow/gray) per letter position
+    double k = 1.0;
+    for (uint8_t i = 0; i < config.wordLength; ++i)
+      k *= 3.0;
+    return k;
+  }
+
+  double feedbackEfficiency() const override {
+    return 0.75; // Wordle word lexicon correlations
   }
 };
 

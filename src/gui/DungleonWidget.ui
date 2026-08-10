@@ -100,7 +100,23 @@
       <item>
        <widget class="QPushButton" name="submitBtn">
         <property name="text">
-         <string>Submit Guess</string>
+         <string>Add &amp; Solve</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="addOnlyBtn">
+        <property name="text">
+         <string>+</string>
+        </property>
+        <property name="toolTip">
+         <string>Add guess without solving</string>
+        </property>
+        <property name="maximumWidth">
+         <number>40</number>
+        </property>
+        <property name="minimumWidth">
+         <number>40</number>
         </property>
        </widget>
       </item>
@@ -263,7 +279,7 @@
      </property>
      <widget class="QWidget" name="allResultsTab">
       <attribute name="title">
-       <string>All Suggestions</string>
+       <string>Suggested Guesses</string>
       </attribute>
       <layout class="QVBoxLayout" name="allResultsTabLayout">
        <item>
@@ -285,12 +301,12 @@
          </attribute>
          <column>
           <property name="text">
-           <string>Rank</string>
+           <string>Pattern</string>
           </property>
          </column>
          <column>
           <property name="text">
-           <string>Pattern</string>
+           <string>Probability</string>
           </property>
          </column>
          <column>
@@ -300,7 +316,7 @@
          </column>
          <column>
           <property name="text">
-           <string>Probability</string>
+           <string>WNT</string>
           </property>
          </column>
         </widget>
@@ -331,12 +347,12 @@
          </attribute>
          <column>
           <property name="text">
-           <string>Rank</string>
+           <string>Pattern</string>
           </property>
          </column>
          <column>
           <property name="text">
-           <string>Pattern</string>
+           <string>Probability</string>
           </property>
          </column>
          <column>
@@ -346,7 +362,7 @@
          </column>
          <column>
           <property name="text">
-           <string>Probability</string>
+           <string>WNT</string>
           </property>
          </column>
         </widget>

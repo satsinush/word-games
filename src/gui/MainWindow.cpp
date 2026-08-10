@@ -8,7 +8,48 @@
 #include "gui/SpellingBeeWidget.hpp"
 #include "gui/WordleWidget.hpp"
 #include "ui_MainWindow.h"
+#include "utils/utils.hpp"
+
+#include <QIcon>
 #include <QMessageBox>
+#include <QPainter>
+#include <QPixmap>
+#include <QPushButton>
+#include <QSize>
+#include <QSvgRenderer>
+
+namespace {
+QIcon loadGameIcon(const std::string &resourceFile, int size = 28,
+                   bool pixelated = false) {
+  const QString path =
+      QString::fromStdString(Utils::getResourceFile(resourceFile));
+  if (path.endsWith(QStringLiteral(".png"), Qt::CaseInsensitive)) {
+    QPixmap pm(path);
+    if (pm.isNull())
+      return {};
+    return QIcon(pm.scaled(size, size, Qt::KeepAspectRatio,
+                           pixelated ? Qt::FastTransformation
+                                     : Qt::SmoothTransformation));
+  }
+
+  QSvgRenderer renderer(path);
+  if (!renderer.isValid())
+    return {};
+  QPixmap pm(size, size);
+  pm.fill(Qt::transparent);
+  QPainter painter(&pm);
+  renderer.render(&painter);
+  return QIcon(pm);
+}
+
+void applySidebarIcon(QPushButton *btn, const std::string &resourceFile,
+                      bool pixelated = false) {
+  if (!btn)
+    return;
+  btn->setIcon(loadGameIcon(resourceFile, 28, pixelated));
+  btn->setIconSize(QSize(28, 28));
+}
+} // namespace
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent), ui(new Ui::MainWindow) {
@@ -27,6 +68,13 @@ MainWindow::MainWindow(QWidget *parent)
   sidebarButtonGroup->addButton(ui->btnDungleon, 4);
   sidebarButtonGroup->addButton(ui->btnHangman, 5);
   sidebarButtonGroup->setExclusive(true);
+
+  applySidebarIcon(ui->btnWordle, "wordle_icon.svg");
+  applySidebarIcon(ui->btnSpellingBee, "spelling_bee_icon.svg");
+  applySidebarIcon(ui->btnLetterBoxed, "letter_boxed_icon.svg");
+  applySidebarIcon(ui->btnMastermind, "mastermind_icon.svg");
+  applySidebarIcon(ui->btnDungleon, "dungleon_icon.png", /*pixelated=*/true);
+  applySidebarIcon(ui->btnHangman, "hangman_icon.svg");
 
   // Create and add game widgets to the stacked widget
   wordleWidget = new WordleWidget(this);

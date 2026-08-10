@@ -105,6 +105,8 @@ LetterBoxed::Config LetterBoxedGame::getConfigFromUser() {
         Utils::Input::promptBool("Prune redundant paths?", true);
     config.pruneDominatedClasses =
         Utils::Input::promptBool("Prune dominated classes?", false);
+    config.excludeUncommonWords =
+        Utils::Input::promptBool("Exclude uncommon words?", false);
   }
 
   return config;
@@ -203,6 +205,10 @@ LetterBoxed::Config LetterBoxedGame::getConfigFromArgs(
     config.pruneDominatedClasses = Utils::Input::getArgValue(
         args, "prune-classes", config.pruneDominatedClasses);
   }
+  if (args.find("exclude-uncommon-words") != args.end()) {
+    config.excludeUncommonWords = Utils::Input::getArgValue(
+        args, "exclude-uncommon-words", config.excludeUncommonWords);
+  }
 
   return config;
 }
@@ -242,7 +248,9 @@ void LetterBoxedGame::runCLI() {
       std::cout << "  Prune redundant paths: "
                 << (config.pruneRedundantPaths ? "true" : "false") << "\n";
       std::cout << "  Prune dominated classes: "
-                << (config.pruneDominatedClasses ? "true" : "false") << "\n\n";
+                << (config.pruneDominatedClasses ? "true" : "false") << "\n";
+      std::cout << "  Exclude uncommon words: "
+                << (config.excludeUncommonWords ? "true" : "false") << "\n\n";
 
       std::cout << "Running solver...\n";
       LetterBoxed::Result result =
@@ -255,15 +263,7 @@ void LetterBoxedGame::runCLI() {
         try {
           std::cout << "\nCommands: 's' (solve again), 'a' (show all)\n";
           std::cout << "Enter command: ";
-          std::string input;
-          std::getline(std::cin, input);
-
-          // Check for EOF
-          if (std::cin.eof()) {
-            std::cin.clear();
-            std::cout << "\n";
-            throw Utils::Input::UserCancelledException();
-          }
+          std::string input = Utils::Input::readLine();
 
           input = Utils::trimToLower(input);
 

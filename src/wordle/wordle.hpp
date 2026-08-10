@@ -16,9 +16,17 @@ struct Feedback; // forward declaration so Config can reference Feedback
 
 struct Config {
   uint8_t maxDepth = 1; // How many moves ahead to calculate ENT
+  bool autoDepth = false; // Dynamically choose optimal depth
   bool excludeUncommonWords = false;
   uint8_t wordLength = 5; // Length of words to use (default 5)
+  uint32_t maxGuesses = 6; // Maximum allowed guesses
   std::vector<Feedback> feedbackHistory = {};
+};
+
+enum class Color {
+  Grey = 0,
+  Yellow = 1,
+  Green = 2
 };
 
 struct Feedback {
@@ -53,18 +61,34 @@ struct Feedback {
     colors.set(i * 2 + 1);
   }
 
-  int getColor(const int i) const {
+  void setColor(const int i, Color color) {
+    switch (color) {
+      case Color::Green:
+        setGreen(i);
+        break;
+      case Color::Yellow:
+        setYellow(i);
+        break;
+      case Color::Grey:
+      default:
+        setGrey(i);
+        break;
+    }
+  }
+
+  Color getColor(const int i) const {
     if (colors[i * 2 + 1])
-      return 2; // green
+      return Color::Green;
     if (colors[i * 2])
-      return 1; // yellow
-    return 0;   // grey
+      return Color::Yellow;
+    return Color::Grey;
   }
 };
 
 struct WordGuess {
   Utils::Word word;
   double ent = 0.0; // Expected Number of Turns
+  double wnt = 0.0; // Worst Number of Turns
   double probability = 0.0;
 
   bool operator<(const WordGuess &other) const {
@@ -79,6 +103,10 @@ struct WordGuess {
     if (std::abs(probability - other.probability) > tolerance)
       return probability > other.probability; // Sort higher probability first
 
+    // Third tiebreaker: WNT (lower is better)
+    if (std::abs(wnt - other.wnt) > tolerance)
+      return wnt < other.wnt;
+
     // Final tiebreaker: sort by word for consistency
     return word < other.word;
   }
@@ -87,6 +115,7 @@ struct WordGuess {
 struct Result {
   std::vector<WordGuess> sortedGuesses;
   int totalPossibleWords = 0;
+  int searchDepth = 0;
 };
 
 // Parse feedback string like "STEAL 01201"

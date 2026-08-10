@@ -118,6 +118,8 @@ void filterWords(std::vector<WordPath> &allValidWordPaths,
   for (const Utils::Word &wordObj : allDictionaryWords) {
     if (cancel && cancel->load())
       return;
+    if (config.excludeUncommonWords && !wordObj.is_scrabble)
+      continue;
     const std::string &word = wordObj.wordString;
     std::bitset<12> uniqueChars;
     bool containsInvalidCharacter = false;

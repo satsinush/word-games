@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.16)
 project(p++ LANGUAGES CXX)
 
 # Define project version
-set(p++_VERSION "1.2.0")
+set(p++_VERSION "3.0.0")
 
 # ===================================================================
 # 1. PROJECT-WIDE SETTINGS
@@ -126,47 +126,22 @@ endif()
 # ===================================================================
 if(BUILD_GUI)
     message(STATUS "GUI build enabled.")
-    find_package(Qt6 COMPONENTS Widgets REQUIRED)
+    find_package(Qt6 COMPONENTS Widgets Svg REQUIRED)
 
     file(GLOB_RECURSE GUI_SRCS CONFIGURE_DEPENDS
         "${CMAKE_SOURCE_DIR}/src/gui/*.cpp"
         "${CMAKE_SOURCE_DIR}/src/gui/*.hpp"
         "${CMAKE_SOURCE_DIR}/src/gui/*.ui"
     )
-    add_library(p++-gui STATIC ${GUI_SRCS})
-    target_include_directories(p++-gui PUBLIC ${CMAKE_SOURCE_DIR}/src)
-    set_target_properties(p++-gui PROPERTIES AUTOMOC ON AUTOUIC ON AUTORCC ON)
-    target_link_libraries(p++-gui PUBLIC Qt6::Widgets)
-    target_compile_definitions(p++-gui PUBLIC WITH_GUI)
+    add_library(p++-gui-lib STATIC ${GUI_SRCS})
+    target_include_directories(p++-gui-lib PUBLIC ${CMAKE_SOURCE_DIR}/src)
+    set_target_properties(p++-gui-lib PROPERTIES AUTOMOC ON AUTOUIC ON AUTORCC ON)
+    target_link_libraries(p++-gui-lib PUBLIC Qt6::Widgets Qt6::Svg)
+    target_compile_definitions(p++-gui-lib PUBLIC WITH_GUI)
 endif()
 
-# -- Define the main executable --
-if(BUILD_GUI AND WIN32)
-    add_executable(p++ WIN32 src/main.cpp)
-    
-    # --- ROBUST ICON LOGIC (Fixes MinGW Space-in-Path Crash) ---
-    if(EXISTS "${CMAKE_SOURCE_DIR}/resources/icon.ico")
-        set(ICON_RC_PATH "${CMAKE_CURRENT_BINARY_DIR}/app_icon.rc")
-        file(WRITE "${ICON_RC_PATH}" "IDI_ICON1 ICON \"${CMAKE_SOURCE_DIR}/resources/icon.ico\"")
-        
-        if(MSVC)
-            target_sources(p++ PRIVATE "${ICON_RC_PATH}")
-        else()
-            # Manual compile for MinGW to avoid windres/cc1 include path bug
-            enable_language(RC)
-            set(ICON_OBJ_PATH "${CMAKE_CURRENT_BINARY_DIR}/app_icon.obj")
-            add_custom_command(
-                OUTPUT "${ICON_OBJ_PATH}"
-                COMMAND ${CMAKE_RC_COMPILER} -O coff -i "${ICON_RC_PATH}" -o "${ICON_OBJ_PATH}"
-                DEPENDS "${ICON_RC_PATH}" "${CMAKE_SOURCE_DIR}/resources/icon.ico"
-                VERBATIM
-            )
-            target_sources(p++ PRIVATE "${ICON_OBJ_PATH}")
-        endif()
-    endif()
-else()
-    add_executable(p++ src/main.cpp)
-endif()
+# -- Define the main CLI executable (Console Subsystem) --
+add_executable(p++ src/main.cpp)
 
 if(BUILD_TRACY)
     target_compile_definitions(p++ PRIVATE TRACY_ENABLE=1)
@@ -176,17 +151,51 @@ target_link_libraries(p++ PRIVATE
     $<IF:$<BOOL:${BUILD_TRACY}>,p++-profiled,p++-base>
 )
 
+target_compile_definitions(p++ PRIVATE
+    PPLUSPLUS_VERSION="${p++_VERSION}"
+)
+
+# -- Define the GUI executable (WIN32 Subsystem on Windows) --
 if(BUILD_GUI)
-    target_link_libraries(p++ PRIVATE p++-gui)
-    set_target_properties(p++ PROPERTIES AUTOMOC ON)
-    if(WIN32 AND CMAKE_BUILD_TYPE STREQUAL "Debug")
-        find_program(WINDEPLOYQT_EXECUTABLE windeployqt HINTS ${CMAKE_PREFIX_PATH}/bin)
-        if(WINDEPLOYQT_EXECUTABLE)
-            add_custom_command(TARGET p++ POST_BUILD
-                COMMAND ${WINDEPLOYQT_EXECUTABLE} ARGS $<TARGET_FILE:p++>
-                WORKING_DIRECTORY $<TARGET_FILE_DIR:p++>
-                COMMENT "Running windeployqt for debug build...")
+    if(WIN32)
+        add_executable(p++-gui WIN32 src/main.cpp)
+    else()
+        add_executable(p++-gui src/main.cpp)
+    endif()
+    
+    target_link_libraries(p++-gui PRIVATE p++-base p++-gui-lib)
+    set_target_properties(p++-gui PROPERTIES AUTOMOC ON)
+    target_compile_definitions(p++-gui PRIVATE PPLUSPLUS_VERSION="${p++_VERSION}")
+
+    # Apply application icon to p++-gui on Windows
+    if(WIN32 AND EXISTS "${CMAKE_SOURCE_DIR}/resources/icon.ico")
+        set(ICON_RC_PATH "${CMAKE_CURRENT_BINARY_DIR}/app_icon.rc")
+        file(WRITE "${ICON_RC_PATH}" "IDI_ICON1 ICON \"${CMAKE_SOURCE_DIR}/resources/icon.ico\"")
+        
+        if(MSVC)
+            target_sources(p++-gui PRIVATE "${ICON_RC_PATH}")
+        else()
+            enable_language(RC)
+            set(ICON_OBJ_PATH "${CMAKE_CURRENT_BINARY_DIR}/app_icon.obj")
+            add_custom_command(
+                OUTPUT "${ICON_OBJ_PATH}"
+                COMMAND ${CMAKE_RC_COMPILER} -O coff -i "${ICON_RC_PATH}" -o "${ICON_OBJ_PATH}"
+                DEPENDS "${ICON_RC_PATH}" "${CMAKE_SOURCE_DIR}/resources/icon.ico"
+                VERBATIM
+            )
+            target_sources(p++-gui PRIVATE "${ICON_OBJ_PATH}")
         endif()
+    endif()
+endif()
+
+# Deploy Qt runtime DLLs and plugins for p++-gui on Windows when GUI is enabled
+if(WIN32 AND BUILD_GUI)
+    find_program(WINDEPLOYQT_EXECUTABLE windeployqt HINTS "${CMAKE_PREFIX_PATH}/bin" "$ENV{QTDIR}/bin")
+    if(WINDEPLOYQT_EXECUTABLE AND TARGET p++-gui)
+        add_custom_command(TARGET p++-gui POST_BUILD
+            COMMAND "${WINDEPLOYQT_EXECUTABLE}" "$<TARGET_FILE:p++-gui>"
+            COMMENT "Deploying Qt libraries for p++-gui..."
+        )
     endif()
 endif()
 
@@ -239,27 +248,20 @@ endif()
 # ===================================================================
 
 install(TARGETS p++ RUNTIME DESTINATION bin)
+if(WIN32 AND BUILD_GUI)
+    install(TARGETS p++-gui RUNTIME DESTINATION bin)
+endif()
 install(DIRECTORY "${RESOURCE_DIR}/" DESTINATION resources USE_SOURCE_PERMISSIONS)
 
 if(WIN32 AND BUILD_GUI)
-    qt_generate_deploy_app_script(TARGET p++ OUTPUT_SCRIPT DEPLOYMENT_SCRIPT_FILE NO_UNSUPPORTED_PLATFORM_ERROR)
+    qt_generate_deploy_app_script(TARGET p++-gui OUTPUT_SCRIPT DEPLOYMENT_SCRIPT_FILE NO_UNSUPPORTED_PLATFORM_ERROR)
     install(SCRIPT ${DEPLOYMENT_SCRIPT_FILE})
 endif()
 
-include(InstallRequiredSystemLibraries)
-
-# --- HELPER: Sanitize Paths for NSIS ---
-# This converts "C:/Path/With Spaces" -> "C:\\Path\\With Spaces"
-# This allows CPack to read the path safely without confusing it for an escape code (\U)
-macro(sanitize_path_for_nsis INPUT_PATH OUTPUT_VAR)
-    file(TO_CMAKE_PATH "${INPUT_PATH}" _temp_path)
-    string(REPLACE "/" "\\\\" _sanitized "${_temp_path}")
-    set(${OUTPUT_VAR} "${_sanitized}")
-endmacro()
-
 # --- DEFINE VARIABLES BEFORE INCLUDING CPACK ---
-set(CPACK_GENERATOR "NSIS")
+set(CPACK_GENERATOR "INNOSETUP;ZIP")
 set(CPACK_PACKAGE_NAME "Puzzle++")
+set(CPACK_PACKAGE_FILE_NAME "PuzzlePlusPlus-${p++_VERSION}-win64")
 set(CPACK_PACKAGE_VENDOR "Puzzle++ Team")
 set(CPACK_PACKAGE_CONTACT "Puzzle++ Team")
 set(CPACK_PACKAGE_VERSION "${p++_VERSION}")
@@ -267,29 +269,36 @@ set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Advanced word game and puzzle solver")
 set(CPACK_PACKAGE_INSTALL_DIRECTORY "Puzzle++")
 
 # --- 1. LICENSE FILE ---
-# Sanitize the path to handle spaces in "Local Documents"
 if(EXISTS "${CMAKE_SOURCE_DIR}/LICENSE")
-    sanitize_path_for_nsis("${CMAKE_SOURCE_DIR}/LICENSE" LICENSE_PATH)
-    set(CPACK_RESOURCE_FILE_LICENSE "${LICENSE_PATH}")
+    set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_SOURCE_DIR}/LICENSE")
 endif()
 
-# --- NSIS Specific Settings ---
-set(CPACK_NSIS_DISPLAY_NAME "Puzzle++")
-set(CPACK_NSIS_PACKAGE_NAME "Puzzle++")
-set(CPACK_NSIS_MENU_LINKS "bin/p++.exe" "Puzzle++")
-set(CPACK_NSIS_INSTALLED_ICON_NAME "bin\\\\p++.exe")
+# --- Package Executables & Start Menu Shortcuts ---
+if(WIN32 AND BUILD_GUI)
+    set(CPACK_PACKAGE_EXECUTABLES "p++-gui" "Puzzle++" "p++" "Puzzle++ CLI")
+    set(CPACK_CREATE_DESKTOP_LINKS "p++-gui")
+    set(CPACK_INNOSETUP_RUN_EXECUTABLES "p++-gui")
+else()
+    set(CPACK_PACKAGE_EXECUTABLES "p++" "Puzzle++")
+    set(CPACK_CREATE_DESKTOP_LINKS "p++")
+    set(CPACK_INNOSETUP_RUN_EXECUTABLES "p++")
+endif()
 
-# --- 2. ICONS & BITMAPS ---
-# We sanitize these paths to ensure NSIS receives "C:\\Users\\..." 
+# --- Inno Setup Settings (Non-Admin Per-User Install to %LOCALAPPDATA%\Programs) ---
+find_program(CPACK_INNOSETUP_EXECUTABLE ISCC HINTS "C:/Program Files (x86)/Inno Setup 6" "C:/Program Files/Inno Setup 6")
+set(CPACK_INNOSETUP_PROGRAM_NAME "Puzzle++")
+set(CPACK_INNOSETUP_SETUP_PrivilegesRequired "lowest")
+set(CPACK_INNOSETUP_SETUP_DefaultDirName "{userappdata}/../Local/Programs/Puzzle++")
+set(CPACK_INNOSETUP_SETUP_CreateUninstallRegKey "yes")
+
+# Add Desktop Shortcut option and "Add p++ to user PATH" checkbox task
+set(CPACK_INNOSETUP_CREATE_DESKTOP_KEYBOARD_SHORTCUT ON)
+set(CPACK_INNOSETUP_EXTRA_SCRIPTS "${CMAKE_SOURCE_DIR}/src/env_path.iss")
+
+# Icon customization (Setup wizard icon + Uninstall Control Panel icon)
 if(EXISTS "${CMAKE_SOURCE_DIR}/resources/icon.ico")
-    sanitize_path_for_nsis("${CMAKE_SOURCE_DIR}/resources/icon.ico" ICON_PATH)
-    set(CPACK_NSIS_MUI_ICON "${ICON_PATH}")
-    set(CPACK_NSIS_MUI_UNIICON "${ICON_PATH}")
-endif()
-
-if(EXISTS "${CMAKE_SOURCE_DIR}/resources/header.bmp")
-    sanitize_path_for_nsis("${CMAKE_SOURCE_DIR}/resources/header.bmp" BMP_PATH)
-    set(CPACK_PACKAGE_ICON "${BMP_PATH}")
+    set(CPACK_INNOSETUP_SETUP_SetupIconFile "${CMAKE_SOURCE_DIR}/resources/icon.ico")
+    set(CPACK_INNOSETUP_SETUP_UninstallDisplayIcon "{app}/bin/p++-gui.exe")
 endif()
 
 # --- INCLUDE CPACK LAST ---

@@ -46,7 +46,7 @@ private:
   Hangman::Result lastResult;
 
   // Input widgets
-  QLineEdit *patternInput; // Input for word patterns like "?A?? ?A? ?????"
+  QLineEdit *patternInput; // Input for word patterns like "_A__ _A_ _____"
   QLineEdit *excludedLettersInput; // Input for letters not in the word
 
   // Setup the input widgets

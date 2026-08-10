@@ -2,14 +2,52 @@
 
 #include "gui/GameWidget.hpp"
 #include <QApplication>
+#include <QColor>
 #include <QDialog>
 #include <QPointer>
+#include <QTableWidget>
+#include <QTableWidgetItem>
 #include <QTimer>
 
 GameWidget::GameWidget(QWidget *parent)
     : QWidget(parent), configInfoLabel(nullptr), progressDialog(nullptr),
       solverThread(nullptr), gameInitialized(false),
       cancellationRequested(false) {}
+
+QString GameWidget::formatRoundedNum(double num) {
+  if (num == 0.0)
+    return QStringLiteral("0.00");
+  const QString s = QString::number(num, 'f', 2);
+  if (num > 0.0 && s == QStringLiteral("0.00"))
+    return QStringLiteral("<0.01");
+  return s;
+}
+
+QString GameWidget::formatProbabilityPercent(double probability) {
+  return formatRoundedNum(probability * 100.0) + QStringLiteral("%");
+}
+
+void GameWidget::applyProbabilityRowColors(QTableWidget *table, int row,
+                                           int columnCount,
+                                           double probability) {
+  if (!table)
+    return;
+  QColor bg;
+  if (probability >= 0.9999) {
+    bg = QColor(76, 175, 80, 40); // matches frontend rgba(76,175,80,0.15)
+  } else if (probability > 0.0) {
+    bg = QColor(255, 235, 59, 40); // matches frontend rgba(255,235,59,0.15)
+  } else {
+    return;
+  }
+  for (int col = 0; col < columnCount; ++col) {
+    QTableWidgetItem *item = table->item(row, col);
+    if (item) {
+      item->setBackground(bg);
+      item->setForeground(QColor(0, 0, 0));
+    }
+  }
+}
 
 GameWidget::~GameWidget() {
   // Simple, fast cleanup - let Qt handle the rest

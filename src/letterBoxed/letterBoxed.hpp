@@ -21,6 +21,7 @@ struct Config {
   uint8_t maxDepth = 3;
   bool pruneRedundantPaths = true;
   bool pruneDominatedClasses = true;
+  bool excludeUncommonWords = false;
 };
 
 struct WordPath {

@@ -83,11 +83,31 @@
     </widget>
    </item>
    <item>
-    <widget class="QPushButton" name="submitBtn">
-     <property name="text">
-      <string>Add Word</string>
-     </property>
-    </widget>
+    <layout class="QHBoxLayout" name="submitButtonsLayout">
+     <item>
+      <widget class="QPushButton" name="submitBtn">
+       <property name="text">
+        <string>Add &amp; Solve</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="addOnlyBtn">
+       <property name="text">
+        <string>+</string>
+       </property>
+       <property name="toolTip">
+        <string>Add guess without solving</string>
+       </property>
+       <property name="maximumWidth">
+        <number>40</number>
+       </property>
+       <property name="minimumWidth">
+        <number>40</number>
+       </property>
+      </widget>
+     </item>
+    </layout>
    </item>
    <item>
     <widget class="QPushButton" name="solveBtn">
@@ -103,7 +123,7 @@
      </property>
      <widget class="QWidget" name="allResultsTab">
       <attribute name="title">
-       <string>All Suggestions</string>
+       <string>Suggested Guesses</string>
       </attribute>
       <layout class="QVBoxLayout" name="allResultsTabLayout">
        <item>
@@ -154,7 +174,7 @@
      </widget>
      <widget class="QWidget" name="probableWordsTab">
       <attribute name="title">
-       <string>Possible Solutions</string>
+       <string>Possible Words</string>
       </attribute>
       <layout class="QVBoxLayout" name="probableWordsTabLayout">
        <item>

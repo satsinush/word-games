@@ -40,15 +40,24 @@
 #endif
 
 void printUsage(const char *programName) {
+#ifdef PPLUSPLUS_VERSION
+  const char *version_str = PPLUSPLUS_VERSION;
+#else
+  const char *version_str = "Unknown";
+#endif
+
   const char *usage_message = R"(Usage:
   %s [OPTIONS] [MODE]
   
   If no arguments provided: Launch GUI mode (if compiled with GUI support)
   If MODE is provided: Run the specified game mode
   
+  Version:
+  p++ Version %s
+
 Options:
   -h, --help              Display this help message
-  -v, --verbose           Enable verbose output (for future use)
+  -v, --version           Display version information
   -i                      Run in interactive CLI mode
 
 Modes:
@@ -87,6 +96,7 @@ Wordle:
                                  0=grey, 1=yellow, 2=green
     --word-length <n>          Word length (default: 5, range: 1-32)
     --max-depth <0-2>          Search depth for entropy (default: 0)
+    --auto-depth               Dynamically calculate optimal depth (ignores max-depth)
     --exclude-uncommon-words   Exclude uncommon words (1/true/yes or 0/false/no, default: 0)
     -o, --output <file>        Output file with possible words and all guesses
                                  (default: results/guesses.txt)
@@ -99,6 +109,7 @@ Mastermind:
     --colors <chars>           Available color characters (default: "RGBCMY")
     --allow-duplicates         Allow duplicate colors (1/true/yes or 0/false/no, default: 1)
     --max-depth <0-2>          Search depth for entropy (default: 1, range: 0-2)
+    --auto-depth               Dynamically calculate optimal depth (ignores max-depth)
     -o, --output <file>        Output file with possible patterns and all guesses
                                  (default: results/guesses.txt)
 
@@ -108,18 +119,21 @@ Dungleon:
                                  Character pairs with colors (0-4)
     --solutions <solutions>    Past solutions for Gauntlet mode. Format: "ar kn ma bt dr"
     --max-depth <0-2>          Search depth for entropy (default: 0, range: 0-2)
+    --auto-depth               Dynamically calculate optimal depth (ignores max-depth)
     --exclude-impossible       Exclude impossible patterns from guesses (1/true/yes or 0/false/no, default: 0)
     -o, --output <file>        Output file with possible patterns and all guesses
                                  (default: results/dungleon.txt)
 
 Hangman:
   %s hangman [OPTIONS]
-    --input <pattern;strikes>  Combined input. Format: "?A?? ???;xyz"
-                                 Pattern uses '?' for unknown, letters for revealed
+    --input <pattern;strikes>  Combined input. Format: "_A__ ___;xyz"
+                                 Pattern uses '_' for unknown (any non-letter
+                                 also works), letters for revealed
                                  Strikes are letters NOT in the phrase
-    --pattern <pattern>        Word pattern(s). Format: "?A?? ???" (alternative to --input)
+    --pattern <pattern>        Word pattern(s). Format: "_A__ ___" (alternative to --input)
     --strikes <letters>        Letters NOT in phrase. Format: "xyz" (alternative to --input)
     --max-depth <0-2>          Search depth for entropy (default: 0, range: 0-2)
+    --auto-depth               Dynamically calculate optimal depth (ignores max-depth)
     --exclude-uncommon-words   Exclude uncommon words (1/true/yes or 0/false/no, default: 0)
     -o, --output <file>        Output file with letter rankings and possible words
                                  (default: results/hangman.txt)
@@ -140,15 +154,15 @@ Examples:
   %s wordle --guesses "STEAL 01201;CRANE 00120" --word-length 5 --max-depth 1
   %s mastermind --guesses "RGBC 1 2" --pegs 4 --colors "RGBCMY" --max-depth 1
   %s dungleon --guesses "ar kn bo ne fr 00010" --max-depth 1
-  %s hangman --input "?A?? ???;xyz"
+  %s hangman --input "_A__ ___;xyz"
   %s -i
   %s read results/wordle.txt --start 0 --end 10
 )";
 
-  printf(usage_message, programName, programName, programName, programName,
+  printf(usage_message, programName, version_str, programName, programName,
          programName, programName, programName, programName, programName,
          programName, programName, programName, programName, programName,
-         programName, programName);
+         programName, programName, programName);
 }
 
 void runReadMode(const std::map<std::string, std::string> &args,
@@ -227,10 +241,9 @@ void runInteractiveMode() {
     std::cout << "Enter choice: ";
 
     std::string input;
-    std::getline(std::cin, input);
-
-    // Check for EOF
-    if (std::cin.eof()) {
+    try {
+      input = Utils::Input::readLine();
+    } catch (const Utils::Input::UserCancelledException &) {
       return;
     }
 
@@ -303,6 +316,16 @@ int run(int argc, char *argv[]) {
     return 0;
   }
 
+  // Check for version
+  if (args.find("v") != args.end() || args.find("version") != args.end()) {
+#ifdef PPLUSPLUS_VERSION
+    std::cout << PPLUSPLUS_VERSION << "\n";
+#else
+    std::cout << "unknown\n";
+#endif
+    return 0;
+  }
+
   // Load words once to populate global cache
   Utils::loadWords();
 
@@ -371,78 +394,16 @@ int run(int argc, char *argv[]) {
 }
 
 int main(int argc, char *argv[]) {
-#if defined(WITH_GUI) && defined(_WIN32)
-  // For Windows GUI applications, handle console attachment
-  bool needsConsole = (argc > 1); // Has command line arguments
-  bool attachedToConsole = false;
-  bool allocatedConsole = false;
-
-  // Check if interactive mode is requested - needs its own console window
-  bool isInteractiveMode = false;
-  for (int i = 1; i < argc; ++i) {
-    if (strcmp(argv[i], "-i") == 0) {
-      isInteractiveMode = true;
-      break;
-    }
-  }
-
-  if (needsConsole) {
-    if (isInteractiveMode) {
-      // Interactive mode needs its own console window because the parent shell
-      // won't wait for a GUI application to finish
-      if (AllocConsole()) {
-        freopen_s((FILE **)stdout, "CONOUT$", "w", stdout);
-        freopen_s((FILE **)stderr, "CONOUT$", "w", stderr);
-        freopen_s((FILE **)stdin, "CONIN$", "r", stdin);
-        allocatedConsole = true;
-
-        // Set console title
-        SetConsoleTitleA("Puzzle++ Interactive Mode");
-      }
-    } else {
-      // Non-interactive commands: attach to parent console for output
-      if (AttachConsole(ATTACH_PARENT_PROCESS)) {
-        freopen_s((FILE **)stdout, "CONOUT$", "w", stdout);
-        freopen_s((FILE **)stderr, "CONOUT$", "w", stderr);
-        freopen_s((FILE **)stdin, "CONIN$", "r", stdin);
-        attachedToConsole = true;
-
-        // Print a newline to separate from the command that launched us
-        std::cout << std::endl;
-      }
-    }
-    // If both fail, we're likely launched from GUI (file explorer, etc.)
-    // In that case, we just won't have console output, which is fine for GUI
-    // apps
-  }
-#endif
 
 #ifdef TRACY_ENABLE
   ZoneScoped;
-#if defined(WITH_GUI) && defined(_WIN32)
-  if (attachedToConsole || allocatedConsole)
-#endif
-    std::cout << "Tracy Profiler enabled." << std::endl;
+  std::cout << "Tracy Profiler enabled." << std::endl;
 #endif
 
   int result = run(argc, argv);
 
 #ifdef TRACY_ENABLE
   FrameMark;
-#endif
-
-#if defined(WITH_GUI) && defined(_WIN32)
-  // Clean up console
-  if (attachedToConsole) {
-    // Print a newline before returning control to parent console
-    std::cout << std::endl;
-    FreeConsole();
-  } else if (allocatedConsole) {
-    // For allocated console, wait for user before closing
-    std::cout << "\nPress Enter to close..." << std::endl;
-    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-    FreeConsole();
-  }
 #endif
 
   return result;

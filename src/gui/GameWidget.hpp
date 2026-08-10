@@ -60,6 +60,12 @@ protected:
   // Returns true if processing should continue, false if cancelled
   bool handleSolverFinished();
 
+  // Shared formatting / row styling to match the web frontend entropy tables
+  static QString formatRoundedNum(double num);
+  static QString formatProbabilityPercent(double probability);
+  static void applyProbabilityRowColors(class QTableWidget *table, int row,
+                                        int columnCount, double probability);
+
   // Members that all game widgets use
   QLabel *configInfoLabel;
   QProgressDialog *progressDialog;

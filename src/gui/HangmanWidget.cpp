@@ -28,8 +28,10 @@ HangmanWidget::HangmanWidget(QWidget *parent)
 
   // Initialize config
   config.maxDepth = 1;
+  config.autoDepth = true;
   config.excludeUncommonWords = true;
-  config.wordPatterns = {{"????"}}; // Default: single 4-letter word
+  config.maxGuesses = 6;
+  config.wordPatterns = {{"____"}}; // Default: single 4-letter word
 
   // Setup the input widgets
   setupInputs();
@@ -61,14 +63,14 @@ void HangmanWidget::setupInputs() {
   // Pattern input
   QLabel *patternLabel = new QLabel("Pattern:", inputWidget);
   patternLabel->setToolTip(
-      "Enter word patterns separated by spaces.\nUse ? for unknown "
-      "letters.\nExample: ?A?? ?A? ????? (4-letter word with A, 3-letter word "
+      "Enter word patterns separated by spaces.\nUse _ for unknown "
+      "letters.\nExample: _A__ _A_ _____ (4-letter word with A, 3-letter word "
       "with A, 5-letter word)");
   inputLayout->addWidget(patternLabel);
 
   patternInput = new QLineEdit(inputWidget);
-  patternInput->setPlaceholderText("e.g., ?A?? ?A? ?????");
-  patternInput->setText("????"); // Default pattern
+  patternInput->setPlaceholderText("e.g., _A__ _A_ _____");
+  patternInput->setText("____"); // Default pattern
   patternInput->setFont(QFont("Courier", 12));
   patternInput->setMinimumWidth(200);
   inputLayout->addWidget(patternInput);
@@ -137,8 +139,7 @@ void HangmanWidget::rebuildFeedbackFromInputs() {
         if (revealedLetters.count(c) == 0 && addedExcluded.count(c) == 0) {
           Hangman::Feedback fb;
           fb.letter = c;
-          fb.isInWord = false;
-          fb.occurrences = 0;
+          // positions defaults to all zeros (letter not in word)
           config.feedbackHistory.push_back(fb);
           addedExcluded.insert(c);
         }
@@ -189,13 +190,29 @@ bool HangmanWidget::showConfigDialog() {
 
   QFormLayout *formLayout = new QFormLayout(&dialog);
 
+  // Auto depth
+  QCheckBox *autoDepthCheckBox = new QCheckBox(&dialog);
+  autoDepthCheckBox->setChecked(config.autoDepth);
+  autoDepthCheckBox->setToolTip(
+      "Dynamically choose search depth based on available time.");
+  formLayout->addRow("Auto Depth (Recommended):", autoDepthCheckBox);
+
   // Max depth
   QSpinBox *depthSpinBox = new QSpinBox(&dialog);
   depthSpinBox->setRange(0, 2);
   depthSpinBox->setValue(config.maxDepth);
+  depthSpinBox->setEnabled(!config.autoDepth);
   depthSpinBox->setToolTip(
       "Search depth for ENT calculation (0-2). Higher = slower but smarter.");
-  formLayout->addRow("Search Depth:", depthSpinBox);
+  formLayout->addRow("Manual Search Depth:", depthSpinBox);
+
+  connect(autoDepthCheckBox, &QCheckBox::toggled, depthSpinBox,
+          [depthSpinBox](bool checked) { depthSpinBox->setEnabled(!checked); });
+
+  QSpinBox *maxGuessesSpinBox = new QSpinBox(&dialog);
+  maxGuessesSpinBox->setRange(1, 100);
+  maxGuessesSpinBox->setValue(static_cast<int>(config.maxGuesses));
+  formLayout->addRow("Maximum Strikes Allowed:", maxGuessesSpinBox);
 
   // Exclude uncommon words
   QCheckBox *excludeUncommonCheckBox = new QCheckBox(&dialog);
@@ -213,7 +230,9 @@ bool HangmanWidget::showConfigDialog() {
   connect(buttonBox, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
 
   if (dialog.exec() == QDialog::Accepted) {
+    config.autoDepth = autoDepthCheckBox->isChecked();
     config.maxDepth = static_cast<uint8_t>(depthSpinBox->value());
+    config.maxGuesses = static_cast<uint32_t>(maxGuessesSpinBox->value());
     config.excludeUncommonWords = excludeUncommonCheckBox->isChecked();
     return true;
   }
@@ -232,6 +251,10 @@ void HangmanWidget::initGame() {
   // Clear tables
   ui->letterSuggestionsTable->setRowCount(0);
   ui->possibleWordsTable->setRowCount(0);
+
+  // Reset tab titles to match frontend
+  ui->resultsTabWidget->setTabText(0, "Letter Suggestions");
+  ui->resultsTabWidget->setTabText(1, "Possible Words");
 
   // Update guessed label
   ui->guessedLabel->setText("Known Letters: (none)");
@@ -253,8 +276,12 @@ void HangmanWidget::setUIEnabled(bool enabled) {
 void HangmanWidget::updateConfigInfo() {
   QString patternStr =
       QString::fromStdString(Hangman::patternsToString(config.wordPatterns));
-  QString info =
-      QString("Pattern: %1 | Depth: %2").arg(patternStr).arg(config.maxDepth);
+  QString depthStr =
+      config.autoDepth ? QString("auto") : QString::number(config.maxDepth);
+  QString info = QString("Pattern: %1 | Depth: %2 | Max strikes: %3")
+                     .arg(patternStr)
+                     .arg(depthStr)
+                     .arg(config.maxGuesses);
   ui->configInfoLabel->setText(info);
 }
 
@@ -275,15 +302,7 @@ void HangmanWidget::onPatternChanged() {
     return; // Silently ignore invalid patterns
   }
 
-  // Validate patterns (only ? and letters allowed)
-  for (const auto &pattern : newPatterns) {
-    for (char c : pattern.pattern) {
-      if (c != '?' && !std::isalpha(static_cast<unsigned char>(c))) {
-        return; // Silently ignore invalid characters
-      }
-    }
-  }
-
+  // Letters are revealed; any non-letter is treated as unknown
   config.wordPatterns = newPatterns;
   rebuildFeedbackFromInputs();
   updateConfigInfo();
@@ -328,7 +347,12 @@ void HangmanWidget::onSettings() {
 }
 
 void HangmanWidget::populateResults(int maxRows) {
-  // Populate letter suggestions table
+  // Match frontend columns: Letter | Probability | ENT | WNT
+  ui->letterSuggestionsTable->setColumnCount(4);
+  ui->letterSuggestionsTable->setHorizontalHeaderLabels(
+      {QStringLiteral("Letter"), QStringLiteral("Probability"),
+       QStringLiteral("ENT"), QStringLiteral("WNT")});
+
   ui->letterSuggestionsTable->setRowCount(0);
   int letterCount =
       std::min(maxRows, static_cast<int>(lastResult.sortedGuesses.size()));
@@ -337,31 +361,31 @@ void HangmanWidget::populateResults(int maxRows) {
   for (int i = 0; i < letterCount; ++i) {
     const auto &guess = lastResult.sortedGuesses[i];
 
-    // Rank
-    QTableWidgetItem *rankItem = new QTableWidgetItem(QString::number(i + 1));
-    rankItem->setTextAlignment(Qt::AlignCenter);
-    ui->letterSuggestionsTable->setItem(i, 0, rankItem);
-
-    // Letter
     QTableWidgetItem *letterItem =
         new QTableWidgetItem(QString(QChar(std::toupper(guess.letter))));
     letterItem->setTextAlignment(Qt::AlignCenter);
     QFont font = letterItem->font();
     font.setBold(true);
     letterItem->setFont(font);
-    ui->letterSuggestionsTable->setItem(i, 1, letterItem);
+    ui->letterSuggestionsTable->setItem(i, 0, letterItem);
 
-    // ENT Score
+    QTableWidgetItem *probItem =
+        new QTableWidgetItem(formatProbabilityPercent(guess.probability));
+    probItem->setTextAlignment(Qt::AlignCenter);
+    ui->letterSuggestionsTable->setItem(i, 1, probItem);
+
     QTableWidgetItem *entItem =
-        new QTableWidgetItem(QString::number(guess.ent, 'f', 3));
+        new QTableWidgetItem(formatRoundedNum(guess.ent));
     entItem->setTextAlignment(Qt::AlignCenter);
     ui->letterSuggestionsTable->setItem(i, 2, entItem);
 
-    // Probability
-    QTableWidgetItem *probItem = new QTableWidgetItem(
-        QString::number(guess.probability * 100.0, 'f', 1) + "%");
-    probItem->setTextAlignment(Qt::AlignCenter);
-    ui->letterSuggestionsTable->setItem(i, 3, probItem);
+    QTableWidgetItem *wntItem =
+        new QTableWidgetItem(formatRoundedNum(guess.wnt));
+    wntItem->setTextAlignment(Qt::AlignCenter);
+    ui->letterSuggestionsTable->setItem(i, 3, wntItem);
+
+    applyProbabilityRowColors(ui->letterSuggestionsTable, i, 4,
+                              guess.probability);
   }
 
   // Evenly space columns
@@ -404,7 +428,7 @@ void HangmanWidget::populateResults(int maxRows) {
       0,
       QString("Letter Suggestions (%1)").arg(lastResult.sortedGuesses.size()));
   ui->resultsTabWidget->setTabText(
-      1, QString("Possible Words (%1)").arg(lastResult.totalPossibleWords));
+      1, QString("Possible Words (%1)").arg(lastResult.possibleWords.size()));
 }
 
 void HangmanWidget::solveHangman() {
@@ -460,7 +484,7 @@ void HangmanWidget::onSolverFinished() {
 
   setUIEnabled(true);
 
-  if (lastResult.totalPossibleWords == 0) {
+  if (lastResult.possibleWords.empty()) {
     QMessageBox::information(this, "No Matches",
                              "No words match the given constraints.");
     return;

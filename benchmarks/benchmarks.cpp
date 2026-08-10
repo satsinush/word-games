@@ -164,7 +164,7 @@ static void BM_Hangman_Runtime(benchmark::State &state) {
   config.excludeUncommonWords = true;
 
   // Set up a 5-letter word pattern with one revealed letter
-  config.wordPatterns = Hangman::parsePatternString("?a???");
+  config.wordPatterns = Hangman::parsePatternString("_a___");
 
   // Add strikes (letters NOT in the word)
   config.feedbackHistory = Hangman::parseStrikes("xyz");
@@ -184,7 +184,7 @@ static void BM_Hangman_MultiWord_Runtime(benchmark::State &state) {
   config.excludeUncommonWords = true;
 
   // Set up a multi-word phrase pattern
-  config.wordPatterns = Hangman::parsePatternString("???? ??? ?????");
+  config.wordPatterns = Hangman::parsePatternString("____ ___ _____");
 
   Utils::loadWords(); // Preload words
 

@@ -88,6 +88,8 @@ public slots:
 
 private slots:
   void onSubmit();
+  void onAddOnly();
+  void onInputReturn();
   void onNewGame() override;
   void onHint();
   void onLetterBoxClicked();
@@ -144,7 +146,7 @@ private:
   void updateConfigInfo() override;
   void solveWordle();
   void setupCurrentRow();
-  void submitCurrentGuess();
+  bool submitCurrentGuess();
   void rebuildFeedbackHistory();
   // Populate both results tables (All Suggestions and Possible Solutions).
   // maxRows limits the number of rows shown in each table.

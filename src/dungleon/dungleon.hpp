@@ -60,8 +60,10 @@ struct Pattern; // forward declaration so Config can reference Pattern
 
 struct Config {
   uint8_t maxDepth = 1; // How many moves ahead to calculate ENT
+  bool autoDepth = false; // Dynamically choose optimal depth
   bool excludeImpossiblePatterns =
       false; // Whether to exclude impossible patterns from guesses
+  uint32_t maxGuesses = 10; // Maximum allowed guesses
   std::vector<Feedback> feedbackHistory = {}; // History of previous feedbacks
   std::vector<Pattern> solutionHistory =
       {}; // History of previous solutions, used for Gauntlet mode where each
@@ -116,6 +118,14 @@ struct Pattern {
   }
 };
 
+enum class Color {
+  Red = 0,
+  Yellow = 1,
+  YellowPlus = 2,
+  Green = 3,
+  GreenPlus = 4
+};
+
 struct Feedback {
   Pattern pattern;
   std::bitset<15>
@@ -132,34 +142,36 @@ struct Feedback {
   }
 
   // Helper methods to get/set feedback for position i
-  // 0 = not present
-  // 1 = different position, no more
-  // 2 = correct position, no more
-  // 3 = different position, one more
-  // 4 = correct position, one more
-  void setColor(const int i, const int color) {
+  // 0 = not present (Red)
+  // 1 = different position, no more (Yellow)
+  // 2 = different position, one more (YellowPlus)
+  // 3 = correct position, no more (Green)
+  // 4 = correct position, one more (GreenPlus)
+  void setColor(const int i, const Color color) {
     int bitPos = i * 3;
-    colors[bitPos] = (color & 1) != 0;
-    colors[bitPos + 1] = (color & 2) != 0;
-    colors[bitPos + 2] = (color & 4) != 0;
+    int colorVal = static_cast<int>(color);
+    colors[bitPos] = (colorVal & 1) != 0;
+    colors[bitPos + 1] = (colorVal & 2) != 0;
+    colors[bitPos + 2] = (colorVal & 4) != 0;
   }
 
-  int getColor(const int i) const {
+  Color getColor(const int i) const {
     int bitPos = i * 3;
-    int color = 0;
+    int colorVal = 0;
     if (colors[bitPos])
-      color |= 1;
+      colorVal |= 1;
     if (colors[bitPos + 1])
-      color |= 2;
+      colorVal |= 2;
     if (colors[bitPos + 2])
-      color |= 4;
-    return color;
+      colorVal |= 4;
+    return static_cast<Color>(colorVal);
   }
 };
 
 struct PatternGuess {
   Pattern pattern;
   double ent = 0.0; // Expected Number of Turns
+  double wnt = 0.0; // Worst Number of Turns
   double probability = 0.0;
 
   bool operator<(const PatternGuess &other) const {
@@ -173,6 +185,10 @@ struct PatternGuess {
     // answers)
     if (std::abs(probability - other.probability) > tolerance)
       return probability > other.probability; // Sort higher probability first
+  
+    // Third tiebreaker: WNT (lower is better)
+    if (std::abs(wnt - other.wnt) > tolerance)
+      return wnt < other.wnt;
 
     // Final tiebreaker: sort by pattern for consistency
     return pattern < other.pattern;
@@ -182,6 +198,7 @@ struct PatternGuess {
 struct Result {
   std::vector<PatternGuess> sortedGuesses;
   int totalPossiblePatterns = 0;
+  int searchDepth = 0;
 };
 
 // Parse feedback string like "rgbc 2 1" (pattern correctPos correctCol)

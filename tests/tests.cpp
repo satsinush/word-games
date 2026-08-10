@@ -1,7 +1,12 @@
 #include <algorithm>
+#include <array>
+#include <atomic>
+#include <bitset>
 #include <gtest/gtest.h>
 #include <map>
+#include <sstream>
 #include <string>
+#include <unordered_set>
 #include <vector>
 
 #include "dungleon/dungleon.hpp"
@@ -136,11 +141,11 @@ TEST(EntSolverTest, EmptyCandidateSetReturnsEmpty) {
 TEST(WordleTest, BasicFeedbackParsing) {
   Wordle::Feedback fb = Wordle::parseFeedback("STEAL 20100");
   EXPECT_EQ(fb.word, "steal");
-  EXPECT_EQ(fb.getColor(0), 2); // S - green
-  EXPECT_EQ(fb.getColor(1), 0); // T - grey
-  EXPECT_EQ(fb.getColor(2), 1); // E - yellow
-  EXPECT_EQ(fb.getColor(3), 0); // A - grey
-  EXPECT_EQ(fb.getColor(4), 0); // L - grey
+  EXPECT_EQ(fb.getColor(0), Wordle::Color::Green); // S - green
+  EXPECT_EQ(fb.getColor(1), Wordle::Color::Grey); // T - grey
+  EXPECT_EQ(fb.getColor(2), Wordle::Color::Yellow); // E - yellow
+  EXPECT_EQ(fb.getColor(3), Wordle::Color::Grey); // A - grey
+  EXPECT_EQ(fb.getColor(4), Wordle::Color::Grey); // L - grey
 }
 
 TEST(WordleTest, SolverWithGuesses) {
@@ -248,8 +253,8 @@ TEST(WordleTest, ProbabilityCalculationCorrect) {
     Wordle::Feedback generateFeedback(const Utils::Word &target, const Utils::Word &guess) const override {
       return Wordle::generateFeedback(target, guess.wordString);
     }
-    Wordle::WordGuess createGuess(const Utils::Word &word, double ent, double probability) const override {
-       Wordle::WordGuess g; g.word = word; g.probability = probability; return g; 
+    Wordle::WordGuess createGuess(const Utils::Word &word, double ent, double wnt, double probability) const override {
+       Wordle::WordGuess g; g.word = word; g.ent = ent; g.wnt = wnt; g.probability = probability; return g; 
     }
     Wordle::Result createResult(const std::vector<Wordle::WordGuess> &guesses, int totalPossible) const override {
        Wordle::Result r; r.sortedGuesses = guesses; return r;
@@ -709,19 +714,9 @@ TEST(LetterBoxedTest, SideConstraints) {
 
   // Verify each solution respects side constraints
   for (const auto &solution : result.solutions) {
-    // Parse words from solution text
-    std::string text = solution.text;
-    size_t pos = 0;
-    std::vector<std::string> solutionWords;
-    while ((pos = text.find(" + ")) != std::string::npos) {
-      solutionWords.push_back(text.substr(0, pos));
-      text.erase(0, pos + 3);
-    }
-    if (!text.empty()) {
-      solutionWords.push_back(text);
-    }
-
-    for (const auto &word : solutionWords) {
+    std::istringstream iss(solution.text);
+    std::string word;
+    while (iss >> word) {
       for (size_t i = 1; i < word.length(); ++i) {
         int idx1 =
             config.charToIndexMap[static_cast<unsigned char>(word[i - 1])];
@@ -807,11 +802,11 @@ TEST(DungleonTest, ParseFeedback) {
   EXPECT_EQ(fb.pattern.characters[4], static_cast<uint8_t>(Dungleon::DRAGON));
 
   // Check colors parsed correctly
-  EXPECT_EQ(fb.getColor(0), 0);
-  EXPECT_EQ(fb.getColor(1), 1);
-  EXPECT_EQ(fb.getColor(2), 2);
-  EXPECT_EQ(fb.getColor(3), 3);
-  EXPECT_EQ(fb.getColor(4), 4);
+  EXPECT_EQ(fb.getColor(0), Dungleon::Color::Red);
+  EXPECT_EQ(fb.getColor(1), Dungleon::Color::Yellow);
+  EXPECT_EQ(fb.getColor(2), Dungleon::Color::YellowPlus);
+  EXPECT_EQ(fb.getColor(3), Dungleon::Color::Green);
+  EXPECT_EQ(fb.getColor(4), Dungleon::Color::GreenPlus);
 }
 
 TEST(DungleonTest, GeneratePossiblePatternsNonEmpty) {
@@ -853,7 +848,7 @@ TEST(DungleonTest, SolverNoGuesses) {
   // Test solver with no prior guesses
   Dungleon::Config config;
   config.maxDepth = 0;
-  config.excludeImpossiblePatterns = false;
+  config.excludeImpossiblePatterns = true;
 
   Dungleon::Result result = Dungleon::runDungleonSolver(config);
 
@@ -931,17 +926,17 @@ TEST(DungleonTest, FeedbackColorEncoding) {
                            Dungleon::BAT, Dungleon::DRAGON};
 
   // Test all 5 color values
-  fb.setColor(0, 0); // not present
-  fb.setColor(1, 1); // diff pos no more
-  fb.setColor(2, 2); // correct pos no more
-  fb.setColor(3, 3); // diff pos one more
-  fb.setColor(4, 4); // correct pos one more
+  fb.setColor(0, Dungleon::Color::Red);        // not present
+  fb.setColor(1, Dungleon::Color::Yellow);     // diff pos, no more
+  fb.setColor(2, Dungleon::Color::YellowPlus); // diff pos, one more
+  fb.setColor(3, Dungleon::Color::Green);      // correct pos, no more
+  fb.setColor(4, Dungleon::Color::GreenPlus);  // correct pos, one more
 
-  EXPECT_EQ(fb.getColor(0), 0);
-  EXPECT_EQ(fb.getColor(1), 1);
-  EXPECT_EQ(fb.getColor(2), 2);
-  EXPECT_EQ(fb.getColor(3), 3);
-  EXPECT_EQ(fb.getColor(4), 4);
+  EXPECT_EQ(fb.getColor(0), Dungleon::Color::Red);
+  EXPECT_EQ(fb.getColor(1), Dungleon::Color::Yellow);
+  EXPECT_EQ(fb.getColor(2), Dungleon::Color::YellowPlus);
+  EXPECT_EQ(fb.getColor(3), Dungleon::Color::Green);
+  EXPECT_EQ(fb.getColor(4), Dungleon::Color::GreenPlus);
 }
 
 TEST(DungleonTest, GenerateFeedbackConsistency) {
@@ -1097,11 +1092,11 @@ TEST(DungleonTest, PermutationsGenerateAndMatch) {
 
   Dungleon::Feedback expectedFB_A_B;
   expectedFB_A_B.pattern = B;
-  expectedFB_A_B.setColor(0, 2);
-  expectedFB_A_B.setColor(1, 0);
-  expectedFB_A_B.setColor(2, 2);
-  expectedFB_A_B.setColor(3, 2);
-  expectedFB_A_B.setColor(4, 0);
+  expectedFB_A_B.setColor(0, Dungleon::Color::Green);
+  expectedFB_A_B.setColor(1, Dungleon::Color::Red);
+  expectedFB_A_B.setColor(2, Dungleon::Color::Green);
+  expectedFB_A_B.setColor(3, Dungleon::Color::Green);
+  expectedFB_A_B.setColor(4, Dungleon::Color::Red);
   Dungleon::Feedback fbAB = Dungleon::generateFeedback(A, B);
   EXPECT_EQ(expectedFB_A_B, fbAB) << "Unexpected feedback for A vs B";
 
@@ -1112,11 +1107,11 @@ TEST(DungleonTest, PermutationsGenerateAndMatch) {
 
   Dungleon::Feedback expectedFB_B_C;
   expectedFB_B_C.pattern = C;
-  expectedFB_B_C.setColor(0, 2);
-  expectedFB_B_C.setColor(1, 0);
-  expectedFB_B_C.setColor(2, 2);
-  expectedFB_B_C.setColor(3, 4);
-  expectedFB_B_C.setColor(4, 0);
+  expectedFB_B_C.setColor(0, Dungleon::Color::Green);
+  expectedFB_B_C.setColor(1, Dungleon::Color::Red);
+  expectedFB_B_C.setColor(2, Dungleon::Color::Green);
+  expectedFB_B_C.setColor(3, Dungleon::Color::GreenPlus);
+  expectedFB_B_C.setColor(4, Dungleon::Color::Red);
   Dungleon::Feedback fbBC = Dungleon::generateFeedback(B, C);
   EXPECT_EQ(expectedFB_B_C, fbBC) << "Unexpected feedback for B vs C";
 
@@ -1145,33 +1140,23 @@ TEST(DungleonTest, PermutationsGenerateAndMatch) {
 
 TEST(HangmanTest, ParsePatternString) {
   std::vector<Hangman::WordPattern> patterns =
-      Hangman::parsePatternString("?A?? ??? ?????");
+      Hangman::parsePatternString("_A__ ___ _____");
 
   EXPECT_EQ(patterns.size(), 3);
-  EXPECT_EQ(patterns[0].pattern, "?a??");
+  EXPECT_EQ(patterns[0].pattern, "_a__");
   EXPECT_EQ(patterns[0].length(), 4);
-  EXPECT_EQ(patterns[1].pattern, "???");
+  EXPECT_EQ(patterns[1].pattern, "___");
   EXPECT_EQ(patterns[1].length(), 3);
-  EXPECT_EQ(patterns[2].pattern, "?????");
+  EXPECT_EQ(patterns[2].pattern, "_____");
   EXPECT_EQ(patterns[2].length(), 5);
 }
 
 TEST(HangmanTest, PatternToString) {
   std::vector<Hangman::WordPattern> patterns =
-      Hangman::parsePatternString("?a?? ??? ?????");
+      Hangman::parsePatternString("_a__ ___ _____");
 
   std::string str = Hangman::patternsToString(patterns);
-  EXPECT_EQ(str, "?A?? ??? ?????");
-}
-
-TEST(HangmanTest, ParseFeedback) {
-  Hangman::Feedback fb1 = Hangman::parseFeedback("a 1");
-  EXPECT_EQ(fb1.letter, 'a');
-  EXPECT_TRUE(fb1.isInWord);
-
-  Hangman::Feedback fb2 = Hangman::parseFeedback("E 0");
-  EXPECT_EQ(fb2.letter, 'e');
-  EXPECT_FALSE(fb2.isInWord);
+  EXPECT_EQ(str, "_A__ ___ _____");
 }
 
 TEST(HangmanTest, ParseStrikes) {
@@ -1180,8 +1165,7 @@ TEST(HangmanTest, ParseStrikes) {
 
   // All strikes should be marked as NOT in word
   for (const auto &fb : strikes) {
-    EXPECT_FALSE(fb.isInWord);
-    EXPECT_EQ(fb.occurrences, 0);
+    EXPECT_FALSE(fb.isInWord());
   }
 
   EXPECT_EQ(strikes[0].letter, 'e');
@@ -1206,20 +1190,48 @@ TEST(HangmanTest, MatchesPattern) {
   Utils::Word word = makeWord("tares");
 
   Hangman::WordPattern pattern1;
-  pattern1.pattern = "?a???";
-  EXPECT_TRUE(Hangman::matchesPattern(word, pattern1));
+  pattern1.pattern = "_a___";
+  EXPECT_TRUE(Hangman::matchesPattern(word, pattern1, {}));
 
   Hangman::WordPattern pattern2;
-  pattern2.pattern = "?????";
-  EXPECT_TRUE(Hangman::matchesPattern(word, pattern2));
+  pattern2.pattern = "_____";
+  EXPECT_TRUE(Hangman::matchesPattern(word, pattern2, {}));
 
   Hangman::WordPattern pattern3;
-  pattern3.pattern = "?b???";
-  EXPECT_FALSE(Hangman::matchesPattern(word, pattern3));
+  pattern3.pattern = "_b___";
+  EXPECT_FALSE(Hangman::matchesPattern(word, pattern3, {}));
 
   Hangman::WordPattern pattern4;
-  pattern4.pattern = "????";
-  EXPECT_FALSE(Hangman::matchesPattern(word, pattern4));
+  pattern4.pattern = "____";
+  EXPECT_FALSE(Hangman::matchesPattern(word, pattern4, {}));
+
+  // Test case where a revealed letter appears in an unrevealed position
+  Utils::Word word2 = makeWord("fascinated");
+  Hangman::WordPattern pattern5;
+  pattern5.pattern = "_as_i__t__";
+  EXPECT_FALSE(Hangman::matchesPattern(word2, pattern5, {}));
+
+  // Test case where another letter is duplicated and hits an unrevealed position
+  Utils::Word word3 = makeWord("fascinates");
+  EXPECT_FALSE(Hangman::matchesPattern(word3, pattern5, {}));
+
+  // Valid matching word (no duplicate of revealed letters at unrevealed positions)
+  Utils::Word word4 = makeWord("xasyizztww");
+  EXPECT_TRUE(Hangman::matchesPattern(word4, pattern5, {}));
+
+  // Test: 'e' is revealed elsewhere. "the" should be blocked from an unrevealed "___" slot
+  Utils::Word bug1_word = makeWord("the");
+  Hangman::WordPattern bug1_slot0;
+  bug1_slot0.pattern = "___";
+  std::unordered_set<char> bug1_global_revealed = {'e'}; // 'E' is tracked as globally revealed
+  EXPECT_FALSE(Hangman::matchesPattern(bug1_word, bug1_slot0, bug1_global_revealed));
+
+  // Test: 't' is revealed elsewhere. "tush" should be blocked from an unrevealed "_ush" slot
+  Utils::Word bug2_word = makeWord("tush");
+  Hangman::WordPattern bug2_slot2;
+  bug2_slot2.pattern = "_ush";
+  std::unordered_set<char> bug2_global_revealed = {'t', 'u', 's', 'h'}; // 'T' is tracked as globally revealed
+  EXPECT_FALSE(Hangman::matchesPattern(bug2_word, bug2_slot2, bug2_global_revealed));
 }
 
 TEST(HangmanTest, MatchesFeedback) {
@@ -1228,17 +1240,17 @@ TEST(HangmanTest, MatchesFeedback) {
 
   Hangman::Feedback fb1;
   fb1.letter = 't';
-  fb1.isInWord = true;
+  fb1.positions.set(0); // 't' is at position 0 in "tares"
   EXPECT_TRUE(Hangman::matchesFeedback(phrase, fb1));
 
   Hangman::Feedback fb2;
   fb2.letter = 'z';
-  fb2.isInWord = false;
+  // positions defaults to empty (no 'z' in "tares")
   EXPECT_TRUE(Hangman::matchesFeedback(phrase, fb2));
 
   Hangman::Feedback fb3;
   fb3.letter = 't';
-  fb3.isInWord = false;
+  // positions empty but 't' IS in "tares" → mismatch
   EXPECT_FALSE(Hangman::matchesFeedback(phrase, fb3));
 }
 
@@ -1248,13 +1260,12 @@ TEST(HangmanTest, GenerateFeedback) {
 
   Hangman::Feedback fb1 = Hangman::generateFeedback(phrase, 't');
   EXPECT_EQ(fb1.letter, 't');
-  EXPECT_TRUE(fb1.isInWord);
-  EXPECT_EQ(fb1.occurrences, 1);
+  EXPECT_TRUE(fb1.isInWord());
+  EXPECT_TRUE(fb1.positions.test(0)); // 't' at position 0
 
   Hangman::Feedback fb2 = Hangman::generateFeedback(phrase, 'z');
   EXPECT_EQ(fb2.letter, 'z');
-  EXPECT_FALSE(fb2.isInWord);
-  EXPECT_EQ(fb2.occurrences, 0);
+  EXPECT_FALSE(fb2.isInWord());
 }
 
 TEST(HangmanTest, GetAllLetters) {
@@ -1264,21 +1275,7 @@ TEST(HangmanTest, GetAllLetters) {
   EXPECT_EQ(letters[25], 'z');
 }
 
-TEST(HangmanTest, GetAvailableLetters) {
-  std::vector<Hangman::Feedback> history = Hangman::parseStrikes("ae");
 
-  std::vector<char> available = Hangman::getAvailableLetters(history);
-  EXPECT_EQ(available.size(), 24);
-
-  // 'a' and 'e' should not be in available
-  EXPECT_EQ(std::find(available.begin(), available.end(), 'a'),
-            available.end());
-  EXPECT_EQ(std::find(available.begin(), available.end(), 'e'),
-            available.end());
-  // 'b' should still be available
-  EXPECT_NE(std::find(available.begin(), available.end(), 'b'),
-            available.end());
-}
 
 TEST(HangmanTest, SolverWithPattern) {
   // Load word list
@@ -1287,12 +1284,12 @@ TEST(HangmanTest, SolverWithPattern) {
 
   Hangman::Config config;
   config.maxDepth = 0;
-  config.wordPatterns = Hangman::parsePatternString("?????");
+  config.wordPatterns = Hangman::parsePatternString("_____");
 
   Hangman::Result result = Hangman::runHangmanSolver(config);
 
   EXPECT_GT(result.sortedGuesses.size(), 0) << "Should have letter suggestions";
-  EXPECT_GT(result.totalPossibleWords, 0) << "Should have possible words";
+  EXPECT_GT(result.totalPossiblePatterns, 0) << "Should have possible patterns";
 }
 
 TEST(HangmanTest, SolverWithRevealedLetters) {
@@ -1301,7 +1298,7 @@ TEST(HangmanTest, SolverWithRevealedLetters) {
 
   Hangman::Config config;
   config.maxDepth = 0;
-  config.wordPatterns = Hangman::parsePatternString("?a???");
+  config.wordPatterns = Hangman::parsePatternString("_a___");
 
   Hangman::Result result = Hangman::runHangmanSolver(config);
 
@@ -1318,7 +1315,7 @@ TEST(HangmanTest, SolverWithFeedbackHistory) {
 
   Hangman::Config config;
   config.maxDepth = 0;
-  config.wordPatterns = Hangman::parsePatternString("?????");
+  config.wordPatterns = Hangman::parsePatternString("_____");
   // Add strikes - letters NOT in the word
   config.feedbackHistory = Hangman::parseStrikes("zxq");
 
@@ -1342,12 +1339,12 @@ TEST(HangmanTest, SolverNoPatterns) {
 
   Hangman::Result result = Hangman::runHangmanSolver(config);
 
-  EXPECT_EQ(result.totalPossibleWords, 0);
+  EXPECT_EQ(result.totalPossiblePatterns, 0);
 }
 
 TEST(HangmanTest, WordPatternRevealedLetters) {
   Hangman::WordPattern pattern;
-  pattern.pattern = "?a?e?";
+  pattern.pattern = "_a_e_";
 
   auto revealed = pattern.getRevealedLetters();
   EXPECT_EQ(revealed.size(), 2);
@@ -1370,20 +1367,31 @@ TEST(HangmanTest, FeedbackEquality) {
   std::vector<Hangman::Feedback> strikes = Hangman::parseStrikes("ab");
   EXPECT_EQ(strikes[0].letter, 'a');
   EXPECT_EQ(strikes[1].letter, 'b');
-  EXPECT_FALSE(strikes[0].isInWord);
-  EXPECT_FALSE(strikes[1].isInWord);
+  EXPECT_FALSE(strikes[0].isInWord());
+  EXPECT_FALSE(strikes[1].isInWord());
 
   // Test equality
-  Hangman::Feedback fb1 = Hangman::parseFeedback("a 0");
-  Hangman::Feedback fb2 = Hangman::parseFeedback("a 0");
-  Hangman::Feedback fb3 = Hangman::parseFeedback("a 1");
-  Hangman::Feedback fb4 = Hangman::parseFeedback("b 0");
+  Hangman::Feedback fb1;
+  fb1.letter = 'a';
+  // positions defaults to empty (not in word)
+
+  Hangman::Feedback fb2;
+  fb2.letter = 'a';
+  // positions defaults to empty (not in word)
+
+  Hangman::Feedback fb3;
+  fb3.letter = 'a';
+  fb3.positions.set(0); // letter IS in word at position 0
+
+  Hangman::Feedback fb4;
+  fb4.letter = 'b';
+  // positions defaults to empty (not in word)
 
   EXPECT_EQ(fb1, fb2);
   EXPECT_FALSE(fb1 == fb3);
   EXPECT_FALSE(fb1 == fb4);
 
-  // Strike should equal parseFeedback with 0
+  // Strike should equal manual feedback with empty positions
   EXPECT_EQ(strikes[0], fb1);
 }
 
@@ -1399,12 +1407,12 @@ TEST(HangmanTest, MultiWordPattern) {
   Hangman::Config config;
   config.maxDepth = 0;
   // Two 5-letter words
-  config.wordPatterns = Hangman::parsePatternString("????? ?????");
+  config.wordPatterns = Hangman::parsePatternString("_____ _____");
 
   Hangman::Result result = Hangman::runHangmanSolver(config);
 
   EXPECT_GT(result.sortedGuesses.size(), 0) << "Should have letter suggestions";
-  EXPECT_GT(result.totalPossibleWords, 0) << "Should have possible words";
+  EXPECT_GT(result.totalPossiblePatterns, 0) << "Should have possible patterns";
 }
 
 TEST(HangmanTest, MultiWordSolvedState) {
@@ -1416,7 +1424,7 @@ TEST(HangmanTest, MultiWordSolvedState) {
   config.maxDepth = 1;
   // "tares" is the only 5-letter word starting with 't' in test set
   // "not" is the only 3-letter word with 'o' in middle
-  config.wordPatterns = Hangman::parsePatternString("tares ?o?");
+  config.wordPatterns = Hangman::parsePatternString("tares _o_");
 
   Hangman::Result result = Hangman::runHangmanSolver(config);
 
@@ -1435,7 +1443,7 @@ TEST(HangmanTest, MultiWordProbabilityCalculation) {
   Hangman::Config config;
   config.maxDepth = 0;
   // Use patterns that will create interesting probability scenarios
-  config.wordPatterns = Hangman::parsePatternString("????? ???");
+  config.wordPatterns = Hangman::parsePatternString("_____ ___");
 
   Hangman::Result result = Hangman::runHangmanSolver(config);
 
@@ -1459,7 +1467,7 @@ TEST(HangmanTest, MultiWordDifferentLengths) {
 
   Hangman::Config config;
   config.maxDepth = 0;
-  config.wordPatterns = Hangman::parsePatternString("??? ????? ?????");
+  config.wordPatterns = Hangman::parsePatternString("___ _____ _____");
 
   Hangman::Result result = Hangman::runHangmanSolver(config);
 
@@ -1476,7 +1484,7 @@ TEST(HangmanTest, SingleWordSingleSolution) {
   Hangman::Config config;
   config.maxDepth = 1;
   // Pattern that matches only "tares" (assuming test data)
-  config.wordPatterns = Hangman::parsePatternString("tare?");
+  config.wordPatterns = Hangman::parsePatternString("tare_");
 
   Hangman::Result result = Hangman::runHangmanSolver(config);
 
@@ -1502,7 +1510,7 @@ TEST(HangmanTest, WrongLetterInSolvedState) {
   Hangman::Config config;
   config.maxDepth = 1;
   // Almost fully revealed - only one letter missing
-  config.wordPatterns = Hangman::parsePatternString("tare?");
+  config.wordPatterns = Hangman::parsePatternString("tare_");
 
   Hangman::Result result = Hangman::runHangmanSolver(config);
 
@@ -1550,6 +1558,44 @@ TEST(HangmanTest, WordSlotSolutionToString) {
   EXPECT_EQ(str, "[2]:test");
 }
 
+TEST(HangmanTest, SolverRejectsHiddenRevealedLetters_Bug1) {
+  std::vector<Utils::Word> words = loadTestWords();
+  ASSERT_FALSE(words.empty()) << "Failed to load word list";
+
+  Hangman::Config config;
+  config.maxDepth = 0;
+  // Scenario: ___ ___E ____
+  config.wordPatterns = Hangman::parsePatternString("___ ___e ____");
+
+  Hangman::Result result = Hangman::runHangmanSolver(config);
+
+  // Since 'E' is revealed in slot 1, "the" CANNOT hide in slot 0 or slot 2
+  for (const auto &word : result.possibleWords) {
+    if (word.wordString == "the") {
+      FAIL() << "Regression: 'the' should have been completely disqualified because 'e' is hidden in slots 0 and 2";
+    }
+  }
+}
+
+TEST(HangmanTest, SolverRejectsHiddenRevealedLetters_Bug2) {
+  std::vector<Utils::Word> words = loadTestWords();
+  ASSERT_FALSE(words.empty()) << "Failed to load word list";
+
+  Hangman::Config config;
+  config.maxDepth = 0;
+  // Scenario: _IG TI_E _USH
+  config.wordPatterns = Hangman::parsePatternString("_ig ti_e _ush");
+
+  Hangman::Result result = Hangman::runHangmanSolver(config);
+
+  // Since 't' is revealed in slot 1, "tush" CANNOT hide in slot 2 (_ush)
+  for (const auto &word : result.possibleWords) {
+    if (word.wordString == "tush") {
+      FAIL() << "Regression: 'tush' should have been completely disqualified because 't' is hidden in slot 2";
+    }
+  }
+}
+
 // =============================================================================
 // WORDLE EDGE CASE TESTS
 // =============================================================================
@@ -1560,7 +1606,7 @@ TEST(WordleTest, AllGreens) {
   Wordle::Feedback fb = Wordle::generateFeedback(target, "tares");
 
   for (size_t i = 0; i < 5; ++i) {
-    EXPECT_EQ(fb.getColor(i), 2) << "Position " << i << " should be green";
+    EXPECT_EQ(fb.getColor(i), Wordle::Color::Green) << "Position " << i << " should be green";
   }
 }
 
@@ -1570,7 +1616,7 @@ TEST(WordleTest, AllGrays) {
   Wordle::Feedback fb = Wordle::generateFeedback(target, "lymph");
 
   for (size_t i = 0; i < 5; ++i) {
-    EXPECT_EQ(fb.getColor(i), 0) << "Position " << i << " should be gray";
+    EXPECT_EQ(fb.getColor(i), Wordle::Color::Grey) << "Position " << i << " should be gray";
   }
 }
 
@@ -1580,18 +1626,12 @@ TEST(WordleTest, DuplicateLettersInGuess) {
   // "eerie" has multiple 'e's, but target only has one 'e'
   Wordle::Feedback fb = Wordle::generateFeedback(target, "eerie");
 
-  // First 'e' should be yellow (exists but wrong position)
-  // Subsequent 'e's should be gray (no more 'e's available)
-  int yellowCount = 0;
-  int grayCount = 0;
-  for (size_t i = 0; i < 5; ++i) {
-    if (fb.getColor(i) == 1)
-      yellowCount++;
-    if (fb.getColor(i) == 0)
-      grayCount++;
-  }
-  // Should have exactly one yellow 'e' and remaining grays
-  EXPECT_GE(yellowCount, 0);
+  // eerie vs tares: e yellow, e grey, r green, i grey, e grey
+  EXPECT_EQ(fb.getColor(0), Wordle::Color::Yellow);
+  EXPECT_EQ(fb.getColor(1), Wordle::Color::Grey);
+  EXPECT_EQ(fb.getColor(2), Wordle::Color::Green);
+  EXPECT_EQ(fb.getColor(3), Wordle::Color::Grey);
+  EXPECT_EQ(fb.getColor(4), Wordle::Color::Grey);
 }
 
 TEST(WordleTest, SolverSingleSolutionLeft) {
@@ -1705,8 +1745,8 @@ TEST(DungleonTest, AllCorrectPosition) {
 
   // All positions should be "correct position" (color 2 or 4)
   for (size_t i = 0; i < 5; ++i) {
-    uint8_t color = fb.getColor(i);
-    EXPECT_TRUE(color == 2 || color == 4)
+    Dungleon::Color color = fb.getColor(i);
+    EXPECT_TRUE(color == Dungleon::Color::Green || color == Dungleon::Color::GreenPlus)
         << "Position " << i << " should be correct position";
   }
 }
@@ -1728,7 +1768,7 @@ TEST(DungleonTest, NoneMatch) {
 
   // All positions should be "not present" (color 0)
   for (size_t i = 0; i < 5; ++i) {
-    EXPECT_EQ(fb.getColor(i), 0)
+    EXPECT_EQ(fb.getColor(i), Dungleon::Color::Red)
         << "Position " << i << " should be not present";
   }
 }
@@ -1748,7 +1788,7 @@ TEST(DungleonTest, DuplicateCharactersInGuess) {
   Dungleon::Feedback fb = Dungleon::generateFeedback(target, guess);
 
   // First MAGE is correct position, rest should indicate "no more"
-  EXPECT_EQ(fb.getColor(0), 2); // correct position, no more
+  EXPECT_EQ(fb.getColor(0), Dungleon::Color::Green); // correct position, no more
 }
 
 // =============================================================================
@@ -1872,7 +1912,7 @@ TEST(LetterBoxedTest, WordChaining) {
 TEST(HangmanTest, SortsByProbabilityDescending) {
   Hangman::Config config;
   config.maxDepth = 0;
-  config.wordPatterns = {{"??"}};  // 2-letter word pattern
+  config.wordPatterns = {{"__"}};  // 2-letter word pattern
   config.excludeUncommonWords = false;
   
   Hangman::Result result = Hangman::runHangmanSolver(config, nullptr);
@@ -1902,7 +1942,7 @@ TEST(HangmanTest, LetterGuessOrdering) {
 TEST(HangmanTest, BasicSolverReturnsResults) {
   Hangman::Config config;
   config.maxDepth = 0;
-  config.wordPatterns = {{"?????"}};  // 5-letter word pattern
+  config.wordPatterns = {{"_____"}};  // 5-letter word pattern
   config.excludeUncommonWords = true;
   
   Hangman::Result result = Hangman::runHangmanSolver(config, nullptr);
@@ -1914,5 +1954,650 @@ TEST(HangmanTest, BasicSolverReturnsResults) {
   for (const auto& guess : result.sortedGuesses) {
     EXPECT_GE(guess.probability, 0.0);
     EXPECT_LE(guess.probability, 1.0);
+  }
+}
+
+// =============================================================================
+// ADDITIONAL COVERAGE
+// =============================================================================
+
+static LetterBoxed::Config makeLetterBoxedConfig(const std::string &lettersStr) {
+  LetterBoxed::Config config;
+  config.maxDepth = 2;
+  config.minWordLength = 3;
+  config.minUniqueLetters = 2;
+  config.pruneRedundantPaths = true;
+  config.pruneDominatedClasses = false;
+
+  for (size_t i = 0; i < 12; ++i) {
+    config.allLetters[i] = lettersStr[i];
+    config.uniquePuzzleLetters.set(i);
+  }
+  for (int i = 0; i < 3; ++i)
+    config.letterToSideMapping[i] = 0;
+  for (int i = 3; i < 6; ++i)
+    config.letterToSideMapping[i] = 1;
+  for (int i = 6; i < 9; ++i)
+    config.letterToSideMapping[i] = 2;
+  for (int i = 9; i < 12; ++i)
+    config.letterToSideMapping[i] = 3;
+
+  config.charToIndexMap.fill(-1);
+  for (int i = 0; i < 12; ++i) {
+    config.charToIndexMap[static_cast<unsigned char>(config.allLetters[i])] = i;
+  }
+  return config;
+}
+
+static Dungleon::Pattern makeDungleonPattern(
+    std::array<uint8_t, 5> characters) {
+  Dungleon::Pattern p(characters);
+  return p;
+}
+
+static SpellingBee::Config makeSpellingBeeConfig(const std::string &letters) {
+  SpellingBee::Config config;
+  for (char c : letters) {
+    config.allLetters.push_back(c);
+    config.validLettersMap[static_cast<unsigned char>(c)] = true;
+  }
+  return config;
+}
+
+// ----- Hangman blanks / helpers -----
+
+TEST(HangmanTest, NonLetterPatternsTreatedAsUnknown) {
+  Hangman::WordPattern underscore;
+  underscore.pattern = "_a___";
+  Hangman::WordPattern question;
+  question.pattern = "?a???";
+  Hangman::WordPattern mixed;
+  mixed.pattern = ".a*-/";
+
+  EXPECT_EQ(underscore.getRevealedLetters(), question.getRevealedLetters());
+  EXPECT_EQ(underscore.getRevealedLetters(), mixed.getRevealedLetters());
+
+  Utils::Word word = makeWord("tares");
+  EXPECT_TRUE(Hangman::matchesPattern(word, underscore, {}));
+  EXPECT_TRUE(Hangman::matchesPattern(word, question, {}));
+  EXPECT_TRUE(Hangman::matchesPattern(word, mixed, {}));
+}
+
+TEST(HangmanTest, MatchesWordFeedback_StrikeVsHit) {
+  Utils::Word word = makeWord("tares");
+
+  Hangman::Feedback strike;
+  strike.letter = 'z';
+  EXPECT_TRUE(Hangman::matchesWordFeedback(word, strike));
+
+  Hangman::Feedback hit;
+  hit.letter = 'a';
+  hit.positions.set(1);
+  EXPECT_TRUE(Hangman::matchesWordFeedback(word, hit));
+
+  Hangman::Feedback falseStrike;
+  falseStrike.letter = 'a'; // claimed not in word, but it is
+  EXPECT_FALSE(Hangman::matchesWordFeedback(word, falseStrike));
+}
+
+TEST(HangmanTest, MultiWordGenerateFeedbackOffsets) {
+  Hangman::PhraseSolution phrase;
+  phrase.words.push_back(makeWord("ab"));
+  phrase.words.push_back(makeWord("cde"));
+
+  Hangman::Feedback fbA = Hangman::generateFeedback(phrase, 'a');
+  EXPECT_TRUE(fbA.positions.test(0));
+  EXPECT_EQ(fbA.positions.count(), 1u);
+
+  Hangman::Feedback fbC = Hangman::generateFeedback(phrase, 'c');
+  EXPECT_TRUE(fbC.positions.test(2)); // offset past "ab"
+  EXPECT_EQ(fbC.positions.count(), 1u);
+
+  Hangman::Feedback fbMissing = Hangman::generateFeedback(phrase, 'z');
+  EXPECT_FALSE(fbMissing.isInWord());
+}
+
+TEST(HangmanTest, NoMatchingWordsStillRanksAvailableLetters) {
+  Hangman::Config config;
+  config.maxDepth = 0;
+  // Fully revealed pattern that matches no dictionary words
+  config.wordPatterns = Hangman::parsePatternString("qqqqq");
+
+  Hangman::Result result = Hangman::runHangmanSolver(config);
+  EXPECT_EQ(result.totalPossiblePatterns, 0);
+  EXPECT_TRUE(result.possibleWords.empty());
+
+  // Still rank every letter that isn't already revealed/struck
+  EXPECT_EQ(result.sortedGuesses.size(), 25u); // a-z except revealed 'q'
+  for (const auto &guess : result.sortedGuesses) {
+    EXPECT_NE(guess.letter, 'q');
+  }
+}
+
+TEST(HangmanTest, ExcludeUncommonWords) {
+  Hangman::Config config;
+  config.maxDepth = 0;
+  config.excludeUncommonWords = true;
+  config.wordPatterns = Hangman::parsePatternString("_____");
+
+  Hangman::Result result = Hangman::runHangmanSolver(config);
+  ASSERT_GT(result.possibleWords.size(), 0u);
+  for (const auto &word : result.possibleWords) {
+    EXPECT_TRUE(word.is_scrabble)
+        << "Word '" << word.wordString << "' should be marked common";
+  }
+}
+
+TEST(HangmanTest, CancellationStopsEarly) {
+  Hangman::Config config;
+  config.maxDepth = 1;
+  config.wordPatterns = Hangman::parsePatternString("_____");
+
+  std::atomic<bool> cancel{true};
+  Hangman::Result result = Hangman::runHangmanSolver(config, &cancel);
+  EXPECT_TRUE(result.sortedGuesses.empty());
+}
+
+TEST(HangmanTest, OccurrencesAndIsInWord) {
+  Hangman::Feedback fb;
+  fb.letter = 'a';
+  EXPECT_FALSE(fb.isInWord());
+  EXPECT_EQ(fb.occurrences(), 0u);
+
+  fb.positions.set(0);
+  fb.positions.set(3);
+  EXPECT_TRUE(fb.isInWord());
+  EXPECT_EQ(fb.occurrences(), 2u);
+}
+
+// ----- Wordle -----
+
+TEST(WordleTest, MatchesFeedbackRejectsGreyWhenLetterStillPresent) {
+  Wordle::Feedback fb = Wordle::parseFeedback("tares 00000"); // all grey
+  EXPECT_FALSE(Wordle::matchesFeedback(makeWord("tares"), fb));
+  EXPECT_TRUE(Wordle::matchesFeedback(makeWord("lymph"), fb));
+}
+
+TEST(WordleTest, MatchesFeedbackRejectsYellowInSameSlot) {
+  // Yellow 'b' at position 1 means candidate cannot have 'b' there
+  Wordle::Feedback fb = Wordle::parseFeedback("abcde 01000");
+  EXPECT_FALSE(Wordle::matchesFeedback(makeWord("xbzzz"), fb));
+  EXPECT_TRUE(Wordle::matchesFeedback(makeWord("bxzzz"), fb));
+}
+
+TEST(WordleTest, FilterWordsAppliesAllFeedbacks) {
+  std::vector<Utils::Word> words = {
+      makeWord("tares"), makeWord("tears"), makeWord("crane"),
+      makeWord("soare"), makeWord("lymph")};
+  std::vector<Wordle::Feedback> feedbacks = {
+      Wordle::generateFeedback(makeWord("tares"), "steal"),
+      Wordle::generateFeedback(makeWord("tares"), "crane")};
+
+  auto filtered = Wordle::filterWords(words, feedbacks);
+  ASSERT_EQ(filtered.size(), 1u);
+  EXPECT_EQ(filtered[0].wordString, "tares");
+}
+
+TEST(WordleTest, ParseFeedbackThrowsOnBadInput) {
+  EXPECT_THROW(Wordle::parseFeedback("STEAL"), std::runtime_error);
+  EXPECT_THROW(Wordle::parseFeedback("STEAL 0120"), std::runtime_error);
+  EXPECT_THROW(Wordle::parseFeedback("STEAL 01203"), std::runtime_error);
+  EXPECT_THROW(Wordle::parseFeedback("STEAL 01205"), std::runtime_error);
+}
+
+TEST(WordleTest, NonDefaultWordLength) {
+  Wordle::Config config;
+  config.wordLength = 4;
+  config.maxDepth = 0;
+
+  Wordle::Result result = Wordle::runWordleSolver(config);
+  EXPECT_GT(result.totalPossibleWords, 0);
+  for (const auto &guess : result.sortedGuesses) {
+    EXPECT_EQ(guess.word.wordString.size(), 4u);
+  }
+}
+
+TEST(WordleTest, CancellationStopsEarly) {
+  Wordle::Config config;
+  config.maxDepth = 1;
+  std::atomic<bool> cancel{true};
+  Wordle::Result result = Wordle::runWordleSolver(config, &cancel);
+  EXPECT_TRUE(result.sortedGuesses.empty());
+}
+
+// ----- Mastermind -----
+
+TEST(MastermindTest, DuplicateColorsPartialMatch) {
+  Mastermind::Config config;
+  config.numPegs = 4;
+  config.colorChars = "1234";
+  config.allowDuplicates = true;
+
+  Mastermind::Pattern target =
+      Mastermind::parseFeedback("1122 0 0", config).guess;
+  Mastermind::Pattern guess =
+      Mastermind::parseFeedback("1111 0 0", config).guess;
+  Mastermind::Feedback fb = Mastermind::generateFeedback(target, guess);
+
+  // Two blacks for the matching 1s; no whites (extra 1s don't match remaining 2s)
+  EXPECT_EQ(fb.correctPosition, 2);
+  EXPECT_EQ(fb.correctColor, 0);
+}
+
+TEST(MastermindTest, ParseFeedbackInvalidColor) {
+  Mastermind::Config config;
+  config.numPegs = 4;
+  config.colorChars = "RGBY";
+  EXPECT_THROW(Mastermind::parseFeedback("RGBZ 1 0", config),
+               std::runtime_error);
+  EXPECT_THROW(Mastermind::parseFeedback("RGB", config), std::runtime_error);
+}
+
+TEST(MastermindTest, VariablePegCount) {
+  Mastermind::Config config;
+  config.numPegs = 3;
+  config.colorChars = "RGB";
+  config.allowDuplicates = false;
+  config.maxDepth = 0;
+
+  auto patterns = Mastermind::generateAllPatterns(config);
+  EXPECT_EQ(patterns.size(), 6u); // 3! = 6
+
+  Mastermind::Result result = Mastermind::runMastermindSolver(config);
+  EXPECT_GT(result.sortedGuesses.size(), 0u);
+}
+
+TEST(MastermindTest, CancellationStopsEarly) {
+  Mastermind::Config config;
+  config.numPegs = 4;
+  config.colorChars = "RGBY";
+  config.maxDepth = 1;
+  std::atomic<bool> cancel{true};
+  Mastermind::Result result = Mastermind::runMastermindSolver(config, &cancel);
+  EXPECT_TRUE(result.sortedGuesses.empty());
+}
+
+// ----- Spelling Bee -----
+
+TEST(SpellingBeeTest, ReuseLettersDisabled) {
+  auto config = makeSpellingBeeConfig("esrtano");
+  config.reuseLetters = false;
+  config.mustIncludeFirstLetter = true;
+
+  SpellingBee::Result result = SpellingBee::runSpellingBeeSolver(config);
+  std::array<int, 256> available{};
+  for (char c : config.allLetters)
+    available[static_cast<unsigned char>(c)]++;
+
+  for (const auto &word : result.words) {
+    std::array<int, 256> used{};
+    for (char c : word.wordString) {
+      used[static_cast<unsigned char>(c)]++;
+      EXPECT_LE(used[static_cast<unsigned char>(c)],
+                available[static_cast<unsigned char>(c)])
+          << "Word '" << word.wordString << "' overuses letter '" << c << "'";
+    }
+  }
+}
+
+TEST(SpellingBeeTest, MustIncludeFirstLetterDisabled) {
+  auto withCenter = makeSpellingBeeConfig("esrtano");
+  withCenter.mustIncludeFirstLetter = true;
+  auto withoutCenter = makeSpellingBeeConfig("esrtano");
+  withoutCenter.mustIncludeFirstLetter = false;
+
+  SpellingBee::Result required =
+      SpellingBee::runSpellingBeeSolver(withCenter);
+  SpellingBee::Result optional =
+      SpellingBee::runSpellingBeeSolver(withoutCenter);
+
+  EXPECT_GE(optional.words.size(), required.words.size());
+
+  bool foundWithoutCenter = false;
+  for (const auto &word : optional.words) {
+    if (word.wordString.find('e') == std::string::npos) {
+      foundWithoutCenter = true;
+      break;
+    }
+  }
+  // Optional: if dictionary has words without center, they must appear only
+  // when the flag is false.
+  if (foundWithoutCenter) {
+    for (const auto &word : required.words) {
+      EXPECT_NE(word.wordString.find('e'), std::string::npos);
+    }
+  }
+}
+
+TEST(SpellingBeeTest, PangramDetectionAsserts) {
+  auto config = makeSpellingBeeConfig("esrtano");
+  SpellingBee::Result result = SpellingBee::runSpellingBeeSolver(config);
+
+  for (const auto &word : result.words) {
+    bool isPangram = true;
+    for (char c : config.allLetters) {
+      if (word.wordString.find(c) == std::string::npos) {
+        isPangram = false;
+        break;
+      }
+    }
+    if (isPangram) {
+      EXPECT_EQ(word.uniqueLetters, static_cast<int>(config.allLetters.size()));
+    }
+  }
+}
+
+// ----- Letter Boxed -----
+
+TEST(LetterBoxedTest, PruneDominatedClassesChangesSolutionSet) {
+  auto withoutPrune = makeLetterBoxedConfig("esrtanopdilc");
+  withoutPrune.pruneDominatedClasses = false;
+  auto withPrune = makeLetterBoxedConfig("esrtanopdilc");
+  withPrune.pruneDominatedClasses = true;
+
+  LetterBoxed::Result a = LetterBoxed::runLetterBoxedSolver(withoutPrune);
+  LetterBoxed::Result b = LetterBoxed::runLetterBoxedSolver(withPrune);
+
+  EXPECT_GE(a.solutions.size(), b.solutions.size());
+  // Pruned results must still be complete (use all letters)
+  for (const auto &solution : b.solutions) {
+    std::bitset<12> used;
+    for (char c : solution.text) {
+      if (c == ' ')
+        continue;
+      int idx = withPrune.charToIndexMap[static_cast<unsigned char>(c)];
+      ASSERT_GE(idx, 0);
+      used.set(idx);
+    }
+    EXPECT_EQ(used.count(), 12u);
+  }
+}
+
+TEST(LetterBoxedTest, NoSolutionPuzzle) {
+  auto config = makeLetterBoxedConfig("esrtanopdilc");
+  config.minWordLength = 50; // No dictionary word can qualify
+  LetterBoxed::Result result = LetterBoxed::runLetterBoxedSolver(config);
+  EXPECT_TRUE(result.solutions.empty());
+}
+
+TEST(LetterBoxedTest, MinUniqueLettersFiltersWords) {
+  auto loose = makeLetterBoxedConfig("esrtanopdilc");
+  loose.minUniqueLetters = 2;
+  auto strict = makeLetterBoxedConfig("esrtanopdilc");
+  strict.minUniqueLetters = 8;
+
+  LetterBoxed::Result a = LetterBoxed::runLetterBoxedSolver(loose);
+  LetterBoxed::Result b = LetterBoxed::runLetterBoxedSolver(strict);
+  EXPECT_GE(a.solutions.size(), b.solutions.size());
+}
+
+TEST(LetterBoxedTest, CancellationStopsEarly) {
+  auto config = makeLetterBoxedConfig("esrtanopdilc");
+  config.maxDepth = 3;
+  std::atomic<bool> cancel{true};
+  LetterBoxed::Result result =
+      LetterBoxed::runLetterBoxedSolver(config, &cancel);
+  EXPECT_TRUE(result.solutions.empty());
+}
+
+// ----- Dungleon validity / plus colors -----
+
+TEST(DungleonTest, IsValidPattern_MageRequiresFrog) {
+  Dungleon::Config config;
+  auto withFrog = makeDungleonPattern(
+      {Dungleon::MAGE, Dungleon::BAT, Dungleon::AXE_ORC, Dungleon::FROG,
+       Dungleon::BAT});
+  EXPECT_TRUE(Dungleon::isValidPattern(withFrog, config));
+
+  auto withoutFrog = makeDungleonPattern(
+      {Dungleon::MAGE, Dungleon::BAT, Dungleon::AXE_ORC, Dungleon::CHEST,
+       Dungleon::BAT});
+  EXPECT_FALSE(Dungleon::isValidPattern(withoutFrog, config));
+}
+
+TEST(DungleonTest, IsValidPattern_BatsComeInPairs) {
+  Dungleon::Config config;
+  // One bat needs a frog to "pair" it; zero frogs → invalid
+  auto oddBats = makeDungleonPattern(
+      {Dungleon::ARCHER, Dungleon::BAT, Dungleon::CHEST, Dungleon::COINS,
+       Dungleon::COINS});
+  EXPECT_FALSE(Dungleon::isValidPattern(oddBats, config));
+
+  auto valid = makeDungleonPattern(
+      {Dungleon::MAGE, Dungleon::BAT, Dungleon::AXE_ORC, Dungleon::FROG,
+       Dungleon::BAT});
+  EXPECT_TRUE(Dungleon::isValidPattern(valid, config));
+}
+
+TEST(DungleonTest, IsValidPattern_KnightFacesMonster) {
+  Dungleon::Config config;
+  auto facesMonster = makeDungleonPattern(
+      {Dungleon::KNIGHT, Dungleon::SKELETON, Dungleon::CHEST, Dungleon::COINS,
+       Dungleon::COINS});
+  EXPECT_TRUE(Dungleon::isValidPattern(facesMonster, config));
+
+  auto facesHero = makeDungleonPattern(
+      {Dungleon::KNIGHT, Dungleon::ARCHER, Dungleon::CHEST, Dungleon::COINS,
+       Dungleon::COINS});
+  EXPECT_FALSE(Dungleon::isValidPattern(facesHero, config));
+}
+
+TEST(DungleonTest, IsValidPattern_DragonAlone) {
+  Dungleon::Config config;
+  auto dragonWithMonster = makeDungleonPattern(
+      {Dungleon::ARCHER, Dungleon::SKELETON, Dungleon::DRAGON, Dungleon::CHEST,
+       Dungleon::RELIC});
+  EXPECT_FALSE(Dungleon::isValidPattern(dragonWithMonster, config));
+
+  auto dragonAlone = makeDungleonPattern(
+      {Dungleon::ARCHER, Dungleon::VILLAGER, Dungleon::DRAGON, Dungleon::CHEST,
+       Dungleon::RELIC});
+  EXPECT_TRUE(Dungleon::isValidPattern(dragonAlone, config));
+}
+
+TEST(DungleonTest, IsValidPattern_BanditOnlySlot0) {
+  Dungleon::Config config;
+  auto banditFirst = makeDungleonPattern(
+      {Dungleon::BANDIT, Dungleon::SKELETON, Dungleon::CHEST, Dungleon::COINS,
+       Dungleon::COINS});
+  EXPECT_TRUE(Dungleon::isValidPattern(banditFirst, config));
+
+  auto banditSecond = makeDungleonPattern(
+      {Dungleon::ARCHER, Dungleon::BANDIT, Dungleon::CHEST, Dungleon::COINS,
+       Dungleon::COINS});
+  EXPECT_FALSE(Dungleon::isValidPattern(banditSecond, config));
+}
+
+TEST(DungleonTest, MatchesFeedback_GreenPlusRequiresExtraCopy) {
+  Dungleon::Pattern guess;
+  guess.characters = {Dungleon::MAGE, Dungleon::MAGE, Dungleon::BLADE_ORC,
+                      Dungleon::FROG, Dungleon::RELIC};
+  guess.computeCharacterCount();
+
+  Dungleon::Feedback fb;
+  fb.pattern = guess;
+  fb.setColor(0, Dungleon::Color::GreenPlus);
+  fb.setColor(1, Dungleon::Color::Red);
+  fb.setColor(2, Dungleon::Color::Green);
+  fb.setColor(3, Dungleon::Color::Green);
+  fb.setColor(4, Dungleon::Color::Red);
+
+  // Candidate with only one mage should fail GreenPlus on position 0
+  Dungleon::Pattern oneMage;
+  oneMage.characters = {Dungleon::MAGE, Dungleon::VILLAGER, Dungleon::BLADE_ORC,
+                        Dungleon::FROG, Dungleon::SORCERER};
+  oneMage.computeCharacterCount();
+  EXPECT_FALSE(Dungleon::matchesFeedback(oneMage, fb));
+
+  // Candidate with two+ mages matching position 0 should pass GreenPlus check
+  // (may still fail other colors — use generateFeedback for a real pair)
+  Dungleon::Pattern twoMageTarget;
+  twoMageTarget.characters = {Dungleon::MAGE, Dungleon::KNIGHT,
+                              Dungleon::BLADE_ORC, Dungleon::FROG,
+                              Dungleon::FROG};
+  twoMageTarget.computeCharacterCount();
+  Dungleon::Feedback realFb =
+      Dungleon::generateFeedback(twoMageTarget, guess);
+  EXPECT_EQ(realFb.getColor(0), Dungleon::Color::Green);
+  // Target has 1 mage, guess has 2 → Green (not GreenPlus) at pos 0.
+  // For GreenPlus: target must have MORE mages than guess count.
+  Dungleon::Pattern threeMageTarget;
+  threeMageTarget.characters = {Dungleon::MAGE, Dungleon::MAGE,
+                                Dungleon::BLADE_ORC, Dungleon::FROG,
+                                Dungleon::MAGE};
+  // May be invalid as a real pattern; only testing matchesFeedback counts:
+  threeMageTarget.computeCharacterCount();
+  Dungleon::Feedback plusFb =
+      Dungleon::generateFeedback(threeMageTarget, guess);
+  EXPECT_EQ(plusFb.getColor(0), Dungleon::Color::GreenPlus);
+  EXPECT_TRUE(Dungleon::matchesFeedback(threeMageTarget, plusFb));
+  EXPECT_FALSE(Dungleon::matchesFeedback(oneMage, plusFb));
+}
+
+TEST(DungleonTest, MatchesFeedback_YellowPlusRequiresExtraCopy) {
+  // Guess bat in wrong slot with YellowPlus → candidate needs more bats than
+  // appear in the guess pattern.
+  Dungleon::Pattern guess;
+  guess.characters = {Dungleon::ARCHER, Dungleon::BAT, Dungleon::CHEST,
+                      Dungleon::COINS, Dungleon::COINS};
+  guess.computeCharacterCount();
+
+  Dungleon::Pattern targetMoreBats;
+  targetMoreBats.characters = {Dungleon::BAT, Dungleon::ARCHER, Dungleon::BAT,
+                               Dungleon::CHEST, Dungleon::COINS};
+  targetMoreBats.computeCharacterCount();
+
+  Dungleon::Feedback fb =
+      Dungleon::generateFeedback(targetMoreBats, guess);
+  // Bat guessed at pos1, target has bats at 0 and 2 → yellow/yellow+ depending
+  // on counts: guess has 1 bat, target has 2 → YellowPlus at the bat slot.
+  EXPECT_EQ(fb.getColor(1), Dungleon::Color::YellowPlus);
+
+  Dungleon::Pattern oneBat;
+  oneBat.characters = {Dungleon::BAT, Dungleon::ARCHER, Dungleon::CHEST,
+                       Dungleon::COINS, Dungleon::COINS};
+  oneBat.computeCharacterCount();
+  EXPECT_FALSE(Dungleon::matchesFeedback(oneBat, fb));
+  EXPECT_TRUE(Dungleon::matchesFeedback(targetMoreBats, fb));
+}
+
+TEST(DungleonTest, MatchesFeedback_GreenRejectsExtraCopy) {
+  Dungleon::Pattern guess;
+  guess.characters = {Dungleon::MAGE, Dungleon::VILLAGER, Dungleon::BLADE_ORC,
+                      Dungleon::FROG, Dungleon::SORCERER};
+  guess.computeCharacterCount();
+
+  Dungleon::Pattern targetSame;
+  targetSame.characters = guess.characters;
+  targetSame.computeCharacterCount();
+
+  Dungleon::Feedback fb = Dungleon::generateFeedback(targetSame, guess);
+  EXPECT_EQ(fb.getColor(0), Dungleon::Color::Green);
+
+  Dungleon::Pattern extraMage;
+  extraMage.characters = {Dungleon::MAGE, Dungleon::MAGE, Dungleon::BLADE_ORC,
+                          Dungleon::FROG, Dungleon::SORCERER};
+  extraMage.computeCharacterCount();
+  EXPECT_FALSE(Dungleon::matchesFeedback(extraMage, fb));
+}
+
+TEST(DungleonTest, ParseFeedbackThrows) {
+  Dungleon::Config config;
+  EXPECT_THROW(Dungleon::parseFeedback("ar kn ma bt", config),
+               std::runtime_error);
+  EXPECT_THROW(Dungleon::parseFeedback("ar kn ma bt dr 012345", config),
+               std::runtime_error);
+  EXPECT_THROW(Dungleon::parseFeedback("zz kn ma bt dr 00000", config),
+               std::runtime_error);
+  EXPECT_THROW(Dungleon::parseFeedback("ar kn ma bt dr 00005", config),
+               std::runtime_error);
+}
+
+TEST(DungleonTest, GauntletRequiresSharedCharacter) {
+  Dungleon::Config config;
+  Dungleon::Pattern past = makeDungleonPattern(
+      {Dungleon::MAGE, Dungleon::BAT, Dungleon::AXE_ORC, Dungleon::FROG,
+       Dungleon::BAT});
+  config.solutionHistory.push_back(past);
+  config.sharedCharacters.fill(false);
+  for (uint8_t c : past.characters)
+    config.sharedCharacters[c] = true;
+
+  // Shares a character with past → ok if otherwise valid
+  auto sharing = makeDungleonPattern(
+      {Dungleon::MAGE, Dungleon::VILLAGER, Dungleon::BLADE_ORC, Dungleon::FROG,
+       Dungleon::SORCERER});
+  EXPECT_TRUE(Dungleon::isValidPattern(sharing, config));
+
+  // No shared characters with past
+  auto disjoint = makeDungleonPattern(
+      {Dungleon::ARCHER, Dungleon::SKELETON, Dungleon::CHEST, Dungleon::COINS,
+       Dungleon::COINS});
+  EXPECT_FALSE(Dungleon::isValidPattern(disjoint, config));
+}
+
+TEST(DungleonTest, CancellationStopsEarly) {
+  Dungleon::Config config;
+  config.maxDepth = 1;
+  std::atomic<bool> cancel{true};
+  Dungleon::Result result = Dungleon::runDungleonSolver(config, &cancel);
+  EXPECT_TRUE(result.sortedGuesses.empty());
+}
+
+// ----- Utils / input -----
+
+TEST(UtilsTest, TrimAndTrimToLower) {
+  EXPECT_EQ(Utils::trim("  hello  "), "hello");
+  EXPECT_EQ(Utils::trimToLower("  HeLLo  "), "hello");
+  EXPECT_EQ(Utils::trim(""), "");
+  EXPECT_EQ(Utils::trimToLower("ABC"), "abc");
+}
+
+TEST(UtilsTest, ParseCommandArgsFlagsAndPositional) {
+  const char *argv[] = {"p++", "wordle", "--max-depth", "1", "-o",
+                        "out.txt", "--auto-depth"};
+  auto args = Utils::Input::parseCommandArgs(
+      static_cast<int>(sizeof(argv) / sizeof(argv[0])),
+      const_cast<char **>(argv));
+
+  ASSERT_EQ(args.positional.size(), 1u);
+  EXPECT_EQ(args.positional[0], "wordle");
+  EXPECT_EQ(args.flags["max-depth"], "1");
+  EXPECT_EQ(args.flags["o"], "out.txt");
+  EXPECT_EQ(args.flags["auto-depth"], "true");
+}
+
+TEST(UtilsTest, GetArgValueDefaults) {
+  std::map<std::string, std::string> args;
+  args["max-depth"] = "2";
+  args["exclude-uncommon-words"] = "yes";
+
+  EXPECT_EQ(Utils::Input::getArgValue(args, "max-depth", 0), 2);
+  EXPECT_EQ(Utils::Input::getArgValue(args, "missing", 7), 7);
+  EXPECT_TRUE(Utils::Input::getArgValue(args, "exclude-uncommon-words", false));
+  EXPECT_FALSE(Utils::Input::getArgValue(args, "auto-depth", false));
+  EXPECT_EQ(Utils::Input::getArgValue(args, "output", std::string("default.txt")),
+            "default.txt");
+}
+
+TEST(EntSolverTest, EstimateENTMonotonicInN) {
+  // Depth-0 Wordle ENT should grow as the candidate pool grows.
+  Wordle::Config config;
+  config.maxDepth = 0;
+  config.wordLength = 5;
+
+  Wordle::Result small = Wordle::runWordleSolver(config);
+  ASSERT_GT(small.sortedGuesses.size(), 0u);
+
+  // With a grey feedback that eliminates nothing rare, pool stays large;
+  // with a very specific green pattern, pool shrinks and ENT for top guess
+  // should not exceed the open-board case in a pathological way.
+  Wordle::Config narrowed = config;
+  narrowed.feedbackHistory.push_back(Wordle::parseFeedback("tares 22222"));
+  Wordle::Result tiny = Wordle::runWordleSolver(narrowed);
+
+  EXPECT_LE(tiny.totalPossibleWords, small.totalPossibleWords);
+  if (!tiny.sortedGuesses.empty() && !small.sortedGuesses.empty()) {
+    EXPECT_LE(tiny.sortedGuesses.front().ent, small.sortedGuesses.front().ent);
   }
 }

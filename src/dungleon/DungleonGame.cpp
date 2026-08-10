@@ -12,8 +12,14 @@ namespace Game {
 Dungleon::Config DungleonGame::getConfigFromUser() {
   Dungleon::Config config;
   std::cout << "Configure Dungleon solver:\n";
-  config.maxDepth = static_cast<uint8_t>(Utils::Input::promptInt(
-      "Search depth for ENT calculation (0-2)", 1, 0, 2));
+  config.autoDepth = Utils::Input::promptBool(
+      "Use auto-depth calculation (Recommended)?", true);
+  if (!config.autoDepth) {
+    config.maxDepth = static_cast<uint8_t>(Utils::Input::promptInt(
+        "Search depth for ENT calculation (0-2)", 1, 0, 2));
+  }
+  config.maxGuesses = Utils::Input::promptInt(
+      "Maximum number of guesses allowed", 10, 1, 100);
   return config;
 }
 
@@ -22,6 +28,8 @@ Dungleon::Config DungleonGame::getConfigFromArgs(
   Dungleon::Config config;
   config.maxDepth =
       static_cast<uint8_t>(Utils::Input::getArgValue(args, "max-depth", 0));
+  config.autoDepth = Utils::Input::getArgValue(args, "auto-depth", false);
+  config.maxGuesses = Utils::Input::getArgValue(args, "max-guesses", 10);
   config.excludeImpossiblePatterns =
       Utils::Input::getArgValue(args, "exclude-impossible", false);
   return config;
@@ -128,7 +136,8 @@ void DungleonGame::printResults(const Dungleon::Result &result) {
   }
 
   std::cout << "Possible patterns remaining: " << result.totalPossiblePatterns
-            << "\n\n";
+            << "\n";
+  std::cout << "Search depth used: " << result.searchDepth << "\n\n";
 
   if (!result.sortedGuesses.empty()) {
     std::cout << "=== Best guesses ===\n";
@@ -137,8 +146,9 @@ void DungleonGame::printResults(const Dungleon::Result &result) {
     std::cout << std::setw(6) << "Rank";
     std::cout << std::setw(20) << "Pattern";
     std::cout << std::setw(12) << "ENT Score";
+    std::cout << std::setw(12) << "WNT Score";
     std::cout << std::setw(15) << "Probability" << "\n";
-    std::cout << std::string(53, '-') << "\n";
+    std::cout << std::string(65, '-') << "\n";
 
     int possibleCount = 0;
     int i = 0;
@@ -154,11 +164,13 @@ void DungleonGame::printResults(const Dungleon::Result &result) {
       std::cout << std::setw(20) << guess.pattern.toString();
       std::cout << std::setw(12) << std::fixed << std::setprecision(3)
                 << guess.ent;
+      std::cout << std::setw(12) << std::fixed << std::setprecision(3)
+                << guess.wnt;
       std::cout << std::setw(15) << std::fixed << std::setprecision(6)
                 << guess.probability << "\n";
     }
 
-    std::cout << std::string(53, '-') << "\n";
+    std::cout << std::string(65, '-') << "\n";
 
     // Print the next possible guesses until 10 possible patterns have been
     // shown
@@ -175,6 +187,8 @@ void DungleonGame::printResults(const Dungleon::Result &result) {
       std::cout << std::setw(20) << guess.pattern.toString();
       std::cout << std::setw(12) << std::fixed << std::setprecision(3)
                 << guess.ent;
+      std::cout << std::setw(12) << std::fixed << std::setprecision(3)
+                << guess.wnt;
       std::cout << std::setw(15) << std::fixed << std::setprecision(6)
                 << guess.probability << "\n";
     }
@@ -197,11 +211,12 @@ void DungleonGame::saveResults(const Dungleon::Result &result,
     // Write possible patterns first (those with probability > 0)
     for (const auto &guess : result.sortedGuesses) {
       if (guess.probability > 0.0) {
-        out << guess.pattern.toString() << "\n";
+        out << guess.pattern.toString() << "," << guess.ent << "," << guess.wnt << ","
+            << guess.probability << "\n";
       }
     }
     for (const auto &guess : result.sortedGuesses) {
-      out << guess.pattern.toString() << "," << guess.ent << ","
+      out << guess.pattern.toString() << "," << guess.ent << "," << guess.wnt << ","
           << guess.probability << "\n";
     }
     out.close();
@@ -211,7 +226,8 @@ void DungleonGame::saveResults(const Dungleon::Result &result,
 
   std::cout << result.totalPossiblePatterns << "\n";
   std::cout << result.sortedGuesses.size() << "\n";
-  std::cout << outputFile;
+  std::cout << outputFile << "\n";
+  std::cout << result.searchDepth;
 }
 
 void DungleonGame::runCLI() {
@@ -225,9 +241,9 @@ void DungleonGame::runCLI() {
       std::cout << "Format: 'ar kn ma bt dr 01234' (colors 0-4)\n";
       std::cout
           << "        'ar kn ma bt dr' (past solution for Gauntlet mode)\n";
-      std::cout << "Colors: 0=not present, 1=diff pos no more, 2=correct pos "
-                   "no more,\n";
-      std::cout << "        3=diff pos one more, 4=correct pos one more\n\n";
+      std::cout << "Colors: 0=not present, 1=diff pos no more, 2=diff pos "
+                   "one more,\n";
+      std::cout << "        3=correct pos no more, 4=correct pos one more\n\n";
 
       if (!config.solutionHistory.empty()) {
         std::cout << "Past solutions (Gauntlet mode):\n";
@@ -242,20 +258,14 @@ void DungleonGame::runCLI() {
         for (const auto &fb : feedbackHistory) {
           std::cout << "  " << fb.pattern.toString() << " -> ";
           for (size_t i = 0; i < 5; ++i)
-            std::cout << fb.getColor(i);
+            std::cout << static_cast<int>(fb.getColor(i));
           std::cout << "\n";
         }
         std::cout << "\n";
       }
 
       std::cout << "Enter guess (or command): ";
-      std::string input;
-      std::getline(std::cin, input);
-
-      if (std::cin.eof()) {
-        std::cin.clear();
-        throw Utils::Input::UserCancelledException();
-      }
+      std::string input = Utils::Input::readLine();
 
       input = Utils::trimToLower(input);
       if (input.empty())
@@ -279,8 +289,12 @@ void DungleonGame::runCLI() {
       if (input == "s" || input == "solve") {
         try {
           // Ask for search depth each time before computing ENT
-          config.maxDepth = static_cast<uint8_t>(Utils::Input::promptInt(
-              "Search depth for ENT calculation (0-2)", 1, 0, 2));
+          config.autoDepth = Utils::Input::promptBool(
+              "Use auto-depth calculation (Recommended)?", true);
+          if (!config.autoDepth) {
+            config.maxDepth = static_cast<uint8_t>(Utils::Input::promptInt(
+                "Search depth for ENT calculation (0-2)", 1, 0, 2));
+          }
           config.excludeImpossiblePatterns = Utils::Input::promptBool(
               "Exclude impossible patterns from guesses?", false);
 
