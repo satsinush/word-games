@@ -394,15 +394,6 @@ int run(int argc, char *argv[]) {
 }
 
 int main(int argc, char *argv[]) {
-#if defined(WITH_GUI) && defined(_WIN32)
-  // If launching GUI mode (no arguments provided), hide the console window
-  if (argc == 1) {
-    HWND hwnd = GetConsoleWindow();
-    if (hwnd) {
-      ShowWindow(hwnd, SW_HIDE);
-    }
-  }
-#endif
 
 #ifdef TRACY_ENABLE
   ZoneScoped;
