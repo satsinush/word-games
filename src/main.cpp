@@ -395,75 +395,24 @@ int run(int argc, char *argv[]) {
 
 int main(int argc, char *argv[]) {
 #if defined(WITH_GUI) && defined(_WIN32)
-  // For Windows GUI applications, handle console attachment
-  bool needsConsole = (argc > 1); // Has command line arguments
-  bool attachedToConsole = false;
-  bool allocatedConsole = false;
-
-  // Check if interactive mode is requested - needs its own console window
-  bool isInteractiveMode = false;
-  for (int i = 1; i < argc; ++i) {
-    if (strcmp(argv[i], "-i") == 0) {
-      isInteractiveMode = true;
-      break;
-    }
-  }
-
-  if (needsConsole) {
-    if (isInteractiveMode) {
-      // Interactive mode needs its own console window because the parent shell
-      // won't wait for a GUI application to finish
-      if (AllocConsole()) {
-        freopen_s((FILE **)stdout, "CONOUT$", "w", stdout);
-        freopen_s((FILE **)stderr, "CONOUT$", "w", stderr);
-        freopen_s((FILE **)stdin, "CONIN$", "r", stdin);
-        allocatedConsole = true;
-
-        // Set console title
-        SetConsoleTitleA("Puzzle++ Interactive Mode");
-      }
-    } else {
-      // Non-interactive commands: attach to parent console for output
-      if (AttachConsole(ATTACH_PARENT_PROCESS)) {
-        freopen_s((FILE **)stdout, "CONOUT$", "w", stdout);
-        freopen_s((FILE **)stderr, "CONOUT$", "w", stderr);
-        freopen_s((FILE **)stdin, "CONIN$", "r", stdin);
-        attachedToConsole = true;
-      }
+  // If launching GUI mode (no arguments provided), hide the console window
+  if (argc == 1) {
+    HWND hwnd = GetConsoleWindow();
+    if (hwnd) {
+      ShowWindow(hwnd, SW_HIDE);
     }
   }
 #endif
 
 #ifdef TRACY_ENABLE
   ZoneScoped;
-#if defined(WITH_GUI) && defined(_WIN32)
-  if (attachedToConsole || allocatedConsole)
-#endif
-    std::cout << "Tracy Profiler enabled." << std::endl;
+  std::cout << "Tracy Profiler enabled." << std::endl;
 #endif
 
   int result = run(argc, argv);
 
 #ifdef TRACY_ENABLE
   FrameMark;
-#endif
-
-#if defined(WITH_GUI) && defined(_WIN32)
-  // Clean up console
-  if (attachedToConsole) {
-    // Send a virtual VK_RETURN to parent console so cmd.exe refreshes prompt line automatically
-    HWND hwnd = GetConsoleWindow();
-    if (hwnd) {
-      PostMessage(hwnd, WM_KEYDOWN, VK_RETURN, 0);
-      PostMessage(hwnd, WM_KEYUP, VK_RETURN, 0);
-    }
-    FreeConsole();
-  } else if (allocatedConsole) {
-    // For allocated console, wait for user before closing
-    std::cout << "\nPress Enter to close..." << std::endl;
-    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-    FreeConsole();
-  }
 #endif
 
   return result;

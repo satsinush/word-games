@@ -141,8 +141,9 @@ if(BUILD_GUI)
 endif()
 
 # -- Define the main executable --
+add_executable(p++ src/main.cpp)
+
 if(BUILD_GUI AND WIN32)
-    add_executable(p++ WIN32 src/main.cpp)
     
     # --- ROBUST ICON LOGIC (Fixes MinGW Space-in-Path Crash) ---
     if(EXISTS "${CMAKE_SOURCE_DIR}/resources/icon.ico")
@@ -164,8 +165,6 @@ if(BUILD_GUI AND WIN32)
             target_sources(p++ PRIVATE "${ICON_OBJ_PATH}")
         endif()
     endif()
-else()
-    add_executable(p++ src/main.cpp)
 endif()
 
 if(BUILD_TRACY)
