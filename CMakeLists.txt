@@ -294,14 +294,11 @@ set(CPACK_NSIS_INSTALL_ROOT "\$LOCALAPPDATA\\\\Programs")
 set(CPACK_NSIS_PACKAGE_INSTALL_REGISTRY_KEY "Puzzle++")
 set(CPACK_NSIS_ENABLE_HIERARCHICAL_INSTALLATION OFF)
 
-# Explicitly instruct NSIS compiler for Current User (HKCU) installation & force LocalAppData path
+# Explicitly instruct NSIS compiler for Current User (HKCU) installation
 set(CPACK_NSIS_DEFINES "
   RequestExecutionLevel user
   !define MULTIUSER_EXECUTIONLEVEL User
   !define MULTIUSER_INSTALLMODE_DEFAULT_CURRENTUSER
-  Function .onInit
-    StrCpy \$INSTDIR \"\$LOCALAPPDATA\\\\Programs\\\\Puzzle++\"
-  FunctionEnd
 ")
 
 # --- 2. ICONS & BITMAPS ---
