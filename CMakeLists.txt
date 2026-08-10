@@ -288,9 +288,11 @@ set(CPACK_NSIS_MENU_LINKS "bin/p++.exe" "Puzzle++")
 set(CPACK_NSIS_INSTALLED_ICON_NAME "bin\\\\p++.exe")
 
 # --- Non-Admin (Per-User) Installation ---
-# Installs to %LOCALAPPDATA%\Programs\Puzzle++ without requiring UAC administrator elevation
+# Configure NSIS to run at user level without requesting admin/UAC elevation
 set(CPACK_NSIS_REQUIRED_EXECUTION_LEVEL "user")
-set(CPACK_NSIS_INSTALL_ROOT "$LOCALAPPDATA\\\\Programs")
+set(CPACK_NSIS_INSTALL_ROOT "$PROFILE\\\\AppData\\\\Local\\\\Programs")
+set(CPACK_NSIS_PACKAGE_INSTALL_REGISTRY_KEY "Puzzle++")
+set(CPACK_NSIS_ENABLE_HIERARCHICAL_INSTALLATION OFF)
 
 # --- 2. ICONS & BITMAPS ---
 # We sanitize these paths to ensure NSIS receives "C:\\Users\\..." 
