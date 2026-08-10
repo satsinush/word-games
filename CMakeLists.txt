@@ -133,11 +133,11 @@ if(BUILD_GUI)
         "${CMAKE_SOURCE_DIR}/src/gui/*.hpp"
         "${CMAKE_SOURCE_DIR}/src/gui/*.ui"
     )
-    add_library(p++-gui STATIC ${GUI_SRCS})
-    target_include_directories(p++-gui PUBLIC ${CMAKE_SOURCE_DIR}/src)
-    set_target_properties(p++-gui PROPERTIES AUTOMOC ON AUTOUIC ON AUTORCC ON)
-    target_link_libraries(p++-gui PUBLIC Qt6::Widgets Qt6::Svg)
-    target_compile_definitions(p++-gui PUBLIC WITH_GUI)
+    add_library(p++-gui-lib STATIC ${GUI_SRCS})
+    target_include_directories(p++-gui-lib PUBLIC ${CMAKE_SOURCE_DIR}/src)
+    set_target_properties(p++-gui-lib PROPERTIES AUTOMOC ON AUTOUIC ON AUTORCC ON)
+    target_link_libraries(p++-gui-lib PUBLIC Qt6::Widgets Qt6::Svg)
+    target_compile_definitions(p++-gui-lib PUBLIC WITH_GUI)
 endif()
 
 # -- Define the main CLI executable (Console Subsystem) --
@@ -157,12 +157,12 @@ target_compile_definitions(p++ PRIVATE
 
 # -- Define the GUI executable for Windows (WIN32 Subsystem, zero console window) --
 if(BUILD_GUI)
-    target_link_libraries(p++ PRIVATE p++-gui)
+    target_link_libraries(p++ PRIVATE p++-gui-lib)
     set_target_properties(p++ PROPERTIES AUTOMOC ON)
 
     if(WIN32)
         add_executable(p++-gui WIN32 src/main.cpp)
-        target_link_libraries(p++-gui PRIVATE p++-base p++-gui)
+        target_link_libraries(p++-gui PRIVATE p++-base p++-gui-lib)
         set_target_properties(p++-gui PROPERTIES AUTOMOC ON)
         target_compile_definitions(p++-gui PRIVATE PPLUSPLUS_VERSION="${p++_VERSION}")
 
