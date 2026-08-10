@@ -155,36 +155,47 @@ target_compile_definitions(p++ PRIVATE
     PPLUSPLUS_VERSION="${p++_VERSION}"
 )
 
-# -- Define the GUI executable for Windows (WIN32 Subsystem, zero console window) --
+# -- Define the GUI executable (WIN32 Subsystem on Windows) --
 if(BUILD_GUI)
-    target_link_libraries(p++ PRIVATE p++-gui-lib)
-    set_target_properties(p++ PROPERTIES AUTOMOC ON)
-
     if(WIN32)
         add_executable(p++-gui WIN32 src/main.cpp)
-        target_link_libraries(p++-gui PRIVATE p++-base p++-gui-lib)
-        set_target_properties(p++-gui PROPERTIES AUTOMOC ON)
-        target_compile_definitions(p++-gui PRIVATE PPLUSPLUS_VERSION="${p++_VERSION}")
+    else()
+        add_executable(p++-gui src/main.cpp)
+    endif()
+    
+    target_link_libraries(p++-gui PRIVATE p++-base p++-gui-lib)
+    set_target_properties(p++-gui PROPERTIES AUTOMOC ON)
+    target_compile_definitions(p++-gui PRIVATE PPLUSPLUS_VERSION="${p++_VERSION}")
 
-        # Apply application icon to p++-gui
-        if(EXISTS "${CMAKE_SOURCE_DIR}/resources/icon.ico")
-            set(ICON_RC_PATH "${CMAKE_CURRENT_BINARY_DIR}/app_icon.rc")
-            file(WRITE "${ICON_RC_PATH}" "IDI_ICON1 ICON \"${CMAKE_SOURCE_DIR}/resources/icon.ico\"")
-            
-            if(MSVC)
-                target_sources(p++-gui PRIVATE "${ICON_RC_PATH}")
-            else()
-                enable_language(RC)
-                set(ICON_OBJ_PATH "${CMAKE_CURRENT_BINARY_DIR}/app_icon.obj")
-                add_custom_command(
-                    OUTPUT "${ICON_OBJ_PATH}"
-                    COMMAND ${CMAKE_RC_COMPILER} -O coff -i "${ICON_RC_PATH}" -o "${ICON_OBJ_PATH}"
-                    DEPENDS "${ICON_RC_PATH}" "${CMAKE_SOURCE_DIR}/resources/icon.ico"
-                    VERBATIM
-                )
-                target_sources(p++-gui PRIVATE "${ICON_OBJ_PATH}")
-            endif()
+    # Apply application icon to p++-gui on Windows
+    if(WIN32 AND EXISTS "${CMAKE_SOURCE_DIR}/resources/icon.ico")
+        set(ICON_RC_PATH "${CMAKE_CURRENT_BINARY_DIR}/app_icon.rc")
+        file(WRITE "${ICON_RC_PATH}" "IDI_ICON1 ICON \"${CMAKE_SOURCE_DIR}/resources/icon.ico\"")
+        
+        if(MSVC)
+            target_sources(p++-gui PRIVATE "${ICON_RC_PATH}")
+        else()
+            enable_language(RC)
+            set(ICON_OBJ_PATH "${CMAKE_CURRENT_BINARY_DIR}/app_icon.obj")
+            add_custom_command(
+                OUTPUT "${ICON_OBJ_PATH}"
+                COMMAND ${CMAKE_RC_COMPILER} -O coff -i "${ICON_RC_PATH}" -o "${ICON_OBJ_PATH}"
+                DEPENDS "${ICON_RC_PATH}" "${CMAKE_SOURCE_DIR}/resources/icon.ico"
+                VERBATIM
+            )
+            target_sources(p++-gui PRIVATE "${ICON_OBJ_PATH}")
         endif()
+    endif()
+endif()
+
+# Deploy Qt runtime DLLs and plugins for p++-gui on Windows when GUI is enabled
+if(WIN32 AND BUILD_GUI)
+    find_program(WINDEPLOYQT_EXECUTABLE windeployqt HINTS "${CMAKE_PREFIX_PATH}/bin" "$ENV{QTDIR}/bin")
+    if(WINDEPLOYQT_EXECUTABLE AND TARGET p++-gui)
+        add_custom_command(TARGET p++-gui POST_BUILD
+            COMMAND "${WINDEPLOYQT_EXECUTABLE}" "$<TARGET_FILE:p++-gui>"
+            COMMENT "Deploying Qt libraries for p++-gui..."
+        )
     endif()
 endif()
 
