@@ -262,7 +262,7 @@ macro(sanitize_path_for_nsis INPUT_PATH OUTPUT_VAR)
 endmacro()
 
 # --- DEFINE VARIABLES BEFORE INCLUDING CPACK ---
-set(CPACK_GENERATOR "NSIS")
+set(CPACK_GENERATOR "INNOSETUP;NSIS;ZIP")
 set(CPACK_PACKAGE_NAME "Puzzle++")
 set(CPACK_PACKAGE_FILE_NAME "PuzzlePlusPlus-${p++_VERSION}-win64")
 set(CPACK_PACKAGE_VENDOR "Puzzle++ Team")
@@ -272,40 +272,23 @@ set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Advanced word game and puzzle solver")
 set(CPACK_PACKAGE_INSTALL_DIRECTORY "Puzzle++")
 
 # --- 1. LICENSE FILE ---
-# Sanitize the path to handle spaces in "Local Documents" (Windows only)
 if(EXISTS "${CMAKE_SOURCE_DIR}/LICENSE")
-    if(WIN32)
-        sanitize_path_for_nsis("${CMAKE_SOURCE_DIR}/LICENSE" LICENSE_PATH)
-        set(CPACK_RESOURCE_FILE_LICENSE "${LICENSE_PATH}")
-    else()
-        set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_SOURCE_DIR}/LICENSE")
-    endif()
+    set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_SOURCE_DIR}/LICENSE")
 endif()
 
-# --- NSIS Specific Settings ---
+# --- Inno Setup Settings (Non-Admin Per-User Install to %LOCALAPPDATA%\Programs) ---
+set(CPACK_INNOSETUP_PROGRAM_NAME "Puzzle++")
+set(CPACK_INNOSETUP_PRIVILEGES_REQUIRED "lowest")
+set(CPACK_INNOSETUP_DEFAULT_DIR_NAME "{userappdata}\\..\\Local\\Programs\\Puzzle++")
+set(CPACK_INNOSETUP_CREATE_UNINSTALLER ON)
+set(CPACK_INNOSETUP_RUN_EXECUTABLES "bin/p++.exe")
+
+# --- NSIS Fallback Settings ---
 set(CPACK_NSIS_DISPLAY_NAME "Puzzle++")
 set(CPACK_NSIS_PACKAGE_NAME "Puzzle++")
 set(CPACK_NSIS_MENU_LINKS "bin/p++.exe" "Puzzle++")
 set(CPACK_NSIS_INSTALLED_ICON_NAME "bin\\\\p++.exe")
-
-# --- Non-Admin (Per-User) Installation ---
-# Configure NSIS to run at user level without requesting admin/UAC elevation
 set(CPACK_NSIS_REQUIRED_EXECUTION_LEVEL "user")
-set(CPACK_NSIS_PACKAGE_INSTALL_REGISTRY_KEY "Puzzle++")
-set(CPACK_NSIS_ENABLE_HIERARCHICAL_INSTALLATION OFF)
-
-# Set INSTDIR dynamically during pre-install execution right before directory page display
-set(CPACK_NSIS_EXTRA_PREINSTALL_COMMANDS "
-  SetShellVarContext current
-  StrCpy \$INSTDIR \\\"\$LOCALAPPDATA\\\\Programs\\\\Puzzle++\\\"
-")
-
-# Explicitly instruct NSIS compiler for Current User (HKCU) installation
-set(CPACK_NSIS_DEFINES "
-  RequestExecutionLevel user
-  !define MULTIUSER_EXECUTIONLEVEL User
-  !define MULTIUSER_INSTALLMODE_DEFAULT_CURRENTUSER
-")
 
 # --- 2. ICONS & BITMAPS ---
 # We sanitize these paths to ensure NSIS receives "C:\\Users\\..." 
