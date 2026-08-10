@@ -294,6 +294,12 @@ set(CPACK_NSIS_INSTALL_ROOT "$PROFILE\\\\AppData\\\\Local\\\\Programs")
 set(CPACK_NSIS_PACKAGE_INSTALL_REGISTRY_KEY "Puzzle++")
 set(CPACK_NSIS_ENABLE_HIERARCHICAL_INSTALLATION OFF)
 
+# Explicitly instruct NSIS compiler for Current User (HKCU) installation
+set(CPACK_NSIS_DEFINES "
+  RequestExecutionLevel user
+  !define MULTIUSER_EXECUTIONLEVEL User
+")
+
 # --- 2. ICONS & BITMAPS ---
 # We sanitize these paths to ensure NSIS receives "C:\\Users\\..." 
 if(EXISTS "${CMAKE_SOURCE_DIR}/resources/icon.ico")
