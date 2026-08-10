@@ -277,16 +277,9 @@ set(CPACK_INNOSETUP_SETUP_DefaultDirName "{userappdata}/../Local/Programs/Puzzle
 set(CPACK_INNOSETUP_SETUP_CreateUninstallRegKey "yes")
 set(CPACK_INNOSETUP_RUN_EXECUTABLES "p++")
 
-# Add Desktop Shortcut option and "Add p++ to PATH" checkbox task to Inno Setup Wizard
+# Add Desktop Shortcut option and "Add p++ to user PATH" checkbox task
 set(CPACK_INNOSETUP_CREATE_DESKTOP_KEYBOARD_SHORTCUT ON)
-
-set(CPACK_INNOSETUP_CUSTOM_INSTALL_INSTRUCTIONS "
-[Tasks]
-Name: envpath; Description: \"Add p++ to user PATH\"; Flags: unchecked
-
-[Registry]
-Root: HKCU; Subkey: \"Environment\"; ValueType: expandsz; ValueName: \"Path\"; ValueData: \"{olddata};{app}\\bin\"; Tasks: envpath
-")
+set(CPACK_INNOSETUP_EXTRA_SCRIPTS "${CMAKE_SOURCE_DIR}/src/env_path.iss")
 
 # Icon customization (Setup wizard icon + Uninstall Control Panel icon)
 if(EXISTS "${CMAKE_SOURCE_DIR}/resources/icon.ico")
